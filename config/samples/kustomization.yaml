@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- knoway.dev_v1alpha1_llmbackend.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

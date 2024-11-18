@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+option go_package = "knoway.dev/api/route/v1alpha1";
+
+package knoway.route.v1alpha1;
+
+import "google/protobuf/any.proto";
+
+message RouteFilter {
+  string name = 1;
+  google.protobuf.Any config = 2;
+}
+
+message StringMatch {
+  oneof match {
+    string exact = 1;
+    string prefix = 2;
+  }
+}
+
+message Match {
+  StringMatch model = 1;
+  StringMatch message = 2;
+}
+
+message Route {
+  string name  = 1;
+  repeated Match matches = 2;
+  string clusterName = 3;
+  repeated RouteFilter filters = 4;
+}

@@ -1,0 +1,27 @@
+# permissions for end users to edit llmbackends.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: knoway
+    app.kubernetes.io/managed-by: kustomize
+  name: llmbackend-editor-role
+rules:
+- apiGroups:
+  - knoway.dev.knoway.dev
+  resources:
+  - llmbackends
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - knoway.dev.knoway.dev
+  resources:
+  - llmbackends/status
+  verbs:
+  - get

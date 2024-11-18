@@ -1,0 +1,23 @@
+# permissions for end users to view llmbackends.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: knoway
+    app.kubernetes.io/managed-by: kustomize
+  name: llmbackend-viewer-role
+rules:
+- apiGroups:
+  - knoway.dev.knoway.dev
+  resources:
+  - llmbackends
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - knoway.dev.knoway.dev
+  resources:
+  - llmbackends/status
+  verbs:
+  - get

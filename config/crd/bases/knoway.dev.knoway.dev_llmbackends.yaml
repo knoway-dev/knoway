@@ -42,8 +42,6 @@ spec:
               filters:
                 items:
                   properties:
-                    name:
-                      type: string
                     type:
                       type: string
                     usageStats:

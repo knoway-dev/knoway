@@ -12,7 +12,7 @@ spec:
 #    selector:
 #      app: openai-gpt-4o
 #  type: public # public | private | ...
-#  provider: openai
+  provider: openai
   modelName: gpt-4o
   SecretRef: gpt-4o-openai-apikey
   filters:

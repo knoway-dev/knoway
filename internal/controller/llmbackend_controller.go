@@ -85,8 +85,12 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 		})
 	}
 	return &v1alpha1.Cluster{
-		Name:    name,
-		Filters: filters,
+		Name:     name,
+		Filters:  filters,
+		Provider: backend.Spec.Provider,
+		Created:  backend.GetCreationTimestamp().Unix(),
+		// todo configurable to replace hard config
+		LoadBalancePolicy: v1alpha1.LoadBalancePolicy_ROUND_ROBIN,
 	}
 }
 

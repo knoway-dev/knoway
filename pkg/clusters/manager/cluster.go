@@ -41,12 +41,11 @@ func NewWithConfigs(cfg proto.Message) (clusters.Cluster, error) {
 	// check lb
 	switch conf.LoadBalancePolicy {
 	case v1alpha1.LoadBalancePolicy_CUSTOM, v1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED:
-		//if _, ok := lo.Find(fs, func(f filters.ClusterFilter) bool {
-		//	return f.SelectEndpoint != nil
-		//}); !ok {
-		//	return nil, fmt.Errorf("custom load balance policy must be implemented")
-		//}
-		// todo remove test
+		if _, ok := lo.Find(fs, func(f filters.ClusterFilter) bool {
+			return f.SelectEndpoint != nil
+		}); !ok {
+			return nil, fmt.Errorf("custom load balance policy must be implemented")
+		}
 	default:
 		// if use internal lb, filter must NOT implement SelectEndpoint
 		if lo.SomeBy(fs, func(f filters.ClusterFilter) bool {

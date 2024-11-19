@@ -21,11 +21,13 @@ import (
 )
 
 type UsageStatsFilter struct {
+	StatsServerUrl string `json:"stats_server_url"`
 }
 
 type LLMBackendFilter struct {
-	Name       string            `json:"name"`
-	Type       string            `json:"type,omitempty"`
+	Name string `json:"name"`
+	Type string `json:"type,omitempty"`
+	// todo replace dynamic struct ??
 	UsageStats *UsageStatsFilter `json:"usageStats,omitempty"`
 }
 

@@ -47,4 +47,6 @@ message Cluster {
   Upstream upstream = 3;
   TLSConfig tlsConfig = 4;
   repeated ClusterFilter filters = 5;
+  string provider = 6;
+  int64 created = 7;
 }

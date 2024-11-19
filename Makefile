@@ -205,3 +205,12 @@ gen:
 		--path route
 
 .PHONY: gen
+
+
+.PHONY: gen-crds
+gen-crds: manifests generate fmt
+
+.PHONY: download-deps
+# Download dependencies with specified versions
+download-deps:
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.33.0

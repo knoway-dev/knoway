@@ -74,12 +74,10 @@ func (l *ListenerConnectionManager) OnRequest(writer http.ResponseWriter, reques
 		return
 	}
 	for _, f := range l.filters {
-		if f.OnCompletionRequest != nil {
-			res := f.OnCompletionRequest(request.Context(), req)
-			if res.Type == filters.ListenerFilterResultTypeFailed {
-				http.Error(writer, res.Error.Error(), http.StatusUnauthorized)
-				return
-			}
+		res := f.OnCompletionRequest(request.Context(), req)
+		if res.Type == filters.ListenerFilterResultTypeFailed {
+			http.Error(writer, res.Error.Error(), http.StatusUnauthorized)
+			return
 		}
 	}
 	var r route2.Route

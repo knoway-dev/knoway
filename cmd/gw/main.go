@@ -6,7 +6,9 @@ import (
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
 	v1alpha3 "knoway.dev/api/route/v1alpha1"
+	"knoway.dev/pkg/constants"
 	"knoway.dev/pkg/listener/manager"
+	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/route"
 	"log"
 	"net/http"
@@ -30,13 +32,10 @@ func main() {
 	if err := route.RegisterRouteWithConfig(rConfig); err != nil {
 		panic(err)
 	}
-	//cConfig := &v1alpha4.Cluster{
-	//	Name:              "test",
-	//	LoadBalancePolicy: v1alpha4.LoadBalancePolicy_ROUND_ROBIN,
-	//	Upstream:          nil,
-	//	TlsConfig:         nil,
-	//	Filters:           nil,
-	//}
+	// init cluster register
+	cr := cluster.NewClusterRegister(constants.DefaultClusterConfigPath)
+	cr.Start()
+
 	r := mux.NewRouter()
 	l, err := manager.NewWithConfigs(&v1alpha1.ChatCompletionListener{
 		Name: "openai",

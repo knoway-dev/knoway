@@ -6,4 +6,22 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: llmbackend-sample
 spec:
-  # TODO(user): Add fields here
+#  # 优先级 address > selector
+#  server:
+#    address: www.openai.com
+#    selector:
+#      app: openai-gpt-4o
+#  type: public # public | private | ...
+#  provider: openai
+  modelName: gpt-4o
+  SecretRef: gpt-4o-openai-apikey
+  filters:
+    - name: "usage-stats"
+      type: "type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig"
+#      config:
+#        # todo
+#status:
+#  conditions:
+#    - config-validator
+#    - endpoint-check
+#    - secret-check

@@ -15,23 +15,23 @@ func NewWithConfig(cfg *anypb.Any) (filters.RequestFilter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
-	return &authFilter{
+	return &AuthFilter{
 		config: c,
 	}, nil
 }
 
-type authFilter struct {
+type AuthFilter struct {
 	config *v1alpha1.APIKeyAuthConfig
 }
 
-func (a *authFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest) filters.RequestFilterResult {
+func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest) filters.RequestFilterResult {
 	return filters.OK
 }
 
-func (a *authFilter) OnCompletionResponse(ctx context.Context, response object.LLMResponse) filters.RequestFilterResult {
+func (a *AuthFilter) OnCompletionResponse(ctx context.Context, response object.LLMResponse) filters.RequestFilterResult {
 	return filters.OK
 }
 
-func (a *authFilter) OnCompletionStreamResponse(ctx context.Context, response object.LLMRequest, endStream bool) filters.RequestFilterResult {
+func (a *AuthFilter) OnCompletionStreamResponse(ctx context.Context, response object.LLMRequest, endStream bool) filters.RequestFilterResult {
 	return filters.OK
 }

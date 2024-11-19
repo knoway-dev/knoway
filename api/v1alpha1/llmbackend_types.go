@@ -24,6 +24,7 @@ type UsageStatsFilter struct {
 }
 
 type LLMBackendFilter struct {
+	Name       string            `json:"name"`
 	Type       string            `json:"type,omitempty"`
 	UsageStats *UsageStatsFilter `json:"usageStats,omitempty"`
 }

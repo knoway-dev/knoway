@@ -18,8 +18,10 @@ package controller
 
 import (
 	"context"
-
+	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/apimachinery/pkg/runtime"
+	"knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/config"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -30,6 +32,9 @@ import (
 // LLMBackendReconciler reconciles a LLMBackend object
 type LLMBackendReconciler struct {
 	client.Client
+
+	ConfigServer *config.ConfigsServer
+
 	Scheme *runtime.Scheme
 }
 
@@ -47,15 +52,48 @@ type LLMBackendReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
 func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	llmBackend := &knowaydevv1alpha1.LLMBackend{}
+	if err := r.Get(ctx, req.NamespacedName, llmBackend); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
-	// TODO(user): your logic here
+	log.Log.Info("LLMBackend modelName", "modelName", llmBackend.Spec.ModelName)
 
+	clusterCfg := llmBackendToClusterCfg(llmBackend)
+	if clusterCfg != nil {
+		r.ConfigServer.UpsertCluster(clusterCfg.Name, clusterCfg)
+	}
+
+	// todo Maintain status states, such as model health checks, and configure validate
 	return ctrl.Result{}, nil
+}
+
+func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Cluster {
+	if backend == nil {
+		return nil
+	}
+	name := backend.GetName()
+
+	var filters []*v1alpha1.ClusterFilter
+	for _, fc := range backend.Spec.Filters {
+		fcConfig := &anypb.Any{
+			TypeUrl: fc.Type,
+		}
+		filters = append(filters, &v1alpha1.ClusterFilter{
+			Name:   fc.Name,
+			Config: fcConfig,
+		})
+	}
+	return &v1alpha1.Cluster{
+		Name:    name,
+		Filters: filters,
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *LLMBackendReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.ConfigServer.Start()
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&knowaydevv1alpha1.LLMBackend{}).
 		Complete(r)

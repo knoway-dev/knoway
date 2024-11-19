@@ -37,3 +37,21 @@ func NewClusterFilterWithConfig(name string, cfg *anypb.Any) (clusterfilters.Clu
 	}
 	return nil, fmt.Errorf("unknown cluster filter %q, %s", name, cfg.GetTypeUrl())
 }
+
+// NewRequestFiltersKeys returns the keys of the requestFilters map
+func NewRequestFiltersKeys() []string {
+	keys := make([]string, 0, len(requestFilters))
+	for k := range requestFilters {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// NewClustersFiltersKeys returns the keys of the clustersFilters map
+func NewClustersFiltersKeys() []string {
+	keys := make([]string, 0, len(clustersFilters))
+	for k := range clustersFilters {
+		keys = append(keys, k)
+	}
+	return keys
+}

@@ -202,6 +202,7 @@ gen:
 		--path filters \
 		--path listeners \
 		--path clusters \
-		--path route
+		--path route \
+		--path service
 
 .PHONY: gen

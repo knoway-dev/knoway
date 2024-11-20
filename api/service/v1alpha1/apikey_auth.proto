@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option go_package = "knoway.dev/api/service/v1alpha1";
+
+package knoway.service.v1alpha1;
+
+message APIKeyAuthRequest {
+  string api_key = 1;
+}
+
+message APIKeyAuthResponse {
+  // is_valid required: If it is true, it means that the apikey is valid.
+  bool is_valid = 1;
+  // allow_models optional: If it is empty, it means that the apikey can access all models.
+  // If it is not empty, it means that the apikey can only access the specified models.
+  // * represents matching any value, which can be */llama or kebe/*.
+  repeated string allow_models = 2;
+  // api_key_id optional: It will be used in statistics to avoid leakage of sensitive information.
+  string api_key_id = 3;
+  // user_id optional: the apikey's owner, will be used in route matching.
+  string user_id = 4;
+}
+
+service AuthService {
+  rpc APIKeyAuth(APIKeyAuthRequest) returns (APIKeyAuthResponse) {};
+}

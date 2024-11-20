@@ -79,8 +79,15 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 		fcConfig := &anypb.Any{
 			TypeUrl: fc.Type,
 		}
+		if fc.UsageStatsConfig != nil {
+			us, err := anypb.New(fc.UsageStatsConfig)
+			if err != nil {
+				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
+			} else {
+				fcConfig = us
+			}
+		}
 		filters = append(filters, &v1alpha1.ClusterFilter{
-			Name:   fc.Name,
 			Config: fcConfig,
 		})
 	}

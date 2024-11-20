@@ -37,7 +37,6 @@ spec:
           metadata:
             type: object
           spec:
-            description: LLMBackendSpec defines the desired state of LLMBackend
             properties:
               filters:
                 items:
@@ -46,16 +45,14 @@ spec:
                       type: string
                     type:
                       type: string
-                    usageStats:
-                      description: todo replace dynamic struct ??
+                    usageStatsConfig:
                       properties:
-                        stats_server_url:
-                          type: string
-                      required:
-                      - stats_server_url
+                        stats_server:
+                          properties:
+                            url:
+                              type: string
+                          type: object
                       type: object
-                  required:
-                  - name
                   type: object
                 type: array
               modelName:
@@ -66,7 +63,9 @@ spec:
                 type: string
             type: object
           status:
-            description: LLMBackendStatus defines the observed state of LLMBackend
+            properties:
+              phase:
+                type: string
             type: object
         type: object
     served: true

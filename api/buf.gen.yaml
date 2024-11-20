@@ -4,3 +4,6 @@ plugins:
     out: .
     opt: paths=source_relative
 #    opt: use_proto_names=true
+  - name: golang-deepcopy
+    out: .
+    opt: paths=source_relative

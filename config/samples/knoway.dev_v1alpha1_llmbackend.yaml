@@ -7,7 +7,7 @@ metadata:
   name: llmbackend-sample
 spec:
 #  # 优先级 address > selector
-#  server:
+#  endpoint:
 #    address: www.openai.com
 #    selector:
 #      app: openai-gpt-4o
@@ -18,8 +18,21 @@ spec:
   filters:
     - name: "usage-stats"
       type: "type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig"
-#      config:
-#        # todo
+      usageStatsConfig:
+        stats_server:
+          url: "0.0.0.0:9090"
+    - name: "image-filter"
+      # 记录 filter 类型或者所属
+      labels:
+        xxx.exmaple.com/category: image
+    - name: "base64-filter"
+#      config: # todo
+# future:
+#  maxToken: 242444
+#  capability:
+#    steam: true
+#    image: true
+#    base64: true
 #status:
 #  conditions:
 #    - config-validator

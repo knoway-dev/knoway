@@ -20,31 +20,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type UsageStatsFilter struct {
-	StatsServerUrl string `json:"stats_server_url"`
-}
-
-type LLMBackendFilter struct {
-	Name string `json:"name"`
-	Type string `json:"type,omitempty"`
-	// todo replace dynamic struct ??
-	UsageStats *UsageStatsFilter `json:"usageStats,omitempty"`
-}
-
-// LLMBackendSpec defines the desired state of LLMBackend
-type LLMBackendSpec struct {
-	ModelName string             `json:"modelName,omitempty"`
-	Provider  string             `json:"provider,omitempty"`
-	SecretRef string             `json:"secretRef,omitempty"`
-	Filters   []LLMBackendFilter `json:"filters,omitempty"`
-}
-
-// LLMBackendStatus defines the observed state of LLMBackend
-type LLMBackendStatus struct {
-}
-
-// +kubebuilder:object:root=true
-// +kubebuilder:subresource:status
+// +genclient
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
 
 // LLMBackend is the Schema for the llmbackends API
 type LLMBackend struct {

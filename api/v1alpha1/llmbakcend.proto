@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+option go_package = "knoway.dev/api/v1alpha1";
+
+import "google/protobuf/struct.proto";
+import "filters/v1alpha1/api_key_auth.proto";
+
+message LLMBackendSpec {
+  string modelName = 1;
+  string provider = 2;
+  string secretRef = 3;
+  repeated LLMBackendFilter filters = 4;
+}
+
+message LLMBackendFilter {
+  string name = 1 ;
+  string type = 2;
+  knoway.filters.v1alpha1.UsageStatsConfig usageStatsConfig = 3;
+}
+
+message LLMBackendStatus {
+  string phase = 1;
+}

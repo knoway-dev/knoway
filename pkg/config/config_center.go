@@ -52,7 +52,7 @@ func (cs *ConfigsServer) SaveToFile() error {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
-	data, err := json.Marshal(cs)
+	data, err := json.Marshal(&cs.Clusters)
 	if err != nil {
 		log.Printf("Failed to marshal config data: %v", err)
 		return err

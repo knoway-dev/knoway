@@ -204,6 +204,7 @@ gen:
 		--path listeners \
 		--path clusters \
 		--path route \
+		--path service \
 		--path v1alpha1
 
 .PHONY: gen

@@ -4,6 +4,9 @@ plugins:
     out: .
     opt: paths=source_relative
 #    opt: use_proto_names=true
+  - name: go-grpc
+    out: .
+    opt: paths=source_relative
   - name: golang-deepcopy
     out: .
     opt: paths=source_relative

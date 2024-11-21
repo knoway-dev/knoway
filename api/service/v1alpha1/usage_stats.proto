@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+option go_package = "knoway.dev/api/service/v1alpha1";
+
+package knoway.service.v1alpha1;
+
+message UsageReportRequest {
+  string api_key_id = 1;
+  // user_model_name The name of the model that the user is using, such as "kebe/mnist".
+  string user_model_name = 2;
+  // upstream_model_name The name of the model that the gateway send the request to, such as "kebe-mnist".
+  string upstream_model_name = 3;
+  message Usage {
+    int32 input_tokens = 1;
+    int32 output_tokens = 2;
+  }
+  Usage usage = 4;
+  enum Mode {
+    MODE_UNSPECIFIED = 0;
+    // The PER_REQUEST mode means that each time a request is received,
+    // the usage of the request will be included.
+    // If the server fails to process, statistical data may be lost.
+    PER_REQUEST = 1;
+  }
+  Mode mode = 5;
+}
+
+message UsageReportResponse {
+  // accepted required: If it is true, it means that the report is successful.
+  bool accepted = 1;
+}
+
+service UsageStatsService {
+  rpc UsageReport(UsageReportRequest) returns (UsageReportResponse) {};
+}

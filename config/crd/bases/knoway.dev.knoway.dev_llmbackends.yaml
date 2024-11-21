@@ -46,6 +46,7 @@ spec:
                     type:
                       type: string
                     usageStatsConfig:
+                      description: todo replace custom define
                       properties:
                         stats_server:
                           properties:

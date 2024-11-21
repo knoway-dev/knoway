@@ -15,6 +15,7 @@ message LLMBackendSpec {
 message LLMBackendFilter {
   string name = 1 ;
   string type = 2;
+  // todo replace custom define
   knoway.filters.v1alpha1.UsageStatsConfig usageStatsConfig = 3;
 }
 

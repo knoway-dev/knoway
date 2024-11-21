@@ -98,8 +98,9 @@ type LLMBackendFilter struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name             string                     `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Type             string                     `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	Name string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Type string `protobuf:"bytes,2,opt,name=type,proto3" json:"type,omitempty"`
+	// todo replace custom define
 	UsageStatsConfig *v1alpha1.UsageStatsConfig `protobuf:"bytes,3,opt,name=usageStatsConfig,proto3" json:"usageStatsConfig,omitempty"`
 }
 

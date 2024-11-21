@@ -3,6 +3,7 @@ package auth
 import (
 	context "context"
 	"fmt"
+
 	"google.golang.org/protobuf/types/known/anypb"
 	"knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/pkg/filters"
@@ -15,6 +16,7 @@ func NewWithConfig(cfg *anypb.Any) (filters.RequestFilter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
+
 	return &authFilter{
 		config: c,
 	}, nil

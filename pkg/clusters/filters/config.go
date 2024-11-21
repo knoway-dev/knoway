@@ -1,17 +1,53 @@
 package filters
 
 import (
+	"bytes"
 	"context"
+	"net/http"
+
 	"knoway.dev/pkg/object"
 )
 
-type ClusterFilter interface {
-	// MarshalRequestBody is an optional method that allows the filter to modify the request body before it is sent to the upstream cluster.
-	// if pre is not nil, it contains the body of the previous filter in the chain.
+type ClusterFilterRequestMarshaller interface {
+	isClusterFilter()
+
+	// MarshalRequestBody is an optional method that allows the filter to modify the request body before
+	// it is sent to the upstream cluster. If pre is not nil, it contains the body of the previous filter
+	// in the chain.
 	MarshalRequestBody(ctx context.Context, request object.LLMRequest, pre []byte) ([]byte, error)
-	// UnmarshalResponseBody is an optional method that allows the filter to modify the response body before it is sent to the client.
-	// if pre is not nil, it contains the body of the previous filter in the chain.
-	UnmarshalResponseBody(ctx context.Context, bs []byte, pre object.LLMResponse) (object.LLMResponse, error)
-	SelectEndpoint(ctx context.Context, endpoints []string) string
-	OnResponseComplete(ctx context.Context, response object.LLMResponse) error
 }
+
+type ClusterFilterResponseUnmarshaller interface {
+	isClusterFilter()
+
+	// UnmarshalResponseBody is an optional method that allows the filter to modify the response body
+	// before it is sent to the client. If pre is not nil, it contains the body of the previous filter in
+	// the chain.
+	UnmarshalResponseBody(ctx context.Context, request object.LLMRequest, rawResponse *http.Response, buffer *bytes.Buffer, pre object.LLMResponse) (object.LLMResponse, error)
+}
+
+type ClusterFilterEndpointSelector interface {
+	isClusterFilter()
+
+	SelectEndpoint(ctx context.Context, request object.LLMRequest, endpoints []string) string
+}
+
+type ClusterFilterRequestHandler interface {
+	isClusterFilter()
+
+	RequestPreflight(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error)
+}
+
+type ClusterFilterResponseHandler interface {
+	isClusterFilter()
+
+	ResponseComplete(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error
+}
+
+type ClusterFilter interface {
+	isClusterFilter()
+}
+
+type IsClusterFilter struct{}
+
+func (IsClusterFilter) isClusterFilter() {}

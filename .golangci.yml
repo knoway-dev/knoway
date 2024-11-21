@@ -21,7 +21,7 @@ linters:
   enable:
     - dupl
     - errcheck
-    - exportloopref
+    - copyloopvar
     - ginkgolinter
     - goconst
     - gocyclo
@@ -39,3 +39,36 @@ linters:
     - unconvert
     - unparam
     - unused
+    - usestdlibvars
+    - whitespace
+    - wsl
+    - nolintlint
+    - nosprintfhostport
+    - predeclared
+    - reassign
+    - revive
+    - durationcheck
+    - errname
+    - exhaustive
+    - forcetypeassert
+
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        disabled: true
+  lll:
+    # Max line length, lines longer will be reported.
+    # '\t' is counted as 1 character by default, and can be changed with the tab-width option.
+    # Default: 120.
+    line-length: 200
+  wsl:
+    strict-append: false
+    # Allow multiple var/declaration statements to be cuddled.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-cuddle-declarations
+    # Default: false
+    allow-cuddle-declarations: true
+    # Allow blocks to end with comments.
+    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-trailing-comment
+    # Default: false
+    allow-trailing-comment: true

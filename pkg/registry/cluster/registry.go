@@ -6,64 +6,59 @@ import (
 	"knoway.dev/api/clusters/v1alpha1"
 	clusters2 "knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/manager"
-	"knoway.dev/pkg/config"
-	"log"
 )
 
-var clusterRegister *ClusterRegister
+var clusterRegister *Register
 
-type ClusterRegister struct {
-	configClient *config.ConfigClient
-	clusters     map[string]clusters2.Cluster
-	clustersLock sync.RWMutex
+func FindClusterByName(name string) (clusters2.Cluster, bool) {
+	return clusterRegister.FindClusterByName(name)
 }
 
-func NewClusterRegister(configFilePath string) *ClusterRegister {
-	r := &ClusterRegister{
-		clusters: make(map[string]clusters2.Cluster),
+func RemoveCluster(cluster v1alpha1.Cluster) {
+	clusterRegister.DeleteCluster(cluster.Name)
+}
+
+func UpsertAndRegisterCluster(cluster v1alpha1.Cluster) error {
+	return clusterRegister.UpsertAndRegisterCluster(cluster)
+}
+
+func init() {
+	if clusterRegister == nil {
+		InitClusterRegister()
 	}
-	r.configClient = config.NewConfigClient(configFilePath, r.handleClusterUpdates)
+}
+
+type Register struct {
+	clusters        map[string]clusters2.Cluster
+	clustersDetails map[string]v1alpha1.Cluster
+	clustersLock    sync.RWMutex
+}
+
+type RegisterOptions struct {
+	DevConfig bool
+}
+
+func NewClusterRegister() *Register {
+	r := &Register{
+		clusters:        make(map[string]clusters2.Cluster),
+		clustersDetails: make(map[string]v1alpha1.Cluster),
+		clustersLock:    sync.RWMutex{},
+	}
 	return r
 }
 
-func InitClusterRegister(configFilePath string) {
-	c := NewClusterRegister(configFilePath)
-	c.Start()
+// Start starts the config client
+func (cr *Register) Start() {
+	// noting
+}
+
+func InitClusterRegister() {
+	c := NewClusterRegister()
 	clusterRegister = c
 }
 
-func (r *ClusterRegister) handleClusterUpdates(updatedClusters map[string]*v1alpha1.Cluster) {
-	r.clustersLock.Lock()
-	oldClusters := r.clusters
-	r.clustersLock.Unlock()
-
-	// Register new clusters and update existing ones
-	for name, cluster := range updatedClusters {
-		if _, exists := oldClusters[name]; exists {
-			r.DeleteCluster(name) // Remove the old cluster before updating
-		}
-
-		if err := r.RegisterClusterWithConfig(name, cluster); err != nil {
-			log.Printf("Error registering/updating cluster %s: %v", name, err)
-		}
-	}
-
-	// Remove clusters that are no longer present
-	for name := range oldClusters {
-		if _, exists := updatedClusters[name]; !exists {
-			r.DeleteCluster(name)
-			log.Printf("Removed cluster: %s", name)
-		}
-	}
-}
-
-// Start starts the config client
-func (cr *ClusterRegister) Start() {
-	cr.configClient.Start()
-}
-
-// RegisterCluster registers a cluster
-func (cr *ClusterRegister) RegisterClusterWithConfig(name string, cluster *v1alpha1.Cluster) error {
+// RegisterClusterWithConfig registers a cluster
+func (cr *Register) RegisterClusterWithConfig(name string, cluster *v1alpha1.Cluster) error {
 	cr.clustersLock.Lock()
 	defer cr.clustersLock.Unlock()
 	c, err := manager.NewWithConfigs(cluster)
@@ -74,19 +69,49 @@ func (cr *ClusterRegister) RegisterClusterWithConfig(name string, cluster *v1alp
 	return nil
 }
 
-func (cr *ClusterRegister) DeleteCluster(name string) {
+func (cr *Register) DeleteCluster(name string) {
 	cr.clustersLock.Lock()
 	defer cr.clustersLock.Unlock()
+
 	delete(cr.clusters, name)
+	delete(cr.clustersDetails, name)
 }
 
-func (cr *ClusterRegister) FindClusterByName(name string) (clusters2.Cluster, bool) {
+func (cr *Register) FindClusterByName(name string) (clusters2.Cluster, bool) {
 	cr.clustersLock.RLock()
 	defer cr.clustersLock.RUnlock()
+
 	c, ok := cr.clusters[name]
 	return c, ok
 }
 
-func FindClusterByName(name string) (clusters2.Cluster, bool) {
-	return clusterRegister.FindClusterByName(name)
+func (cr *Register) UpsertAndRegisterCluster(cluster v1alpha1.Cluster) error {
+	cr.clustersLock.Lock()
+	defer cr.clustersLock.Unlock()
+
+	name := cluster.Name
+	c, err := manager.NewWithConfigs(&cluster)
+	if err != nil {
+		return err
+	}
+
+	cr.clustersDetails[cluster.Name] = cluster
+	cr.clusters[name] = c
+	return nil
+}
+
+func (cr *Register) RemoveCluster(cluster v1alpha1.Cluster) {
+	cr.clustersLock.Lock()
+	defer cr.clustersLock.Unlock()
+
+	cr.DeleteCluster(cluster.Name)
+}
+
+func StaticRegisterClusters(clusterDetails map[string]v1alpha1.Cluster) error {
+	for _, cluster := range clusterDetails {
+		if err := UpsertAndRegisterCluster(cluster); err != nil {
+			return err
+		}
+	}
+	return nil
 }

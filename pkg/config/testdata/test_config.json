@@ -1,1 +1,0 @@
-{"llmbackend-sample":{"name":"llmbackend-sample","loadBalancePolicy":1,"filters":[{"config":{"type_url":"type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig","value":"Gg4KDDAuMC4wLjA6OTA5MA=="}}],"provider":"openai","created":1731986181}}

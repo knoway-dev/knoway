@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"knoway.dev/api/clusters/v1alpha1"
 	v1alpha12 "knoway.dev/api/filters/v1alpha1"
-	"knoway.dev/pkg/config"
+	"knoway.dev/pkg/registry/cluster"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -33,8 +33,6 @@ import (
 // LLMBackendReconciler reconciles a LLMBackend object
 type LLMBackendReconciler struct {
 	client.Client
-
-	ConfigServer *config.ConfigsServer
 
 	Scheme *runtime.Scheme
 }
@@ -62,7 +60,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	clusterCfg := llmBackendToClusterCfg(llmBackend)
 	if clusterCfg != nil {
-		r.ConfigServer.UpsertCluster(clusterCfg.Name, clusterCfg)
+		cluster.UpsertAndRegisterCluster(*clusterCfg)
 	}
 
 	// todo Maintain status states, such as model health checks, and configure validate
@@ -119,8 +117,6 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *LLMBackendReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.ConfigServer.Start()
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&knowaydevv1alpha1.LLMBackend{}).
 		Complete(r)

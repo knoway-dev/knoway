@@ -3,6 +3,7 @@ package openai
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 
@@ -52,20 +53,20 @@ type ChatCompletionRequest struct {
 	Model  string `json:"model,omitempty"`
 	Stream bool   `json:"stream,omitempty"`
 
+	IncomingRequest *http.Request `json:"-"`
+
 	// TODO: add more fields
 
-	bodyParsed         map[string]any
-	bodyBuffer         *bytes.Buffer
-	rawIncomingRequest *http.Request
+	bodyParsed map[string]any
+	bodyBuffer *bytes.Buffer
 }
 
-func NewChatCompletionRequest(buffer *bytes.Buffer, parsed map[string]any, rawIncomingRequest *http.Request) *ChatCompletionRequest {
+func NewChatCompletionRequest(buffer *bytes.Buffer, parsed map[string]any) *ChatCompletionRequest {
 	return &ChatCompletionRequest{
-		Model:              utils.GetByJSONPath[string](parsed, "{ .model }"),
-		Stream:             utils.GetByJSONPath[bool](parsed, "{ .stream }"),
-		bodyParsed:         parsed,
-		bodyBuffer:         buffer,
-		rawIncomingRequest: rawIncomingRequest,
+		Model:      utils.GetByJSONPath[string](parsed, "{ .model }"),
+		Stream:     utils.GetByJSONPath[bool](parsed, "{ .stream }"),
+		bodyParsed: parsed,
+		bodyBuffer: buffer,
 	}
 }
 
@@ -117,5 +118,90 @@ func (r *ChatCompletionRequest) GetBodyParsed() map[string]any {
 }
 
 func (r *ChatCompletionRequest) GetIncomingRequest() *http.Request {
-	return r.rawIncomingRequest
+	return r.IncomingRequest
+}
+
+var _ object.LLMResponse = (*ChatCompletionResponse)(nil)
+
+type ChatCompletionResponse struct {
+	Model string         `json:"model"`
+	Usage *object.Usage  `json:"usage,omitempty"`
+	Error *ErrorResponse `json:"error,omitempty"`
+
+	OutgoingResponse *http.Response `json:"-"`
+
+	responseBody     json.RawMessage
+	unmarshalledBody map[string]any
+}
+
+func (r *ChatCompletionResponse) UnmarshalJSON(bs []byte) error {
+	r.responseBody = bs
+
+	var body map[string]any
+
+	err := json.Unmarshal(bs, &body)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal response body: %w", err)
+	}
+
+	r.unmarshalledBody = body
+
+	r.Model = utils.GetByJSONPath[string](body, "{ .model }")
+	usageMap := utils.GetByJSONPath[map[string]any](body, "{ .usage }")
+	respErrMap := utils.GetByJSONPath[map[string]any](body, "{ .error }")
+
+	usage, err := utils.FromMap[object.Usage](usageMap)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal usage: %w", err)
+	}
+
+	r.Usage = usage
+
+	if len(respErrMap) > 0 {
+		respErr, err := utils.FromMap[Error](respErrMap)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal error: %w", err)
+		}
+
+		r.Error = &ErrorResponse{
+			FromUpstream: true,
+			ErrorBody:    respErr,
+		}
+	}
+
+	return nil
+}
+
+func (r *ChatCompletionResponse) MarshalJSON() ([]byte, error) {
+	return json.Marshal(r.responseBody)
+}
+
+func (r *ChatCompletionResponse) IsStream() bool {
+	// TODO: implement
+	return false
+}
+
+func (r *ChatCompletionResponse) GetRequestID() string {
+	// TODO: implement
+	return ""
+}
+
+func (r *ChatCompletionResponse) GetModel() string {
+	return r.Model
+}
+
+func (r *ChatCompletionResponse) GetUsage() *object.Usage {
+	return r.Usage
+}
+
+func (r *ChatCompletionResponse) GetOutgoingResponse() *http.Response {
+	return r.OutgoingResponse
+}
+
+func (r *ChatCompletionResponse) GetError() error {
+	if r.Error != nil {
+		return r.Error
+	}
+
+	return nil
 }

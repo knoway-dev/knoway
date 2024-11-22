@@ -59,7 +59,9 @@ func (l *OpenAIChatCompletionListener) UnmarshalLLMRequest(
 		return nil, openai.NewErrorInvalidBody()
 	}
 
-	r := openai.NewChatCompletionRequest(buffer, jsonMap, request)
+	r := openai.NewChatCompletionRequest(buffer, jsonMap)
+	r.IncomingRequest = request
+
 	if r.Model == "" {
 		return nil, openai.NewErrorMissingModel()
 	}

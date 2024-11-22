@@ -39,18 +39,5 @@ func (f *responseUnmarshaller) UnmarshalResponseBody(ctx context.Context, req ob
 		return nil, fmt.Errorf("unexpected content type %s on status %d", contentType, rawResponse.StatusCode)
 	}
 
-	resp := new(openai.ChatCompletionResponse)
-
-	err := resp.UnmarshalJSON(buffer.Bytes())
-	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-
-	if resp.Error != nil {
-		resp.Error.Status = rawResponse.StatusCode
-	}
-
-	resp.OutgoingResponse = rawResponse
-
-	return resp, nil
+	return openai.NewChatCompletionResponse(rawResponse, buffer)
 }

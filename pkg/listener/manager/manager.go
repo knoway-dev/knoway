@@ -19,7 +19,6 @@ import (
 	"knoway.dev/pkg/registry/route"
 	route2 "knoway.dev/pkg/route"
 	"knoway.dev/pkg/types/openai"
-	"knoway.dev/pkg/utils"
 )
 
 func NewWithConfigs(cfg proto.Message) (listener.Listener, error) {
@@ -54,19 +53,16 @@ func (l *OpenAIChatCompletionListener) UnmarshalLLMRequest(
 	ctx context.Context,
 	request *http.Request,
 ) (object.LLMRequest, error) {
-	buffer, jsonMap, err := utils.ReadAsJSONWithClose(request.Body)
+	llmRequest, err := openai.NewChatCompletionRequest(request)
 	if err != nil {
-		return nil, openai.NewErrorInvalidBody()
+		return nil, err
 	}
 
-	r := openai.NewChatCompletionRequest(buffer, jsonMap)
-	r.IncomingRequest = request
-
-	if r.Model == "" {
+	if llmRequest.GetModel() == "" {
 		return nil, openai.NewErrorMissingModel()
 	}
 
-	return r, nil
+	return llmRequest, nil
 }
 
 func writeResponse(status int, resp any, writer http.ResponseWriter) {

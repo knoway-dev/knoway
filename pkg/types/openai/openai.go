@@ -53,21 +53,26 @@ type ChatCompletionRequest struct {
 	Model  string `json:"model,omitempty"`
 	Stream bool   `json:"stream,omitempty"`
 
-	IncomingRequest *http.Request `json:"-"`
-
 	// TODO: add more fields
 
-	bodyParsed map[string]any
-	bodyBuffer *bytes.Buffer
+	bodyParsed      map[string]any
+	bodyBuffer      *bytes.Buffer
+	incomingRequest *http.Request
 }
 
-func NewChatCompletionRequest(buffer *bytes.Buffer, parsed map[string]any) *ChatCompletionRequest {
-	return &ChatCompletionRequest{
-		Model:      utils.GetByJSONPath[string](parsed, "{ .model }"),
-		Stream:     utils.GetByJSONPath[bool](parsed, "{ .stream }"),
-		bodyParsed: parsed,
-		bodyBuffer: buffer,
+func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionRequest, error) {
+	buffer, parsed, err := utils.ReadAsJSONWithClose(httpRequest.Body)
+	if err != nil {
+		return nil, NewErrorInvalidBody()
 	}
+
+	return &ChatCompletionRequest{
+		Model:           utils.GetByJSONPath[string](parsed, "{ .model }"),
+		Stream:          utils.GetByJSONPath[bool](parsed, "{ .stream }"),
+		bodyParsed:      parsed,
+		bodyBuffer:      buffer,
+		incomingRequest: httpRequest,
+	}, nil
 }
 
 func (r *ChatCompletionRequest) IsStream() bool {
@@ -118,7 +123,7 @@ func (r *ChatCompletionRequest) GetBodyParsed() map[string]any {
 }
 
 func (r *ChatCompletionRequest) GetIncomingRequest() *http.Request {
-	return r.IncomingRequest
+	return r.incomingRequest
 }
 
 var _ object.LLMResponse = (*ChatCompletionResponse)(nil)
@@ -128,10 +133,28 @@ type ChatCompletionResponse struct {
 	Usage *object.Usage  `json:"usage,omitempty"`
 	Error *ErrorResponse `json:"error,omitempty"`
 
-	OutgoingResponse *http.Response `json:"-"`
+	// TODO: add more fields
 
 	responseBody     json.RawMessage
 	unmarshalledBody map[string]any
+	outgoingResponse *http.Response
+}
+
+func NewChatCompletionResponse(response *http.Response, buffer *bytes.Buffer) (*ChatCompletionResponse, error) {
+	resp := new(ChatCompletionResponse)
+
+	err := resp.UnmarshalJSON(buffer.Bytes())
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
+	}
+
+	if resp.Error != nil {
+		resp.Error.Status = response.StatusCode
+	}
+
+	resp.outgoingResponse = response
+
+	return resp, nil
 }
 
 func (r *ChatCompletionResponse) UnmarshalJSON(bs []byte) error {
@@ -195,7 +218,7 @@ func (r *ChatCompletionResponse) GetUsage() *object.Usage {
 }
 
 func (r *ChatCompletionResponse) GetOutgoingResponse() *http.Response {
-	return r.OutgoingResponse
+	return r.outgoingResponse
 }
 
 func (r *ChatCompletionResponse) GetError() error {

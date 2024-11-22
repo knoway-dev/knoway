@@ -1,0 +1,58 @@
+version: "0.2"
+ignorePaths: []
+dictionaryDefinitions: []
+dictionaries: []
+words:
+  - anypb
+  - apimachinery
+  - clientgoscheme
+  - clusterfilters
+  - copyloopvar
+  - dupl
+  - durationcheck
+  - errcheck
+  - errname
+  - evanphx
+  - exhaustive
+  - forcetypeassert
+  - ginkgolinter
+  - goconst
+  - gocyclo
+  - gofmt
+  - goimports
+  - gosimple
+  - govet
+  - healthz
+  - ineffassign
+  - jsonpatch
+  - knoway
+  - kubebuilder
+  - listenerfilters
+  - lll
+  - misspell
+  - nakedret
+  - nilfunc
+  - nolint
+  - nolintlint
+  - nosprintfhostport
+  - prealloc
+  - predeclared
+  - protoutils
+  - reassign
+  - registryfilters
+  - revive
+  - samber
+  - staticcheck
+  - stretchr
+  - typecheck
+  - unconvert
+  - unmarshalled
+  - Unmarshaller
+  - unparam
+  - unused
+  - usestdlibvars
+  - utilruntime
+  - whitespace
+  - wsl
+ignoreWords: []
+import: []

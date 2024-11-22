@@ -3,6 +3,7 @@ package auth
 import (
 	context "context"
 	"fmt"
+
 	"google.golang.org/protobuf/types/known/anypb"
 	"knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/pkg/filters"

@@ -1,3 +1,4 @@
 package constants
 
-const DefaultClusterConfigPath = "dist/load_config.json"
+const TestClusterConfigPath = "dist/load_config.json"
+const DefaultClusterConfigPath = "config/default_config.json"

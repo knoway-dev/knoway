@@ -37,7 +37,7 @@ func TestNewWithConfigs(t *testing.T) {
 					},
 				},
 			},
-			want: &ListenerConnectionManager{
+			want: &OpenAIChatCompletionListener{
 				cfg: &v1alpha1.ChatCompletionListener{
 					Filters: []*v1alpha1.ListenerFilter{
 						{

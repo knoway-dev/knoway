@@ -43,16 +43,17 @@ spec:
                   properties:
                     name:
                       type: string
+                    rewriteConfig:
+                      properties:
+                        modelName:
+                          type: string
+                      type: object
                     type:
                       type: string
                     usageStatsConfig:
-                      description: todo replace custom define
                       properties:
-                        stats_server:
-                          properties:
-                            url:
-                              type: string
-                          type: object
+                        address:
+                          type: string
                       type: object
                   type: object
                 type: array

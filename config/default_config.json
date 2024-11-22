@@ -1,0 +1,50 @@
+{
+  "llmbackend-sample": {
+    "name": "llmbackend-sample",
+    "loadBalancePolicy": 1,
+    "filters": [
+      {
+        "config": {
+          "type_url": "type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig",
+          "value": "Gg4KDDAuMC4wLjA6OTA5MA=="
+        }
+      }
+    ],
+    "provider": "openai",
+    "created": 1731986181
+  },
+  "openai/gpt-3.5-turbo": {
+    "name": "openai/gpt-3.5-turbo",
+    "loadBalancePolicy": 1,
+    "upstream": {
+      "url": "https://openrouter.ai/api/v1/chat/completions",
+      "method": 2,
+      "headers": [
+        {
+          "key": "Authorization",
+          "value": "Bearer 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"
+        }
+      ]
+    },
+    "filters": [
+      {
+        "config": {
+          "type_url": "type.googleapis.com/knoway.filters.v1alpha1.OpenAIRequestMarshallerConfig"
+        }
+      },
+      {
+        "config": {
+          "type_url": "type.googleapis.com/knoway.filters.v1alpha1.OpenAIModelNameRewriteConfig",
+          "value": "Cg1ncHQtMy41LXR1cmJv"
+        }
+      },
+      {
+        "config": {
+          "type_url": "type.googleapis.com/knoway.filters.v1alpha1.OpenAIResponseUnmarshallerConfig"
+        }
+      }
+    ],
+    "provider": "openai",
+    "created": 1731986181
+  }
+}

@@ -21,6 +21,7 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/apimachinery/pkg/runtime"
 	"knoway.dev/api/clusters/v1alpha1"
+	v1alpha12 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/pkg/config"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -80,7 +81,22 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 			TypeUrl: fc.Type,
 		}
 		if fc.UsageStatsConfig != nil {
-			us, err := anypb.New(fc.UsageStatsConfig)
+			c := &v1alpha12.UsageStatsConfig{
+				StatsServer: &v1alpha12.UsageStatsConfig_StatsServer{
+					Url: fc.GetUsageStatsConfig().GetAddress(),
+				},
+			}
+			us, err := anypb.New(c)
+			if err != nil {
+				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
+			} else {
+				fcConfig = us
+			}
+		} else if fc.RewriteConfig != nil {
+			rf := &v1alpha12.OpenAIModelNameRewriteConfig{
+				ModelName: fc.GetRewriteConfig().GetModelName(),
+			}
+			us, err := anypb.New(rf)
 			if err != nil {
 				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
 			} else {

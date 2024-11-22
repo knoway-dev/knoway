@@ -1,12 +1,13 @@
 package cluster
 
 import (
+	"sync"
+
 	"knoway.dev/api/clusters/v1alpha1"
 	clusters2 "knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/config"
 	"log"
-	"sync"
 )
 
 var clusterRegister *ClusterRegister
@@ -25,6 +26,12 @@ func NewClusterRegister(configFilePath string) *ClusterRegister {
 	return r
 }
 
+func InitClusterRegister(configFilePath string) {
+	c := NewClusterRegister(configFilePath)
+	c.Start()
+	clusterRegister = c
+}
+
 func (r *ClusterRegister) handleClusterUpdates(updatedClusters map[string]*v1alpha1.Cluster) {
 	r.clustersLock.Lock()
 	oldClusters := r.clusters
@@ -35,6 +42,7 @@ func (r *ClusterRegister) handleClusterUpdates(updatedClusters map[string]*v1alp
 		if _, exists := oldClusters[name]; exists {
 			r.DeleteCluster(name) // Remove the old cluster before updating
 		}
+
 		if err := r.RegisterClusterWithConfig(name, cluster); err != nil {
 			log.Printf("Error registering/updating cluster %s: %v", name, err)
 		}

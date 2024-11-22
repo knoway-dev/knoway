@@ -17,3 +17,10 @@ message UsageStatsConfig {
   }
   StatsServer stats_server = 3;
 }
+
+message OpenAIRequestMarshallerConfig {}
+message OpenAIResponseUnmarshallerConfig {}
+
+message OpenAIModelNameRewriteConfig {
+  string model_name = 1;
+}

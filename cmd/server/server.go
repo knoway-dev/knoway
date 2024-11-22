@@ -1,19 +1,22 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
+	"os"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
-	"knoway.dev/internal/controller"
-	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
+	"knoway.dev/internal/controller"
 )
 
 var (
@@ -36,7 +39,7 @@ type Options struct {
 	ProbeAddr            string
 }
 
-func StartServer(opts Options) {
+func StartServer(stop chan struct{}, opts Options) error {
 	copts := zap.Options{
 		Development: true,
 	}
@@ -114,11 +117,21 @@ func StartServer(opts Options) {
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
+	// Create a context that listens for the stop signal
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	err = mgr.Start(ctrl.SetupSignalHandler())
+	go func() {
+		<-stop
+		cancel()
+	}()
+
+	setupLog.Info("starting manager")
+	err = mgr.Start(ctx)
 	if err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+
+	return nil
 }

@@ -3,18 +3,20 @@ package manager
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"sort"
+	"strings"
+
 	"github.com/gorilla/mux"
 	"github.com/sashabaranov/go-openai"
 	"google.golang.org/protobuf/proto"
+
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/config"
-	"net/http"
-	"sort"
-	"strings"
 )
 
 func NewModelsManagerWithConfigs(cfg proto.Message) (listener.Listener, error) {

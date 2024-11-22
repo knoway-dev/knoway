@@ -1,15 +1,17 @@
 package manager
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/filters/auth"
 	"knoway.dev/pkg/listener"
-	"testing"
 )
 
 func TestNewWithConfigs(t *testing.T) {

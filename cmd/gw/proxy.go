@@ -1,12 +1,11 @@
 package gw
 
 import (
-	"log"
+	"github.com/gorilla/mux"
+	"google.golang.org/protobuf/types/known/anypb"
 	"log/slog"
 	"net/http"
 
-	"github.com/gorilla/mux"
-	"google.golang.org/protobuf/types/known/anypb"
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
 	v1alpha3 "knoway.dev/api/route/v1alpha1"
@@ -14,7 +13,7 @@ import (
 	"knoway.dev/pkg/registry/route"
 )
 
-func StartProxy() {
+func StartProxy(stop chan struct{}) (err error) {
 	rConfig := &v1alpha3.Route{
 		Name: "default",
 		Matches: []*v1alpha3.Match{
@@ -30,7 +29,7 @@ func StartProxy() {
 		Filters:     nil,
 	}
 	if err := route.RegisterRouteWithConfig(rConfig); err != nil {
-		panic(err)
+		return err
 	}
 
 	baseListenConfig := &v1alpha1.ChatCompletionListener{
@@ -43,7 +42,7 @@ func StartProxy() {
 						AuthServer: nil,
 					})
 					if err != nil {
-						panic(err)
+						return nil
 					}
 					return c
 				}(),
@@ -53,27 +52,38 @@ func StartProxy() {
 	r := mux.NewRouter()
 	l, err := manager.NewWithConfigs(baseListenConfig)
 	if err != nil {
-		log.Fatalf("Failed to create listener: %v", err)
+		return err
 	}
-	err = l.RegisterRoutes(r)
-	if err != nil {
-		log.Fatalf("Failed to register routes: %v", err)
+	if err = l.RegisterRoutes(r); err != nil {
+		return err
 	}
 
 	modelsListen, err := manager.NewModelsManagerWithConfigs(baseListenConfig)
 	if err != nil {
-		log.Fatalf("Failed to create listener: %v", err)
+		return err
 	}
-	err = modelsListen.RegisterRoutes(r)
-	if err != nil {
-		log.Fatalf("Failed to register routes: %v", err)
+	if err = modelsListen.RegisterRoutes(r); err != nil {
+		return err
 	}
 
 	http.Handle("/", r)
 	slog.Info("Starting server on :8080")
 
-	err = http.ListenAndServe(":8080", nil)
-	if err != nil {
-		log.Fatalf("Server failed: %v", err)
+	server := &http.Server{Addr: ":8080"}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("Server failed: %v", err)
+		}
+	}()
+
+	// Wait for graceful shutdown
+	// This could be replaced with a more sophisticated signal handling
+	// mechanism if needed.
+	<-stop
+	if err := server.Shutdown(nil); err != nil {
+		slog.Error("Server shutdown failed: %v", err)
 	}
+	slog.Info("Server stopped gracefully.")
+	return
 }

@@ -21,6 +21,10 @@ import (
 	"knoway.dev/cmd/gw"
 	"knoway.dev/cmd/server"
 	"knoway.dev/pkg/registry/cluster"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -45,19 +49,42 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 
+	stop := make(chan struct{})
+
 	// 开发配置
 	devStaticServer := false
 	if devStaticServer {
 		cluster.StaticRegisterClusters(gw.StaticClustersConfig)
 	} else {
-		go server.StartServer(server.Options{
-			EnableHTTP2:          enableHTTP2,
-			EnableLeaderElection: enableLeaderElection,
-			SecureMetrics:        secureMetrics,
-			MetricsAddr:          metricsAddr,
-			ProbeAddr:            probeAddr,
-		})
+		// Start the server and handle errors gracefully
+		go func() {
+			slog.Info("Starting controller ...")
+			if err := server.StartServer(stop, server.Options{
+				EnableHTTP2:          enableHTTP2,
+				EnableLeaderElection: enableLeaderElection,
+				SecureMetrics:        secureMetrics,
+				MetricsAddr:          metricsAddr,
+				ProbeAddr:            probeAddr,
+			}); err != nil {
+				slog.Error("Controller failed to start: %v", err)
+			}
+			slog.Info("Controller started successfully.")
+		}()
 	}
 
-	gw.StartProxy()
+	if err := gw.StartProxy(stop); err != nil {
+		slog.Error("Failed to start proxy: %v", err)
+	}
+	slog.Info("Proxy started successfully.")
+
+	WaitSignal(stop)
+	slog.Info("Server is shut down.")
+}
+
+// WaitSignal awaits for SIGINT or SIGTERM and closes the channel
+func WaitSignal(stop chan struct{}) {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	<-sigs
+	close(stop)
 }

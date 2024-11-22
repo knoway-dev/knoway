@@ -7,46 +7,46 @@ package knoway.clusters.v1alpha1;
 import "google/protobuf/any.proto";
 
 message ClusterFilter {
-  string name = 1;
-  google.protobuf.Any config = 2;
+    string name                = 1;
+    google.protobuf.Any config = 2;
 }
 
 enum LoadBalancePolicy {
-  LOAD_BALANCE_POLICY_UNSPECIFIED = 0;
-  ROUND_ROBIN = 1;
-  LEAST_CONNECTION = 2;
-  IP_HASH = 3;
+    LOAD_BALANCE_POLICY_UNSPECIFIED = 0;
+    ROUND_ROBIN                     = 1;
+    LEAST_CONNECTION                = 2;
+    IP_HASH                         = 3;
 
-  // CUSTOM means the load balance policy is defined by the filters.
-  CUSTOM = 15;
+    // CUSTOM means the load balance policy is defined by the filters.
+    CUSTOM = 15;
 }
 
 message TLSConfig {
-  // todo
+    // todo
 }
 
 message Upstream {
-  string url = 1;
-  enum Method {
-    METHOD_UNSPECIFIED = 0;
-    GET = 1;
-    POST = 2;
-  }
-  Method method = 2;
-  message Header {
-    string key = 1;
-    string value = 2;
-  }
-  repeated Header headers = 3;
-  int32 timeout = 4;
+    string url = 1;
+    enum Method {
+        METHOD_UNSPECIFIED = 0;
+        GET                = 1;
+        POST               = 2;
+    }
+    Method method = 2;
+    message Header {
+        string key   = 1;
+        string value = 2;
+    }
+    repeated Header headers = 3;
+    int32 timeout           = 4;
 }
 
 message Cluster {
-  string name = 1;
-  LoadBalancePolicy loadBalancePolicy = 2;
-  Upstream upstream = 3;
-  TLSConfig tlsConfig = 4;
-  repeated ClusterFilter filters = 5;
-  string provider = 6;
-  int64 created = 7;
+    string name                         = 1;
+    LoadBalancePolicy loadBalancePolicy = 2;
+    Upstream upstream                   = 3;
+    TLSConfig tlsConfig                 = 4;
+    repeated ClusterFilter filters      = 5;
+    string provider                     = 6;
+    int64 created                       = 7;
 }

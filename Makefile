@@ -52,9 +52,14 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
+format: format-proto format-go
+
+format-go:
+	goimports -local knoway.dev -w .
+	gofmt -w .
+
+format-proto:
+	cd api; find . -name "*.proto" -exec clang-format -style=file -i {} \;
 
 .PHONY: vet
 vet: ## Run go vet against code.
@@ -198,7 +203,7 @@ mv "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1) ;\
 }
 endef
 
-gen:
+gen-proto:
 	cd api; buf generate --timeout 10m -v \
 		--path filters \
 		--path listeners \
@@ -207,6 +212,8 @@ gen:
 		--path service \
 		--path v1alpha1
 
+
+gen: gen-proto gen-crds format
 .PHONY: gen
 
 .PHONY: clean-proto
@@ -215,7 +222,7 @@ clean-proto:
 
 
 .PHONY: gen-crds
-gen-crds: manifests generate fmt
+gen-crds: manifests generate format
 
 .PHONY: download-deps
 # Download dependencies with specified versions

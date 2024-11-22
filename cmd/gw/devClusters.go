@@ -9,6 +9,7 @@ import (
 var StaticClustersConfig = map[string]v1alpha4.Cluster{
 	"openai/gpt-3.5-turbo": {
 		Name:              "openai/gpt-3.5-turbo",
+		Provider:          "openai",
 		LoadBalancePolicy: v1alpha4.LoadBalancePolicy_ROUND_ROBIN,
 		Upstream: &v1alpha4.Upstream{
 			Url:    "https://openrouter.ai/api/v1/chat/completions",
@@ -16,7 +17,7 @@ var StaticClustersConfig = map[string]v1alpha4.Cluster{
 			Headers: []*v1alpha4.Upstream_Header{
 				{
 					Key:   "Authorization",
-					Value: "Bearer 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",
+					Value: "Bearer sk-or-v1-",
 				},
 			},
 		},

@@ -22,6 +22,13 @@ func UpsertAndRegisterCluster(cluster v1alpha1.Cluster) error {
 	return clusterRegister.UpsertAndRegisterCluster(cluster)
 }
 
+func ListModels() []v1alpha1.Cluster {
+	if clusterRegister == nil {
+		return nil
+	}
+	return clusterRegister.ListModels()
+}
+
 func init() {
 	if clusterRegister == nil {
 		InitClusterRegister()
@@ -114,4 +121,14 @@ func StaticRegisterClusters(clusterDetails map[string]v1alpha1.Cluster) error {
 		}
 	}
 	return nil
+}
+
+func (cr *Register) ListModels() []v1alpha1.Cluster {
+	cr.clustersLock.RLock()
+	defer cr.clustersLock.RUnlock()
+	clusters := make([]v1alpha1.Cluster, 0, len(cr.clusters))
+	for _, cluster := range cr.clustersDetails {
+		clusters = append(clusters, cluster)
+	}
+	return clusters
 }

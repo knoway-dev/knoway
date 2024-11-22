@@ -46,11 +46,11 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 
 	// 开发配置
-	devStaticServer := true
+	devStaticServer := false
 	if devStaticServer {
 		cluster.StaticRegisterClusters(gw.StaticClustersConfig)
 	} else {
-		server.StartServer(server.Options{
+		go server.StartServer(server.Options{
 			EnableHTTP2:          enableHTTP2,
 			EnableLeaderElection: enableLeaderElection,
 			SecureMetrics:        secureMetrics,

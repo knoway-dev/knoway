@@ -33,8 +33,7 @@ func StartProxy() {
 		panic(err)
 	}
 
-	r := mux.NewRouter()
-	l, err := manager.NewWithConfigs(&v1alpha1.ChatCompletionListener{
+	baseListenConfig := &v1alpha1.ChatCompletionListener{
 		Name: "openai",
 		Filters: []*v1alpha1.ListenerFilter{
 			{
@@ -50,12 +49,22 @@ func StartProxy() {
 				}(),
 			},
 		},
-	})
+	}
+	r := mux.NewRouter()
+	l, err := manager.NewWithConfigs(baseListenConfig)
 	if err != nil {
 		log.Fatalf("Failed to create listener: %v", err)
 	}
-
 	err = l.RegisterRoutes(r)
+	if err != nil {
+		log.Fatalf("Failed to register routes: %v", err)
+	}
+
+	modelsListen, err := manager.NewModelsManagerWithConfigs(baseListenConfig)
+	if err != nil {
+		log.Fatalf("Failed to create listener: %v", err)
+	}
+	err = modelsListen.RegisterRoutes(r)
 	if err != nil {
 		log.Fatalf("Failed to register routes: %v", err)
 	}

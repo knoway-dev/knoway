@@ -10,6 +10,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.17.1
 	github.com/onsi/gomega v1.32.0
 	github.com/samber/lo v1.47.0
+	github.com/sashabaranov/go-openai v1.35.7
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.33.0
@@ -52,7 +53,6 @@ require (
 	github.com/prometheus/client_model v0.4.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.12.0 // indirect
-	github.com/sashabaranov/go-openai v1.35.7 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect

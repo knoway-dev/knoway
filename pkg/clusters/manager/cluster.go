@@ -1,6 +1,7 @@
 package manager
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -18,10 +19,11 @@ import (
 	registryfilters "knoway.dev/pkg/registry/config"
 )
 
+var _ clusters.Cluster = (*clusterManager)(nil)
+
 type clusterManager struct {
 	cfg     *v1alpha1.Cluster
 	filters []filters.ClusterFilter
-	clusters.Cluster
 }
 
 func NewWithConfigs(cfg proto.Message) (clusters.Cluster, error) {
@@ -78,11 +80,9 @@ func (m *clusterManager) LoadFilters() []filters.ClusterFilter {
 	return append(res, registryfilters.ClusterDefaultFilters()...)
 }
 
-func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRequest) (object.LLMResponse, error) {
-	var bs []byte
-
-	for _, f := range m.LoadFilters() {
-		marshaller, ok := f.(filters.ClusterFilterRequestHandler)
+func forEachRequestHandler(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest) (object.LLMRequest, error) {
+	for _, filter := range f {
+		marshaller, ok := filter.(filters.ClusterFilterRequestHandler)
 		if ok {
 			var err error
 
@@ -93,8 +93,14 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 		}
 	}
 
-	for _, f := range m.LoadFilters() {
-		marshaller, ok := f.(filters.ClusterFilterRequestMarshaller)
+	return req, nil
+}
+
+func forEachRequestMarshaller(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest) ([]byte, error) {
+	var bs []byte
+
+	for _, filter := range f {
+		marshaller, ok := filter.(filters.ClusterFilterRequestMarshaller)
 		if ok {
 			var err error
 
@@ -104,8 +110,6 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 			}
 		}
 	}
-
-	var reader io.ReadCloser
 
 	if bs == nil {
 		// default implementation, use json marshal req
@@ -117,20 +121,24 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 		}
 	}
 
-	reader = io.NopCloser(bytes.NewReader(bs))
-	// TODO: lb policy
-	rawResp, buffer, err := doRequest(ctx, m.cfg.Upstream, "", reader)
-	if err != nil {
-		return nil, err
-	}
+	return bs, nil
+}
 
-	var resp object.LLMResponse
+func forEachResponseMarshaller(
+	ctx context.Context,
+	f []filters.ClusterFilter,
+	req object.LLMRequest,
+	rawResp *http.Response,
+	reader *bufio.Reader,
+	resp object.LLMResponse,
+) (object.LLMResponse, error) {
+	var err error
 
-	for _, f := range lo.Reverse(m.LoadFilters()) {
+	for _, f := range lo.Reverse(f) {
 		unmarshaller, ok := f.(filters.ClusterFilterResponseUnmarshaller)
 
 		if ok {
-			resp, err = unmarshaller.UnmarshalResponseBody(ctx, req, rawResp, buffer, resp)
+			resp, err = unmarshaller.UnmarshalResponseBody(ctx, req, rawResp, reader, resp)
 			if err != nil {
 				return nil, err
 			}
@@ -140,7 +148,68 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 	return resp, nil
 }
 
-func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, _ string, body io.ReadCloser) (*http.Response, *bytes.Buffer, error) {
+func composeRequestBody(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest) (io.ReadCloser, error) {
+	var err error
+
+	req, err = forEachRequestHandler(ctx, f, req)
+	if err != nil {
+		return nil, err
+	}
+
+	bs, err := forEachRequestMarshaller(ctx, f, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return io.NopCloser(bytes.NewReader(bs)), nil
+}
+
+func composeLLMResponse(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
+	var resp object.LLMResponse
+	return forEachResponseMarshaller(ctx, f, req, rawResp, reader, resp)
+}
+
+func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRequest) (object.LLMResponse, error) {
+	body, err := composeRequestBody(ctx, m.LoadFilters(), req)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: lb policy
+	rawResp, buffer, err := doRequest(ctx, m.cfg.Upstream, body, RequestWithStream(req.IsStream()))
+	if err != nil {
+		return nil, err
+	}
+
+	return composeLLMResponse(ctx, m.LoadFilters(), req, rawResp, buffer)
+}
+
+type requestOptions struct {
+	isStream bool
+	endpoint string // TODO: implement
+}
+
+type requestCallOption func(*requestOptions)
+
+func RequestWithStream(stream bool) requestCallOption {
+	return func(opts *requestOptions) {
+		opts.isStream = stream
+	}
+}
+
+func RequestWithEndpoint(endpoint string) requestCallOption {
+	return func(opts *requestOptions) {
+		opts.endpoint = endpoint
+	}
+}
+
+func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.ReadCloser, callOpts ...requestCallOption) (*http.Response, *bufio.Reader, error) {
+	opts := &requestOptions{}
+
+	for _, opt := range callOpts {
+		opt(opts)
+	}
+
 	// TODO: endpoint
 	// TODO: stream
 	// TODO: request
@@ -165,6 +234,12 @@ func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, _ string, body 
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
 
+	if opts.isStream {
+		req.Header.Set("Accept", "text/event-stream")
+		req.Header.Set("Cache-Control", "no-cache")
+		req.Header.Set("Connection", "keep-alive")
+	}
+
 	lo.ForEach(upstream.Headers, func(h *v1alpha1.Upstream_Header, _ int) {
 		req.Header.Set(h.Key, h.Value)
 	})
@@ -175,18 +250,5 @@ func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, _ string, body 
 		return nil, nil, err
 	}
 
-	defer func() {
-		// REVIEW: should we handle error here?
-		// TODO: logging error
-		_ = resp.Body.Close()
-	}()
-
-	buffer := new(bytes.Buffer)
-
-	_, err = buffer.ReadFrom(resp.Body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return resp, buffer, nil
+	return resp, bufio.NewReader(resp.Body), nil
 }

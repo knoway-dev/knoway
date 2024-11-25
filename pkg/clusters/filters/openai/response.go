@@ -1,7 +1,7 @@
 package openai
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"fmt"
 	"net/http"
@@ -34,11 +34,15 @@ type responseUnmarshaller struct {
 	filters2.ClusterFilter
 }
 
-func (f *responseUnmarshaller) UnmarshalResponseBody(ctx context.Context, req object.LLMRequest, rawResponse *http.Response, buffer *bytes.Buffer, pre object.LLMResponse) (object.LLMResponse, error) {
+func (f *responseUnmarshaller) UnmarshalResponseBody(ctx context.Context, req object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
 	contentType := rawResponse.Header.Get("Content-Type")
-	if !strings.HasPrefix(contentType, "application/json") {
-		return nil, fmt.Errorf("unexpected content type %s on status %d", contentType, rawResponse.StatusCode)
-	}
 
-	return openai.NewChatCompletionResponse(rawResponse, buffer)
+	switch {
+	case strings.HasPrefix(contentType, "application/json"):
+		return openai.NewChatCompletionResponse(req, rawResponse, reader)
+	case strings.HasPrefix(contentType, "text/event-stream"):
+		return openai.NewChatCompletionStreamResponse(req, rawResponse, reader)
+	default:
+		return nil, fmt.Errorf("unsupported content type %s", contentType)
+	}
 }

@@ -63,5 +63,4 @@ func TestSetModel(t *testing.T) {
 			}
 		}
 	}
-
 }

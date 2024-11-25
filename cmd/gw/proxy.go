@@ -74,7 +74,7 @@ func StartProxy(stop chan struct{}) (err error) {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("Server failed: %v", err)
+			slog.Error("Server failed", "error", err)
 		}
 	}()
 
@@ -83,7 +83,7 @@ func StartProxy(stop chan struct{}) (err error) {
 	// mechanism if needed.
 	<-stop
 	if err := server.Shutdown(nil); err != nil {
-		slog.Error("Server shutdown failed: %v", err)
+		slog.Error("Server shutdown failed", "error", err)
 	}
 	slog.Info("Server stopped gracefully.")
 	return

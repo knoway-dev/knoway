@@ -5,6 +5,7 @@ dictionaries: []
 words:
   - anypb
   - apimachinery
+  - Causef
   - clientgoscheme
   - clusterfilters
   - copyloopvar
@@ -34,6 +35,7 @@ words:
   - nilfunc
   - nolint
   - nolintlint
+  - nosniff
   - nosprintfhostport
   - prealloc
   - predeclared

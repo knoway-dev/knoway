@@ -8,6 +8,34 @@ import (
 	"github.com/samber/lo"
 )
 
+type Error struct {
+	Code    *string `json:"code"`
+	Message string  `json:"message"`
+	Param   *string `json:"param"`
+	Type    string  `json:"type"`
+}
+
+type ErrorResponse struct { //nolint:errname
+	Status       int    `json:"-"`
+	FromUpstream bool   `json:"-"`
+	ErrorBody    *Error `json:"error"`
+	Cause        error  `json:"-"`
+}
+
+func (e *ErrorResponse) Error() string {
+	return e.ErrorBody.Message
+}
+
+func (e *ErrorResponse) WithCause(err error) *ErrorResponse {
+	e.Cause = err
+	return e
+}
+
+func (e *ErrorResponse) WithCausef(format string, args ...interface{}) *ErrorResponse {
+	e.Cause = fmt.Errorf(format, args...)
+	return e
+}
+
 func NewErrorResponse(status int, err Error) *ErrorResponse {
 	return &ErrorResponse{
 		Status:    status,

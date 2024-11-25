@@ -1,7 +1,7 @@
 package filters
 
 import (
-	"bytes"
+	"bufio"
 	"context"
 	"net/http"
 
@@ -23,7 +23,7 @@ type ClusterFilterResponseUnmarshaller interface {
 	// UnmarshalResponseBody is an optional method that allows the filter to modify the response body
 	// before it is sent to the client. If pre is not nil, it contains the body of the previous filter in
 	// the chain.
-	UnmarshalResponseBody(ctx context.Context, request object.LLMRequest, rawResponse *http.Response, buffer *bytes.Buffer, pre object.LLMResponse) (object.LLMResponse, error)
+	UnmarshalResponseBody(ctx context.Context, request object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error)
 }
 
 type ClusterFilterEndpointSelector interface {

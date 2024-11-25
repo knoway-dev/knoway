@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
 
@@ -20,6 +21,11 @@ import (
 	"knoway.dev/pkg/registry/route"
 	route2 "knoway.dev/pkg/route"
 	"knoway.dev/pkg/types/openai"
+	"knoway.dev/pkg/utils"
+)
+
+var (
+	errSkipWriteResponse = errors.New("skip writing response")
 )
 
 func NewWithConfigs(cfg proto.Message) (listener.Listener, error) {
@@ -67,11 +73,20 @@ func (l *OpenAIChatCompletionListener) UnmarshalLLMRequest(
 }
 
 func writeResponse(status int, resp any, writer http.ResponseWriter) {
-	writer.Header().Set("Content-Type", "application/json")
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writer.WriteHeader(status)
 
 	bs, _ := json.Marshal(resp)
 	_, _ = writer.Write(bs)
+}
+
+func prepareWriteEventStream(writer http.ResponseWriter) {
+	writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
+	writer.Header().Set("Cache-Control", "no-cache")
+	writer.Header().Set("Connection", "keep-alive")
+	writer.Header().Set("Transfer-Encoding", "chunked")
+
+	utils.SafeFlush(writer)
 }
 
 func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
@@ -119,15 +134,68 @@ func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer h
 	if resp.GetError() != nil {
 		return nil, resp.GetError()
 	}
+	if !resp.IsStream() { //nolint:wsl
+		return resp, nil
+	}
 
-	return resp, nil
+	streamResp, ok := resp.(object.LLMStreamResponse)
+	if !ok {
+		return nil, openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
+	}
+
+	prepareWriteEventStream(writer)
+
+	for {
+		chunk, err := streamResp.NextChunk()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				event, err := chunk.ToServerSentEvent()
+				if err != nil {
+					return nil, openai.NewErrorInternalError().WithCause(err)
+				}
+
+				err = event.MarshalTo(writer)
+				if err != nil {
+					slog.Error("failed to marshal event", "error", err)
+				}
+
+				break
+			}
+
+			return nil, err
+		}
+
+		if chunk.IsEmpty() {
+			continue
+		}
+
+		// TODO: request filter
+		event, err := chunk.ToServerSentEvent()
+		if err != nil {
+			return nil, err
+		}
+
+		err = event.MarshalTo(writer)
+		if err != nil {
+			slog.Error("failed to marshal event", "error", err)
+		}
+	}
+
+	return nil, errSkipWriteResponse
 }
 
 func (l *OpenAIChatCompletionListener) wrapErrorHandler(fn func(writer http.ResponseWriter, request *http.Request) (any, error)) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		resp, err := fn(writer, request)
 		if err == nil {
-			writeResponse(http.StatusOK, resp, writer)
+			if resp != nil {
+				writeResponse(http.StatusOK, resp, writer)
+			}
+
+			return
+		}
+
+		if errors.Is(err, errSkipWriteResponse) {
 			return
 		}
 

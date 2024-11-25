@@ -67,14 +67,14 @@ func main() {
 				MetricsAddr:          metricsAddr,
 				ProbeAddr:            probeAddr,
 			}); err != nil {
-				slog.Error("Controller failed to start: %v", err)
+				slog.Error("Controller failed to start", "error", err)
 			}
 			slog.Info("Controller started successfully.")
 		}()
 	}
 
 	if err := gw.StartProxy(stop); err != nil {
-		slog.Error("Failed to start proxy: %v", err)
+		slog.Error("Failed to start proxy", "error", err)
 	}
 	slog.Info("Proxy started successfully.")
 

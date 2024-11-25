@@ -64,7 +64,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	clusterCfg := llmBackendToClusterCfg(llmBackend)
 	if clusterCfg != nil {
-		cluster.UpsertAndRegisterCluster(*clusterCfg)
+		cluster.UpsertAndRegisterCluster(clusterCfg)
 	}
 
 	// todo Maintain status states, such as model health checks, and configure validate

@@ -67,7 +67,7 @@ func (l *ListenerModelsManager) listModels(writer http.ResponseWriter, request *
 	}
 }
 
-func ClustersToOpenAIModels(clusters []v1alpha4.Cluster) []openai.Model {
+func ClustersToOpenAIModels(clusters []*v1alpha4.Cluster) []openai.Model {
 	res := make([]openai.Model, 0)
 	for _, c := range clusters {
 		res = append(res, ClusterToOpenAIModel(c))
@@ -76,7 +76,7 @@ func ClustersToOpenAIModels(clusters []v1alpha4.Cluster) []openai.Model {
 	return res
 }
 
-func ClusterToOpenAIModel(cluster v1alpha4.Cluster) openai.Model {
+func ClusterToOpenAIModel(cluster *v1alpha4.Cluster) openai.Model {
 	// from https://platform.openai.com/docs/api-reference/models/object
 	return openai.Model{
 		CreatedAt: cluster.Created,

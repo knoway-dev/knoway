@@ -58,10 +58,8 @@ spec:
                       type: object
                     name:
                       type: string
-                    usageStats.:
-                      description: |-
-                        UsageStats:  Usage stats configuration
-                        todo 参考了 cilium https://github.com/cilium/cilium/blob/e6ace8e3827a581f9d6d68b7a2434d739fafbc99/pkg/policy/api/cidr.go#L36，但是没有生效
+                    usageStats:
+                      description: 'UsageStats:  Usage stats configuration'
                       properties:
                         address:
                           type: string

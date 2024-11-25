@@ -93,7 +93,7 @@ type BackendUpstream struct {
 	//
 	// headers：
 	// 	- key: apikey
-	// 	  value: sk-or-v1-xxxxxxxxxx
+	// 	  value: "sk-or-v1-xxxxxxxxxx"
 	Headers []HeaderDefine `json:"headers,omitempty"`
 
 	Timeout int32 `json:"timeout,omitempty"`
@@ -140,9 +140,8 @@ type LLMBackendFilter struct {
 type FilterConfig struct {
 	// UsageStats:  Usage stats configuration
 	// +kubebuilder:validation:OneOf
-	// todo 参考了 cilium https://github.com/cilium/cilium/blob/e6ace8e3827a581f9d6d68b7a2434d739fafbc99/pkg/policy/api/cidr.go#L36，但是没有生效
 	// +optional
-	UsageStats *UsageStatsConfig `json:"usageStats.,omitempty"`
+	UsageStats *UsageStatsConfig `json:"usageStats,omitempty"`
 
 	//ModelRewrite: Model rewrite configuration
 	// +kubebuilder:validation:OneOf

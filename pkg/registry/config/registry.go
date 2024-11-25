@@ -20,12 +20,26 @@ var (
 	clustersFilters = map[string]func(cfg *anypb.Any) (clusterfilters.ClusterFilter, error){}
 )
 
+func ClusterDefaultFilters() []clusterfilters.ClusterFilter {
+	res := make([]clusterfilters.ClusterFilter, 0)
+	pb, _ := anypb.New(&v1alpha2.OpenAIRequestMarshallerConfig{})
+	reqMar, _ := NewClusterFilterWithConfig("global", pb)
+	res = append(res, reqMar)
+
+	responsePb, _ := anypb.New(&v1alpha2.OpenAIResponseUnmarshallerConfig{})
+	respMar, _ := NewClusterFilterWithConfig("global", responsePb)
+	res = append(res, respMar)
+	return res
+}
+
 func init() {
 	requestFilters[protoutils.TypeURLOrDie(&v1alpha2.APIKeyAuthConfig{})] = auth.NewWithConfig
 
 	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.UsageStatsConfig{})] = stats.NewWithConfig
-	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIRequestMarshallerConfig{})] = openai.NewRequestMarshallerWithConfig
 	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIModelNameRewriteConfig{})] = openai.NewModelNameRewriteWithConfig
+
+	// internal base Filters
+	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIRequestMarshallerConfig{})] = openai.NewRequestMarshallerWithConfig
 	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIResponseUnmarshallerConfig{})] = openai.NewResponseUnmarshallerWithConfig
 }
 

@@ -6,18 +6,18 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: llmbackend-sample
 spec:
-#  type: public # public | private | ...
+  #  type: public # public | private | ...
   provider: openai
   modelName: openai/gpt-3.5-turbo
   upstream:
-		server:
+    server:
       address: "https://openrouter.ai"
-	    api: "/api/v1/chat/completions"
-			method: post
+      api: "/api/v1/chat/completions"
+      method: "post"
     headers:
-	 	  - key: "Authorization"
-	 	    value: "Bearer sk-or-v1-xxxxxxxxxx"
-    timeout: 300 // ms
+      - key: "Authorization"
+        value: "Bearer sk-or-v1-xxxxxxxxxx"
+    timeout: 300 # ms
   filters:
     - usageStats:
         address: "0.0.0.0:9090"

@@ -57,5 +57,7 @@ words:
   - utilruntime
   - whitespace
   - wsl
+  - knowaydevv1alpha1
+  - llmbackends
 ignoreWords: []
 import: []

@@ -127,6 +127,7 @@ func StartServer(stop chan struct{}, opts Options) error {
 	}()
 
 	setupLog.Info("starting manager")
+
 	err = mgr.Start(ctx)
 	if err != nil {
 		setupLog.Error(err, "problem running manager")

@@ -2,24 +2,26 @@ package config
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewRequestFiltersKeys(t *testing.T) {
 	checkKeys := func(expectedKeys []string, actualKeys []string) {
-		if len(actualKeys) == 0 {
-			t.Error("Expected keys to be non-empty")
-		}
+		require.NotZero(t, len(actualKeys))
+
 		for _, expectedKey := range expectedKeys {
 			found := false
+
 			for _, key := range actualKeys {
 				if key == expectedKey {
 					found = true
 					break
 				}
 			}
-			if !found {
-				t.Errorf("Expected key %q not found in keys", expectedKey)
-			}
+
+			assert.True(t, found)
 		}
 	}
 

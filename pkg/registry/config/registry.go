@@ -22,6 +22,7 @@ var (
 
 func ClusterDefaultFilters() []clusterfilters.ClusterFilter {
 	res := make([]clusterfilters.ClusterFilter, 0)
+
 	pb, _ := anypb.New(&v1alpha2.OpenAIRequestMarshallerConfig{})
 	reqMar, _ := NewClusterFilterWithConfig("global", pb)
 	res = append(res, reqMar)
@@ -29,6 +30,7 @@ func ClusterDefaultFilters() []clusterfilters.ClusterFilter {
 	responsePb, _ := anypb.New(&v1alpha2.OpenAIResponseUnmarshallerConfig{})
 	respMar, _ := NewClusterFilterWithConfig("global", responsePb)
 	res = append(res, respMar)
+
 	return res
 }
 
@@ -65,6 +67,7 @@ func NewRequestFiltersKeys() []string {
 	for k := range requestFilters {
 		keys = append(keys, k)
 	}
+
 	return keys
 }
 
@@ -74,5 +77,6 @@ func NewClustersFiltersKeys() []string {
 	for k := range clustersFilters {
 		keys = append(keys, k)
 	}
+
 	return keys
 }

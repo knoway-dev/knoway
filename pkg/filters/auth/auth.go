@@ -17,6 +17,7 @@ func NewWithConfig(cfg *anypb.Any) (filters.RequestFilter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
+
 	return &AuthFilter{
 		config: c,
 	}, nil

@@ -64,7 +64,10 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	clusterCfg := llmBackendToClusterCfg(llmBackend)
 	if clusterCfg != nil {
-		cluster.UpsertAndRegisterCluster(clusterCfg)
+		err := cluster.UpsertAndRegisterCluster(clusterCfg)
+		if err != nil {
+			log.Log.Error(err, "Failed to upsert cluster", "cluster", clusterCfg)
+		}
 	}
 
 	// todo Maintain status states, such as model health checks, and configure validate
@@ -76,6 +79,7 @@ func stringToUpstreamMethod(method string) v1alpha1.Upstream_Method {
 	if value, ok := v1alpha1.Upstream_Method_value[upperMethod]; ok {
 		return v1alpha1.Upstream_Method(value)
 	}
+
 	return v1alpha1.Upstream_METHOD_UNSPECIFIED
 }
 
@@ -83,11 +87,13 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 	if backend == nil {
 		return nil
 	}
+
 	mName := backend.Spec.ModelName
 
 	// Upstream
 	server := backend.Spec.Upstream.Server
 	url := fmt.Sprintf("%s:%s", server.Address, server.API)
+
 	hs := make([]*v1alpha1.Upstream_Header, 0)
 	for _, h := range backend.Spec.Upstream.Headers {
 		// todo ValueFrom to value
@@ -99,14 +105,17 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 
 	// filters
 	var filters []*v1alpha1.ClusterFilter
+
 	for _, fc := range backend.Spec.Filters {
 		var fcConfig *anypb.Any
+
 		if fc.UsageStats != nil {
 			c := &v1alpha12.UsageStatsConfig{
 				StatsServer: &v1alpha12.UsageStatsConfig_StatsServer{
 					Url: fc.UsageStats.Address,
 				},
 			}
+
 			us, err := anypb.New(c)
 			if err != nil {
 				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
@@ -117,6 +126,7 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 			rf := &v1alpha12.OpenAIModelNameRewriteConfig{
 				ModelName: fc.ModelRewrite.ModelName,
 			}
+
 			us, err := anypb.New(rf)
 			if err != nil {
 				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
@@ -124,12 +134,14 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 				fcConfig = us
 			}
 		}
+
 		if fcConfig != nil {
 			filters = append(filters, &v1alpha1.ClusterFilter{
 				Config: fcConfig,
 			})
 		}
 	}
+
 	return &v1alpha1.Cluster{
 		Name:     mName,
 		Provider: backend.Spec.Provider,

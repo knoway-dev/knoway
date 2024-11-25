@@ -33,3 +33,7 @@ type Usage struct {
 	CompletionTokens int `json:"completion_tokens,omitempty"`
 	PromptTokens     int `json:"prompt_tokens,omitempty"`
 }
+
+type RequestHeader struct {
+	APIKey string `json:"APIKey"`
+}

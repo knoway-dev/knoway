@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"knoway.dev/pkg/filters/auth"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/proto"
@@ -74,10 +76,52 @@ func writeResponse(status int, resp any, writer http.ResponseWriter) {
 	_, _ = writer.Write(bs)
 }
 
+func UnmarshalLLMRequestHeader(ctx context.Context, request *http.Request) (object.RequestHeader, error) {
+	authHeader := request.Header.Get("Authorization")
+	if authHeader == "" {
+		return object.RequestHeader{}, errors.New("missing Authorization header")
+	}
+
+	// 检查是否为 Bearer 格式
+	const prefix = "Bearer "
+	if !strings.HasPrefix(authHeader, prefix) {
+		return object.RequestHeader{}, errors.New("invalid Authorization header format")
+	}
+
+	// 提取 API Key
+	apiKey := strings.TrimPrefix(authHeader, prefix)
+	if apiKey == "" {
+		return object.RequestHeader{}, errors.New("missing API Key in Authorization header")
+	}
+
+	return object.RequestHeader{APIKey: apiKey}, nil
+}
+
 func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
 	req, err := l.UnmarshalLLMRequest(request.Context(), request)
 	if err != nil {
 		return nil, err
+	}
+
+	head, err := UnmarshalLLMRequestHeader(request.Context(), request)
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return nil, err
+	}
+	for _, f := range l.filters {
+		authFilter, ok := f.(*auth.AuthFilter)
+		if ok {
+			authResp, err := authFilter.APIKeyAuth(request.Context(), head.APIKey)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusUnauthorized)
+				return nil, openai.NewErrorIncorrectAPIKey()
+			}
+
+			if !authResp.IsValid || !authResp.CanAccessModel(req.GetModel()) {
+				http.Error(writer, err.Error(), http.StatusUnauthorized)
+				return nil, openai.NewErrorModelNotFoundOrNotAccessible(req.GetModel())
+			}
+		}
 	}
 
 	for _, f := range l.filters {

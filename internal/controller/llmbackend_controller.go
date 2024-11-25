@@ -18,11 +18,18 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
+	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	"knoway.dev/api/clusters/v1alpha1"
+	v1alpha12 "knoway.dev/api/filters/v1alpha1"
+	"knoway.dev/pkg/registry/cluster"
 
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 )
@@ -30,6 +37,7 @@ import (
 // LLMBackendReconciler reconciles a LLMBackend object
 type LLMBackendReconciler struct {
 	client.Client
+
 	Scheme *runtime.Scheme
 }
 
@@ -47,11 +55,97 @@ type LLMBackendReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
 func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	llmBackend := &knowaydevv1alpha1.LLMBackend{}
+	if err := r.Get(ctx, req.NamespacedName, llmBackend); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
 
-	// TODO(user): your logic here
+	log.Log.Info("LLMBackend modelName", "modelName", llmBackend.Spec.ModelName)
 
+	clusterCfg := llmBackendToClusterCfg(llmBackend)
+	if clusterCfg != nil {
+		cluster.UpsertAndRegisterCluster(*clusterCfg)
+	}
+
+	// todo Maintain status states, such as model health checks, and configure validate
 	return ctrl.Result{}, nil
+}
+
+func stringToUpstreamMethod(method string) v1alpha1.Upstream_Method {
+	upperMethod := strings.ToUpper(method)
+	if value, ok := v1alpha1.Upstream_Method_value[upperMethod]; ok {
+		return v1alpha1.Upstream_Method(value)
+	}
+	return v1alpha1.Upstream_METHOD_UNSPECIFIED
+}
+
+func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Cluster {
+	if backend == nil {
+		return nil
+	}
+	mName := backend.Spec.ModelName
+
+	// Upstream
+	server := backend.Spec.Upstream.Server
+	url := fmt.Sprintf("%s:%s", server.Address, server.API)
+	hs := make([]*v1alpha1.Upstream_Header, 0)
+	for _, h := range backend.Spec.Upstream.Headers {
+		// todo ValueFrom to value
+		hs = append(hs, &v1alpha1.Upstream_Header{
+			Key:   h.Key,
+			Value: h.Value,
+		})
+	}
+
+	// filters
+	var filters []*v1alpha1.ClusterFilter
+	for _, fc := range backend.Spec.Filters {
+		var fcConfig *anypb.Any
+		if fc.UsageStats != nil {
+			c := &v1alpha12.UsageStatsConfig{
+				StatsServer: &v1alpha12.UsageStatsConfig_StatsServer{
+					Url: fc.UsageStats.Address,
+				},
+			}
+			us, err := anypb.New(c)
+			if err != nil {
+				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
+			} else {
+				fcConfig = us
+			}
+		} else if fc.ModelRewrite != nil {
+			rf := &v1alpha12.OpenAIModelNameRewriteConfig{
+				ModelName: fc.ModelRewrite.ModelName,
+			}
+			us, err := anypb.New(rf)
+			if err != nil {
+				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
+			} else {
+				fcConfig = us
+			}
+		}
+		if fcConfig != nil {
+			filters = append(filters, &v1alpha1.ClusterFilter{
+				Config: fcConfig,
+			})
+		}
+	}
+	return &v1alpha1.Cluster{
+		Name:     mName,
+		Provider: backend.Spec.Provider,
+		Created:  backend.GetCreationTimestamp().Unix(),
+
+		// todo configurable to replace hard config
+		LoadBalancePolicy: v1alpha1.LoadBalancePolicy_ROUND_ROBIN,
+
+		Upstream: &v1alpha1.Upstream{
+			Url:     url,
+			Method:  stringToUpstreamMethod(server.Method),
+			Headers: hs,
+			Timeout: backend.Spec.Upstream.Timeout,
+		},
+		Filters: filters,
+	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

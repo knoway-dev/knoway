@@ -9,6 +9,7 @@ import (
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 	"github.com/samber/lo"
+
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/utils"
 )
@@ -97,10 +98,7 @@ func (r *ChatCompletionRequest) SetModel(model string) error {
 	}
 
 	r.bodyBuffer = bytes.NewBuffer(patched)
-
-	var m map[string]any
-
-	err = json.Unmarshal(patched, &m)
+	err = json.Unmarshal(patched, &r.bodyParsed)
 	if err != nil {
 		return err
 	}

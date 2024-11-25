@@ -45,22 +45,28 @@ help: ## Display this help.
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
-	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:ignoreUnexportedFields=true \
+ 	webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	go fmt ./...
+format: format-proto format-go
+
+format-go:
+	goimports -local knoway.dev -w .
+	gofmt -w .
+
+format-proto:
+	cd api; find . -name "*.proto" -exec clang-format -style=file -i {} \;
 
 .PHONY: vet
 vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
+test: manifests generate format vet envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
@@ -159,7 +165,7 @@ GOLANGCI_LINT = $(LOCALBIN)/golangci-lint-$(GOLANGCI_LINT_VERSION)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.4.1
-CONTROLLER_TOOLS_VERSION ?= v0.15.0
+CONTROLLER_TOOLS_VERSION ?= v0.16.5
 ENVTEST_VERSION ?= release-0.18
 GOLANGCI_LINT_VERSION ?= v1.57.2
 
@@ -197,7 +203,7 @@ mv "$$(echo "$(1)" | sed "s/-$(3)$$//")" $(1) ;\
 }
 endef
 
-gen:
+gen-proto:
 	cd api; buf generate --timeout 10m -v \
 		--path filters \
 		--path listeners \
@@ -205,4 +211,18 @@ gen:
 		--path route \
 		--path service
 
+gen: gen-proto gen-crds format
 .PHONY: gen
+
+.PHONY: clean-proto
+clean-proto:
+	cd api; ./clean.sh
+
+
+.PHONY: gen-crds
+gen-crds: manifests generate format
+
+.PHONY: download-deps
+# Download dependencies with specified versions
+download-deps:
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.33.0

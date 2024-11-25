@@ -40,7 +40,7 @@ syntax = "proto2";
 
 package google.protobuf;
 
-option go_package           = "github.com/golang/protobuf/protoc-gen-go/descriptor;descriptor";
+option go_package = "github.com/golang/protobuf/protoc-gen-go/descriptor;descriptor";
 option java_package         = "com.google.protobuf";
 option java_outer_classname = "DescriptorProtos";
 option csharp_namespace     = "Google.Protobuf.Reflection";
@@ -53,7 +53,9 @@ option optimize_for = SPEED;
 
 // The protocol compiler can output a FileDescriptorSet containing the .proto
 // files it parses.
-message FileDescriptorSet { repeated FileDescriptorProto file = 1; }
+message FileDescriptorSet {
+    repeated FileDescriptorProto file = 1;
+}
 
 // Describes a complete .proto file.
 message FileDescriptorProto {
@@ -347,10 +349,11 @@ message FileOptions {
 
     // Generated classes can be optimized for speed or code size.
     enum OptimizeMode {
-        SPEED = 1;         // Generate complete code for parsing, serialization,
-                           // etc.
-        CODE_SIZE    = 2;  // Use ReflectionOps to implement these methods.
-        LITE_RUNTIME = 3;  // Generate code using MessageLite and the lite runtime.
+        SPEED = 1;      // Generate complete code for parsing, serialization,
+                        // etc.
+        CODE_SIZE = 2;  // Use ReflectionOps to implement these methods.
+        LITE_RUNTIME =
+            3;  // Generate code using MessageLite and the lite runtime.
     }
     optional OptimizeMode optimize_for = 9 [default = SPEED];
 
@@ -676,7 +679,8 @@ message MethodOptions {
         NO_SIDE_EFFECTS     = 1;  // implies idempotent
         IDEMPOTENT          = 2;  // idempotent, but may have side effects
     }
-    optional IdempotencyLevel idempotency_level = 34 [default = IDEMPOTENCY_UNKNOWN];
+    optional IdempotencyLevel idempotency_level = 34
+        [default = IDEMPOTENCY_UNKNOWN];
 
     // The parser stores options it doesn't recognize here. See above.
     repeated UninterpretedOption uninterpreted_option = 999;

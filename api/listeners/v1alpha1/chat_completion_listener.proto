@@ -7,11 +7,11 @@ package knoway.listeners.v1alpha1;
 import "google/protobuf/any.proto";
 
 message ListenerFilter {
-  string name = 1;
-  google.protobuf.Any config = 2;
+    string name                = 1;
+    google.protobuf.Any config = 2;
 }
 
 message ChatCompletionListener {
-  string name = 1;
-  repeated ListenerFilter filters = 5;
+    string name                     = 1;
+    repeated ListenerFilter filters = 5;
 }

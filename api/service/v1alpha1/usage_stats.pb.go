@@ -7,10 +7,11 @@
 package v1alpha1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -75,9 +76,11 @@ type UsageReportRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	ApiKeyId string `protobuf:"bytes,1,opt,name=api_key_id,json=apiKeyId,proto3" json:"api_key_id,omitempty"`
-	// user_model_name The name of the model that the user is using, such as "kebe/mnist".
+	// user_model_name The name of the model that the user is using, such as
+	// "kebe/mnist".
 	UserModelName string `protobuf:"bytes,2,opt,name=user_model_name,json=userModelName,proto3" json:"user_model_name,omitempty"`
-	// upstream_model_name The name of the model that the gateway send the request to, such as "kebe-mnist".
+	// upstream_model_name The name of the model that the gateway send the
+	// request to, such as "kebe-mnist".
 	UpstreamModelName string                    `protobuf:"bytes,3,opt,name=upstream_model_name,json=upstreamModelName,proto3" json:"upstream_model_name,omitempty"`
 	Usage             *UsageReportRequest_Usage `protobuf:"bytes,4,opt,name=usage,proto3" json:"usage,omitempty"`
 	Mode              UsageReportRequest_Mode   `protobuf:"varint,5,opt,name=mode,proto3,enum=knoway.service.v1alpha1.UsageReportRequest_Mode" json:"mode,omitempty"`

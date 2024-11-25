@@ -6,4 +6,34 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: llmbackend-sample
 spec:
-  # TODO(user): Add fields here
+  #  type: public # public | private | ...
+  provider: openai
+  modelName: openai/gpt-3.5-turbo
+  upstream:
+    server:
+      address: "https://openrouter.ai"
+      api: "/api/v1/chat/completions"
+      method: "post"
+    headers:
+      - key: "Authorization"
+        value: "Bearer sk-or-v1-xxxxxxxxxx"
+    timeout: 300 # ms
+  filters:
+    - usageStats:
+        address: "0.0.0.0:9090"
+    - modelRewrite:
+        modelName: "gpt-3.5-turbo"
+    - custom:
+        pluginName: "examplePlugin"
+        pluginVersion: "1.0.0"
+# future:
+#  maxToken: 242444
+#  capability:
+#    steam: true
+#    image: true
+#    base64: true
+#status:
+#  conditions:
+#    - config-validator
+#    - endpoint-check
+#    - secret-check

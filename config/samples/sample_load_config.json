@@ -1,0 +1,10 @@
+{
+  "clusters": {
+    "llmbackend-sample": {
+      "name": "llmbackend-sample",
+      "loadBalancePolicy": 1,
+      "provider": "openai",
+      "created": 1731986181
+    }
+  }
+}

@@ -10,6 +10,7 @@ import (
 
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
+
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/filters"
@@ -72,10 +73,15 @@ func NewWithConfigs(cfg proto.Message) (clusters.Cluster, error) {
 	}, nil
 }
 
+func (m *clusterManager) LoadFilters() []filters.ClusterFilter {
+	res := m.filters
+	return append(res, registryfilters.ClusterDefaultFilters()...)
+}
+
 func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRequest) (object.LLMResponse, error) {
 	var bs []byte
 
-	for _, f := range m.filters {
+	for _, f := range m.LoadFilters() {
 		marshaller, ok := f.(filters.ClusterFilterRequestHandler)
 		if ok {
 			var err error
@@ -87,7 +93,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 		}
 	}
 
-	for _, f := range m.filters {
+	for _, f := range m.LoadFilters() {
 		marshaller, ok := f.(filters.ClusterFilterRequestMarshaller)
 		if ok {
 			var err error
@@ -112,7 +118,6 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 	}
 
 	reader = io.NopCloser(bytes.NewReader(bs))
-
 	// TODO: lb policy
 	rawResp, buffer, err := doRequest(ctx, m.cfg.Upstream, "", reader)
 	if err != nil {
@@ -121,7 +126,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 
 	var resp object.LLMResponse
 
-	for _, f := range lo.Reverse(m.filters) {
+	for _, f := range lo.Reverse(m.LoadFilters()) {
 		unmarshaller, ok := f.(filters.ClusterFilterResponseUnmarshaller)
 
 		if ok {

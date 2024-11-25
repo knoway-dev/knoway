@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"google.golang.org/protobuf/types/known/anypb"
+
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/clusters/filters/openai"
@@ -19,12 +20,26 @@ var (
 	clustersFilters = map[string]func(cfg *anypb.Any) (clusterfilters.ClusterFilter, error){}
 )
 
+func ClusterDefaultFilters() []clusterfilters.ClusterFilter {
+	res := make([]clusterfilters.ClusterFilter, 0)
+	pb, _ := anypb.New(&v1alpha2.OpenAIRequestMarshallerConfig{})
+	reqMar, _ := NewClusterFilterWithConfig("global", pb)
+	res = append(res, reqMar)
+
+	responsePb, _ := anypb.New(&v1alpha2.OpenAIResponseUnmarshallerConfig{})
+	respMar, _ := NewClusterFilterWithConfig("global", responsePb)
+	res = append(res, respMar)
+	return res
+}
+
 func init() {
 	requestFilters[protoutils.TypeURLOrDie(&v1alpha2.APIKeyAuthConfig{})] = auth.NewWithConfig
 
 	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.UsageStatsConfig{})] = stats.NewWithConfig
-	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIRequestMarshallerConfig{})] = openai.NewRequestMarshallerWithConfig
 	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIModelNameRewriteConfig{})] = openai.NewModelNameRewriteWithConfig
+
+	// internal base Filters
+	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIRequestMarshallerConfig{})] = openai.NewRequestMarshallerWithConfig
 	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIResponseUnmarshallerConfig{})] = openai.NewResponseUnmarshallerWithConfig
 }
 
@@ -42,4 +57,22 @@ func NewClusterFilterWithConfig(name string, cfg *anypb.Any) (clusterfilters.Clu
 	}
 
 	return nil, fmt.Errorf("unknown cluster filter %q, %s", name, cfg.GetTypeUrl())
+}
+
+// NewRequestFiltersKeys returns the keys of the requestFilters map
+func NewRequestFiltersKeys() []string {
+	keys := make([]string, 0, len(requestFilters))
+	for k := range requestFilters {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
+// NewClustersFiltersKeys returns the keys of the clustersFilters map
+func NewClustersFiltersKeys() []string {
+	keys := make([]string, 0, len(clustersFilters))
+	for k := range clustersFilters {
+		keys = append(keys, k)
+	}
+	return keys
 }

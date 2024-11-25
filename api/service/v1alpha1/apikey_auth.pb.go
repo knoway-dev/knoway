@@ -7,10 +7,11 @@
 package v1alpha1
 
 import (
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
+
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -74,11 +75,13 @@ type APIKeyAuthResponse struct {
 
 	// is_valid required: If it is true, it means that the apikey is valid.
 	IsValid bool `protobuf:"varint,1,opt,name=is_valid,json=isValid,proto3" json:"is_valid,omitempty"`
-	// allow_models optional: If it is empty, it means that the apikey can access all models.
-	// If it is not empty, it means that the apikey can only access the specified models.
+	// allow_models optional: If it is empty, it means that the apikey can
+	// access all models. If it is not empty, it means that the apikey can only
+	// access the specified models.
 	// * represents matching any value, which can be */llama or kebe/*.
 	AllowModels []string `protobuf:"bytes,2,rep,name=allow_models,json=allowModels,proto3" json:"allow_models,omitempty"`
-	// api_key_id optional: It will be used in statistics to avoid leakage of sensitive information.
+	// api_key_id optional: It will be used in statistics to avoid leakage of
+	// sensitive information.
 	ApiKeyId string `protobuf:"bytes,3,opt,name=api_key_id,json=apiKeyId,proto3" json:"api_key_id,omitempty"`
 	// user_id optional: the apikey's owner, will be used in route matching.
 	UserId string `protobuf:"bytes,4,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`

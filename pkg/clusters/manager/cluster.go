@@ -176,7 +176,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 	}
 
 	// TODO: lb policy
-	rawResp, buffer, err := doRequest(ctx, req.IsStream(), m.cfg.Upstream, "", body)
+	rawResp, buffer, err := doRequest(ctx, m.cfg.Upstream, body, RequestWithStream(req.IsStream()))
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,32 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 	return composeLLMResponse(ctx, m.LoadFilters(), req, rawResp, buffer)
 }
 
-func doRequest(ctx context.Context, isStream bool, upstream *v1alpha1.Upstream, _ string, body io.ReadCloser) (*http.Response, *bufio.Reader, error) {
+type requestOptions struct {
+	isStream bool
+	endpoint string // TODO: implement
+}
+
+type requestCallOption func(*requestOptions)
+
+func RequestWithStream(stream bool) requestCallOption {
+	return func(opts *requestOptions) {
+		opts.isStream = stream
+	}
+}
+
+func RequestWithEndpoint(endpoint string) requestCallOption {
+	return func(opts *requestOptions) {
+		opts.endpoint = endpoint
+	}
+}
+
+func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.ReadCloser, callOpts ...requestCallOption) (*http.Response, *bufio.Reader, error) {
+	opts := &requestOptions{}
+
+	for _, opt := range callOpts {
+		opt(opts)
+	}
+
 	// TODO: endpoint
 	// TODO: stream
 	// TODO: request
@@ -209,7 +234,7 @@ func doRequest(ctx context.Context, isStream bool, upstream *v1alpha1.Upstream, 
 	req = req.WithContext(ctx)
 	req.Header.Set("Content-Type", "application/json")
 
-	if isStream {
+	if opts.isStream {
 		req.Header.Set("Accept", "text/event-stream")
 		req.Header.Set("Cache-Control", "no-cache")
 		req.Header.Set("Connection", "keep-alive")

@@ -54,7 +54,7 @@ type LLMBackendSpec struct {
 	// Provider indicates the organization providing the model
 	Provider string `json:"provider,omitempty"`
 	// Upstream contains information about the upstream configuration
-	Upstream *BackendUpstream `json:"upstream,omitempty"`
+	Upstream BackendUpstream `json:"upstream,omitempty"`
 	// Filters are applied to the model's requests
 	Filters []LLMBackendFilter `json:"filters,omitempty"`
 }
@@ -79,7 +79,7 @@ type BackendUpstream struct {
 	//      api: /api/v1/chat/completions
 	//		method: post
 	// 		address: https://openrouter.ai
-	Server *Server `json:"server,omitempty"`
+	Server Server `json:"server,omitempty"`
 
 	// Headers defines the common headers for the model, such as the authentication header for the API key.
 	// Example:
@@ -95,6 +95,8 @@ type BackendUpstream struct {
 	// 	- key: apikey
 	// 	  value: sk-or-v1-xxxxxxxxxx
 	Headers []HeaderDefine `json:"headers,omitempty"`
+
+	Timeout int32 `json:"timeout,omitempty"`
 }
 
 type HeaderDefine struct {

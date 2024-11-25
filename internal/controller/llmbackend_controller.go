@@ -18,6 +18,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -69,13 +71,31 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	return ctrl.Result{}, nil
 }
 
+func stringToUpstreamMethod(method string) v1alpha1.Upstream_Method {
+	upperMethod := strings.ToUpper(method)
+	if value, ok := v1alpha1.Upstream_Method_value[upperMethod]; ok {
+		return v1alpha1.Upstream_Method(value)
+	}
+	return v1alpha1.Upstream_METHOD_UNSPECIFIED
+}
+
 func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Cluster {
 	if backend == nil {
 		return nil
 	}
-	name := backend.GetName()
+	mName := backend.Spec.ModelName
 
-	// todo upstream, headers ....
+	// Upstream
+	server := backend.Spec.Upstream.Server
+	url := fmt.Sprintf("%s:%s", server.Address, server.API)
+	hs := make([]*v1alpha1.Upstream_Header, 0)
+	for _, h := range backend.Spec.Upstream.Headers {
+		// todo ValueFrom to value
+		hs = append(hs, &v1alpha1.Upstream_Header{
+			Key:   h.Key,
+			Value: h.Value,
+		})
+	}
 
 	// filters
 	var filters []*v1alpha1.ClusterFilter
@@ -111,12 +131,20 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 		}
 	}
 	return &v1alpha1.Cluster{
-		Name:     name,
-		Filters:  filters,
+		Name:     mName,
 		Provider: backend.Spec.Provider,
 		Created:  backend.GetCreationTimestamp().Unix(),
+
 		// todo configurable to replace hard config
 		LoadBalancePolicy: v1alpha1.LoadBalancePolicy_ROUND_ROBIN,
+
+		Upstream: &v1alpha1.Upstream{
+			Url:     url,
+			Method:  stringToUpstreamMethod(server.Method),
+			Headers: hs,
+			Timeout: backend.Spec.Upstream.Timeout,
+		},
+		Filters: filters,
 	}
 }
 

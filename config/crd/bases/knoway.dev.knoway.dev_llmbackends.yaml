@@ -122,6 +122,9 @@ spec:
                           type: string
                         type: object
                     type: object
+                  timeout:
+                    format: int32
+                    type: integer
                 type: object
             type: object
           status:

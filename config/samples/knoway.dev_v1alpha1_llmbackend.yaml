@@ -6,27 +6,26 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: llmbackend-sample
 spec:
-#  # 优先级 address > selector
-#  endpoint:
-#    address: www.openai.com
-#    selector:
-#      app: openai-gpt-4o
 #  type: public # public | private | ...
   provider: openai
-  modelName: gpt-4o
-  SecretRef: gpt-4o-openai-apikey
+  modelName: openai/gpt-3.5-turbo
+  upstream:
+		server:
+      address: "https://openrouter.ai"
+	    api: "/api/v1/chat/completions"
+			method: post
+    headers:
+	 	  - key: "Authorization"
+	 	    value: "Bearer sk-or-v1-xxxxxxxxxx"
+    timeout: 300 // ms
   filters:
-    - name: "usage-stats"
-      type: "type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig"
-      usageStatsConfig:
-        stats_server:
-          url: "0.0.0.0:9090"
-    - name: "image-filter"
-      # 记录 filter 类型或者所属
-      labels:
-        xxx.exmaple.com/category: image
-    - name: "base64-filter"
-#      config: # todo
+    - usageStats:
+        address: "0.0.0.0:9090"
+    - modelRewrite:
+        modelName: "gpt-3.5-turbo"
+    - custom:
+        pluginName: "examplePlugin"
+        pluginVersion: "1.0.0"
 # future:
 #  maxToken: 242444
 #  capability:

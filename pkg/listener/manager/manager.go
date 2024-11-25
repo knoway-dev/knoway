@@ -89,6 +89,53 @@ func prepareWriteEventStream(writer http.ResponseWriter) {
 	utils.SafeFlush(writer)
 }
 
+func (l *OpenAIChatCompletionListener) handleChatCompletionsChunks(resp object.LLMResponse, writer http.ResponseWriter) error {
+	streamResp, ok := resp.(object.LLMStreamResponse)
+	if !ok {
+		return openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
+	}
+
+	prepareWriteEventStream(writer)
+
+	for {
+		chunk, err := streamResp.NextChunk()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				event, err := chunk.ToServerSentEvent()
+				if err != nil {
+					return openai.NewErrorInternalError().WithCause(err)
+				}
+
+				err = event.MarshalTo(writer)
+				if err != nil {
+					slog.Error("failed to marshal event", "error", err)
+				}
+
+				break
+			}
+
+			return openai.NewErrorInternalError().WithCause(err)
+		}
+
+		if chunk.IsEmpty() {
+			continue
+		}
+
+		// TODO: request filter
+		event, err := chunk.ToServerSentEvent()
+		if err != nil {
+			return openai.NewErrorInternalError().WithCause(err)
+		}
+
+		err = event.MarshalTo(writer)
+		if err != nil {
+			slog.Error("failed to marshal event", "error", err)
+		}
+	}
+
+	return nil
+}
+
 func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
 	req, err := l.UnmarshalLLMRequest(request.Context(), request)
 	if err != nil {
@@ -138,47 +185,9 @@ func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer h
 		return resp, nil
 	}
 
-	streamResp, ok := resp.(object.LLMStreamResponse)
-	if !ok {
-		return nil, openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
-	}
-
-	prepareWriteEventStream(writer)
-
-	for {
-		chunk, err := streamResp.NextChunk()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				event, err := chunk.ToServerSentEvent()
-				if err != nil {
-					return nil, openai.NewErrorInternalError().WithCause(err)
-				}
-
-				err = event.MarshalTo(writer)
-				if err != nil {
-					slog.Error("failed to marshal event", "error", err)
-				}
-
-				break
-			}
-
-			return nil, err
-		}
-
-		if chunk.IsEmpty() {
-			continue
-		}
-
-		// TODO: request filter
-		event, err := chunk.ToServerSentEvent()
-		if err != nil {
-			return nil, err
-		}
-
-		err = event.MarshalTo(writer)
-		if err != nil {
-			slog.Error("failed to marshal event", "error", err)
-		}
+	err = l.handleChatCompletionsChunks(resp, writer)
+	if err != nil {
+		return nil, err
 	}
 
 	return nil, errSkipWriteResponse

@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSetModel(t *testing.T) {
-	httpRequest, err := http.NewRequest("POST", "http://example.com", bytes.NewBuffer([]byte(`
+	httpRequest, err := http.NewRequest(http.MethodPost, "http://example.com", bytes.NewBuffer([]byte(`
 {
     "model": "some",
     "messages": [
@@ -19,24 +22,16 @@ func TestSetModel(t *testing.T) {
     ]
 }
 `)))
-	if err != nil {
-		t.Fatalf("Failed to create HTTP request: %v", err)
-	}
+	require.NoError(t, err)
 
 	request, err := NewChatCompletionRequest(httpRequest)
-	if err != nil {
-		t.Fatalf("Failed to create ChatCompletionRequest: %v", err)
-	}
+	require.NoError(t, err)
 
 	newModel := "gpt-4"
 	err = request.SetModel(newModel)
-	if err != nil {
-		t.Fatalf("SetModel returned an error: %v", err)
-	}
+	require.NoError(t, err)
 
-	if request.GetModel() != newModel {
-		t.Errorf("Expected model to be %s, got %s", newModel, request.GetModel())
-	}
+	assert.Equal(t, newModel, request.GetModel())
 
 	// Verify the body buffer has been updated
 	var body map[string]any
@@ -44,23 +39,24 @@ func TestSetModel(t *testing.T) {
 		t.Fatalf("Failed to unmarshal body: %v", err)
 	}
 
-	if body["model"] != newModel {
-		t.Errorf("Expected model in body to be %s, got %v", newModel, body["model"])
-	}
+	assert.Equal(t, newModel, body["model"])
+
 	messages := []map[string]any{
 		{
 			"role":    "user",
 			"content": "hi",
 		},
 	}
+
 	newMessages, ok := body["messages"].([]interface{})
-	if !ok || len(newMessages) != len(messages) {
-		t.Errorf("Expected messages in body to be %v, got %v", messages, newMessages)
-	} else {
-		for i, msg := range messages {
-			if msg["role"] != newMessages[i].(map[string]interface{})["role"] || msg["content"] != newMessages[i].(map[string]interface{})["content"] {
-				t.Errorf("Expected message %d to be %v, got %v", i, msg, newMessages[i])
-			}
-		}
+	require.True(t, ok)
+	assert.Equal(t, len(messages), len(newMessages))
+
+	for i, msg := range messages {
+		newMessageMap, ok := newMessages[i].(map[string]interface{})
+		require.True(t, ok)
+
+		assert.Equal(t, msg["role"], newMessageMap["role"])
+		assert.Equal(t, msg["content"], newMessageMap["content"])
 	}
 }

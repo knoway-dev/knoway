@@ -1,10 +1,11 @@
 package gw
 
 import (
-	"github.com/gorilla/mux"
-	"google.golang.org/protobuf/types/known/anypb"
 	"log/slog"
 	"net/http"
+
+	"github.com/gorilla/mux"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"

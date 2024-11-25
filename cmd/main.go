@@ -18,13 +18,14 @@ package main
 
 import (
 	"flag"
-	"knoway.dev/cmd/gw"
-	"knoway.dev/cmd/server"
-	"knoway.dev/pkg/registry/cluster"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"knoway.dev/cmd/gw"
+	"knoway.dev/cmd/server"
+	"knoway.dev/pkg/registry/cluster"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.

@@ -75,15 +75,16 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 	}
 	name := backend.GetName()
 
+	// todo upstream, headers ....
+
+	// filters
 	var filters []*v1alpha1.ClusterFilter
 	for _, fc := range backend.Spec.Filters {
-		fcConfig := &anypb.Any{
-			TypeUrl: fc.Type,
-		}
-		if fc.UsageStatsConfig != nil {
+		var fcConfig *anypb.Any
+		if fc.UsageStats != nil {
 			c := &v1alpha12.UsageStatsConfig{
 				StatsServer: &v1alpha12.UsageStatsConfig_StatsServer{
-					Url: fc.GetUsageStatsConfig().GetAddress(),
+					Url: fc.UsageStats.Address,
 				},
 			}
 			us, err := anypb.New(c)
@@ -92,9 +93,9 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 			} else {
 				fcConfig = us
 			}
-		} else if fc.RewriteConfig != nil {
+		} else if fc.ModelRewrite != nil {
 			rf := &v1alpha12.OpenAIModelNameRewriteConfig{
-				ModelName: fc.GetRewriteConfig().GetModelName(),
+				ModelName: fc.ModelRewrite.ModelName,
 			}
 			us, err := anypb.New(rf)
 			if err != nil {
@@ -103,9 +104,11 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 				fcConfig = us
 			}
 		}
-		filters = append(filters, &v1alpha1.ClusterFilter{
-			Config: fcConfig,
-		})
+		if fcConfig != nil {
+			filters = append(filters, &v1alpha1.ClusterFilter{
+				Config: fcConfig,
+			})
+		}
 	}
 	return &v1alpha1.Cluster{
 		Name:     name,

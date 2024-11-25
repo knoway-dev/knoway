@@ -17,6 +17,7 @@ import (
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/config"
+	"knoway.dev/pkg/utils"
 )
 
 func NewModelsManagerWithConfigs(cfg proto.Message) (listener.Listener, error) {
@@ -24,16 +25,20 @@ func NewModelsManagerWithConfigs(cfg proto.Message) (listener.Listener, error) {
 	if !ok {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
+
 	l := &ListenerModelsManager{
 		cfg: c,
 	}
+
 	for _, fc := range c.Filters {
 		f, err := config.NewRequestFilterWithConfig(fc.Name, fc.Config)
 		if err != nil {
 			return nil, err
 		}
+
 		l.filters = append(l.filters, f)
 	}
+
 	return l, nil
 }
 
@@ -62,12 +67,14 @@ func (l *ListenerModelsManager) listModels(writer http.ResponseWriter, request *
 
 	writer.Header().Set("Content-Type", "application/json")
 	writer.WriteHeader(http.StatusOK)
+	utils.SafeFlush(writer)
+
 	if err := json.NewEncoder(writer).Encode(body); err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func ClustersToOpenAIModels(clusters []v1alpha4.Cluster) []openai.Model {
+func ClustersToOpenAIModels(clusters []*v1alpha4.Cluster) []openai.Model {
 	res := make([]openai.Model, 0)
 	for _, c := range clusters {
 		res = append(res, ClusterToOpenAIModel(c))
@@ -76,7 +83,7 @@ func ClustersToOpenAIModels(clusters []v1alpha4.Cluster) []openai.Model {
 	return res
 }
 
-func ClusterToOpenAIModel(cluster v1alpha4.Cluster) openai.Model {
+func ClusterToOpenAIModel(cluster *v1alpha4.Cluster) openai.Model {
 	// from https://platform.openai.com/docs/api-reference/models/object
 	return openai.Model{
 		CreatedAt: cluster.Created,

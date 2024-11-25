@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+
+	"knoway.dev/pkg/types/sse"
 )
 
 type LLMRequest interface {
@@ -18,7 +20,6 @@ type LLMRequest interface {
 }
 
 type LLMResponse interface {
-	json.Unmarshaler
 	json.Marshaler
 
 	IsStream() bool
@@ -27,6 +28,22 @@ type LLMResponse interface {
 	GetUsage() *Usage
 	GetOutgoingResponse() *http.Response
 	GetError() error
+}
+
+type LLMStreamResponse interface {
+	LLMResponse
+
+	IsEOF() bool
+	NextChunk() (LLMChunkResponse, error)
+}
+
+type LLMChunkResponse interface {
+	json.Marshaler
+
+	IsEmpty() bool
+	IsDone() bool
+	GetResponse() LLMStreamResponse
+	ToServerSentEvent() (*sse.Event, error)
 }
 
 type Usage struct {

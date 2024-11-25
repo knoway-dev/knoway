@@ -7,7 +7,7 @@ import (
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 )
 
-var StaticClustersConfig = map[string]v1alpha4.Cluster{
+var StaticClustersConfig = map[string]*v1alpha4.Cluster{
 	"openai/gpt-3.5-turbo": {
 		Name:              "openai/gpt-3.5-turbo",
 		Provider:          "openai",

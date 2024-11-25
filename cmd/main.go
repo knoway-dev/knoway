@@ -55,11 +55,15 @@ func main() {
 	// 开发配置
 	devStaticServer := false
 	if devStaticServer {
-		cluster.StaticRegisterClusters(gw.StaticClustersConfig)
+		err := cluster.StaticRegisterClusters(gw.StaticClustersConfig)
+		if err != nil {
+			slog.Error("Failed to register static clusters", "error", err)
+		}
 	} else {
 		// Start the server and handle errors gracefully
 		go func() {
 			slog.Info("Starting controller ...")
+
 			if err := server.StartServer(stop, server.Options{
 				EnableHTTP2:          enableHTTP2,
 				EnableLeaderElection: enableLeaderElection,
@@ -67,15 +71,18 @@ func main() {
 				MetricsAddr:          metricsAddr,
 				ProbeAddr:            probeAddr,
 			}); err != nil {
-				slog.Error("Controller failed to start: %v", err)
+				slog.Error("Controller failed to start", "error", err)
 			}
+
 			slog.Info("Controller started successfully.")
 		}()
 	}
 
-	if err := gw.StartProxy(stop); err != nil {
-		slog.Error("Failed to start proxy: %v", err)
+	err := gw.StartProxy(stop)
+	if err != nil {
+		slog.Error("Failed to start proxy", "error", err)
 	}
+
 	slog.Info("Proxy started successfully.")
 
 	WaitSignal(stop)

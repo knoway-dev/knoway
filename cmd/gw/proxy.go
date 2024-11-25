@@ -1,8 +1,10 @@
 package gw
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -14,7 +16,7 @@ import (
 	"knoway.dev/pkg/registry/route"
 )
 
-func StartProxy(stop chan struct{}) (err error) {
+func StartProxy(stop chan struct{}) error {
 	rConfig := &v1alpha3.Route{
 		Name: "default",
 		Matches: []*v1alpha3.Match{
@@ -50,12 +52,16 @@ func StartProxy(stop chan struct{}) (err error) {
 			},
 		},
 	}
+
 	r := mux.NewRouter()
+
 	l, err := manager.NewWithConfigs(baseListenConfig)
 	if err != nil {
 		return err
 	}
-	if err = l.RegisterRoutes(r); err != nil {
+
+	err = l.RegisterRoutes(r)
+	if err != nil {
 		return err
 	}
 
@@ -63,7 +69,9 @@ func StartProxy(stop chan struct{}) (err error) {
 	if err != nil {
 		return err
 	}
-	if err = modelsListen.RegisterRoutes(r); err != nil {
+
+	err = modelsListen.RegisterRoutes(r)
+	if err != nil {
 		return err
 	}
 
@@ -74,7 +82,7 @@ func StartProxy(stop chan struct{}) (err error) {
 
 	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			slog.Error("Server failed: %v", err)
+			slog.Error("Server failed", "error", err)
 		}
 	}()
 
@@ -82,9 +90,16 @@ func StartProxy(stop chan struct{}) (err error) {
 	// This could be replaced with a more sophisticated signal handling
 	// mechanism if needed.
 	<-stop
-	if err := server.Shutdown(nil); err != nil {
-		slog.Error("Server shutdown failed: %v", err)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*10) // TODO: how long?
+	defer cancel()
+
+	err = server.Shutdown(ctx)
+	if err != nil {
+		slog.Error("Server shutdown failed", "error", err)
 	}
+
 	slog.Info("Server stopped gracefully.")
-	return
+
+	return nil
 }

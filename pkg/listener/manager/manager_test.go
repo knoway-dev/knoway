@@ -70,6 +70,7 @@ func TestNewWithConfigs(t *testing.T) {
 				t.Errorf("NewWithConfigs() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			assert.Equal(t, tt.want, got, "NewWithConfigs()")
 		})
 	}

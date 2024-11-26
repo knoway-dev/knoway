@@ -21,6 +21,7 @@ words:
   - gocyclo
   - gofmt
   - goimports
+  - goopenai
   - gosimple
   - govet
   - healthz
@@ -30,6 +31,9 @@ words:
   - kubebuilder
   - listenerfilters
   - lll
+  - llmbackends
+  - metav1
+  - metricsserver
   - misspell
   - nakedret
   - nilfunc
@@ -40,6 +44,7 @@ words:
   - prealloc
   - predeclared
   - protoutils
+  - readyz
   - reassign
   - registryfilters
   - revive

@@ -11,13 +11,13 @@ import (
 	"knoway.dev/pkg/utils"
 )
 
-var _ object.LLMRequest = (*ChatCompletionRequest)(nil)
+var _ object.LLMRequest = (*ChatCompletionsRequest)(nil)
 
 type StreamOptions struct {
 	IncludeUsage bool `json:"include_usage"`
 }
 
-type ChatCompletionRequest struct {
+type ChatCompletionsRequest struct {
 	Model         string        `json:"model,omitempty"`
 	Stream        bool          `json:"stream,omitempty"`
 	StreamOptions StreamOptions `json:"stream_options,omitempty"`
@@ -29,13 +29,13 @@ type ChatCompletionRequest struct {
 	incomingRequest *http.Request
 }
 
-func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionRequest, error) {
+func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionsRequest, error) {
 	buffer, parsed, err := utils.ReadAsJSONWithClose(httpRequest.Body)
 	if err != nil {
 		return nil, NewErrorInvalidBody()
 	}
 
-	return &ChatCompletionRequest{
+	return &ChatCompletionsRequest{
 		Model:  utils.GetByJSONPath[string](parsed, "{ .model }"),
 		Stream: utils.GetByJSONPath[bool](parsed, "{ .stream }"),
 		StreamOptions: StreamOptions{
@@ -47,15 +47,15 @@ func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionRequest
 	}, nil
 }
 
-func (r *ChatCompletionRequest) IsStream() bool {
+func (r *ChatCompletionsRequest) IsStream() bool {
 	return r.Stream
 }
 
-func (r *ChatCompletionRequest) GetModel() string {
+func (r *ChatCompletionsRequest) GetModel() string {
 	return r.Model
 }
 
-func (r *ChatCompletionRequest) SetModel(model string) error {
+func (r *ChatCompletionsRequest) SetModel(model string) error {
 	patch, err := jsonpatch.DecodePatch(NewPatches(
 		NewReplace("/model", model),
 	))
@@ -82,18 +82,18 @@ func (r *ChatCompletionRequest) SetModel(model string) error {
 	return nil
 }
 
-func (r *ChatCompletionRequest) GetBody() io.Reader {
+func (r *ChatCompletionsRequest) GetBody() io.Reader {
 	return bytes.NewBuffer(r.bodyBuffer.Bytes())
 }
 
-func (r *ChatCompletionRequest) GetBodyBuffer() *bytes.Buffer {
+func (r *ChatCompletionsRequest) GetBodyBuffer() *bytes.Buffer {
 	return r.bodyBuffer
 }
 
-func (r *ChatCompletionRequest) GetBodyParsed() map[string]any {
+func (r *ChatCompletionsRequest) GetBodyParsed() map[string]any {
 	return r.bodyParsed
 }
 
-func (r *ChatCompletionRequest) GetIncomingRequest() *http.Request {
+func (r *ChatCompletionsRequest) GetIncomingRequest() *http.Request {
 	return r.incomingRequest
 }

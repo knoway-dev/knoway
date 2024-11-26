@@ -39,7 +39,7 @@ func TestNewWithConfigs(t *testing.T) {
 					},
 				},
 			},
-			want: &OpenAIChatCompletionListener{
+			want: &OpenAIChatCompletionsListener{
 				cfg: &v1alpha1.ChatCompletionListener{
 					Filters: []*v1alpha1.ListenerFilter{
 						{
@@ -65,7 +65,7 @@ func TestNewWithConfigs(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := NewWithConfigs(tt.cfg)
+			got, err := NewOpenAIChatCompletionsListenerWithConfigs(tt.cfg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewWithConfigs() error = %v, wantErr %v", err, tt.wantErr)
 				return

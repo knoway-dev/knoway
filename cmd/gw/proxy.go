@@ -3,14 +3,15 @@ package gw
 import (
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
+	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/listener/manager"
 )
 
@@ -37,33 +38,23 @@ func StartProxy(stop chan struct{}, authServer string) error {
 		})
 	}
 
-	r := mux.NewRouter()
-	l, err := manager.NewWithConfigs(baseListenConfig)
+	server, err := listener.NewMux().
+		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig)).
+		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig)).
+		BuildServer(&http.Server{Addr: ":8080"})
 	if err != nil {
 		return err
 	}
 
-	err = l.RegisterRoutes(r)
+	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
 		return err
 	}
-	modelsListen, err := manager.NewModelsManagerWithConfigs(baseListenConfig)
-	if err != nil {
-		return err
-	}
-
-	err = modelsListen.RegisterRoutes(r)
-	if err != nil {
-		return err
-	}
-
-	http.Handle("/", r)
 	slog.Info("Starting server on :8080")
 
-	server := &http.Server{Addr: ":8080"}
-
 	go func() {
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		err := server.Serve(ln)
+		if err != nil && err != http.ErrServerClosed {
 			slog.Error("Server failed", "error", err)
 		}
 	}()

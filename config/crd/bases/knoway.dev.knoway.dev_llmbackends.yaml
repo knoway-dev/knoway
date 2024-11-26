@@ -14,7 +14,23 @@ spec:
     singular: llmbackend
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.provider
+      name: Provider
+      type: string
+    - jsonPath: .spec.modelName
+      name: Model
+      type: string
+    - jsonPath: .spec.upstream.server.address
+      name: Upstream
+      type: string
+    - jsonPath: .spec.upstream.server.api
+      name: API
+      type: string
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: LLMBackend is the Schema for the llmbackends API

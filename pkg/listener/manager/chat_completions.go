@@ -2,7 +2,6 @@ package manager
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,17 +23,13 @@ import (
 	"knoway.dev/pkg/utils"
 )
 
-var (
-	errSkipWriteResponse = errors.New("skip writing response")
-)
-
-func NewWithConfigs(cfg proto.Message) (listener.Listener, error) {
+func NewOpenAIChatCompletionsListenerWithConfigs(cfg proto.Message) (listener.Listener, error) {
 	c, ok := cfg.(*v1alpha1.ChatCompletionListener)
 	if !ok {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
 
-	l := &OpenAIChatCompletionListener{
+	l := &OpenAIChatCompletionsListener{
 		cfg: c,
 	}
 
@@ -50,13 +45,13 @@ func NewWithConfigs(cfg proto.Message) (listener.Listener, error) {
 	return l, nil
 }
 
-type OpenAIChatCompletionListener struct {
+type OpenAIChatCompletionsListener struct {
 	cfg               *v1alpha1.ChatCompletionListener
 	filters           []filters.RequestFilter
-	listener.Listener // todo implement the interface
+	listener.Listener // TODO: implement the interface
 }
 
-func (l *OpenAIChatCompletionListener) UnmarshalLLMRequest(
+func (l *OpenAIChatCompletionsListener) UnmarshalLLMRequest(
 	ctx context.Context,
 	request *http.Request,
 ) (object.LLMRequest, error) {
@@ -72,30 +67,13 @@ func (l *OpenAIChatCompletionListener) UnmarshalLLMRequest(
 	return llmRequest, nil
 }
 
-func writeResponse(status int, resp any, writer http.ResponseWriter) {
-	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
-	writer.WriteHeader(status)
-
-	bs, _ := json.Marshal(resp)
-	_, _ = writer.Write(bs)
-}
-
-func prepareWriteEventStream(writer http.ResponseWriter) {
-	writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
-	writer.Header().Set("Cache-Control", "no-cache")
-	writer.Header().Set("Connection", "keep-alive")
-	writer.Header().Set("Transfer-Encoding", "chunked")
-
-	utils.SafeFlush(writer)
-}
-
-func (l *OpenAIChatCompletionListener) handleChatCompletionsChunks(resp object.LLMResponse, writer http.ResponseWriter) error {
+func (l *OpenAIChatCompletionsListener) handleChatCompletionsChunks(resp object.LLMResponse, writer http.ResponseWriter) error {
 	streamResp, ok := resp.(object.LLMStreamResponse)
 	if !ok {
 		return openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
 	}
 
-	prepareWriteEventStream(writer)
+	utils.WriteEventStreamHeadersForHTTP(writer)
 
 	for {
 		chunk, err := streamResp.NextChunk()
@@ -136,7 +114,7 @@ func (l *OpenAIChatCompletionListener) handleChatCompletionsChunks(resp object.L
 	return nil
 }
 
-func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
+func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
 	req, err := l.UnmarshalLLMRequest(request.Context(), request)
 	if err != nil {
 		return nil, err
@@ -190,51 +168,11 @@ func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer h
 		return nil, err
 	}
 
-	return nil, errSkipWriteResponse
+	return nil, openai.SkipResponse
 }
 
-func (l *OpenAIChatCompletionListener) wrapErrorHandler(fn func(writer http.ResponseWriter, request *http.Request) (any, error)) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		resp, err := fn(writer, request)
-		if err == nil {
-			if resp != nil {
-				writeResponse(http.StatusOK, resp, writer)
-			}
-
-			return
-		}
-
-		if errors.Is(err, errSkipWriteResponse) {
-			return
-		}
-
-		var openAIError *openai.ErrorResponse
-		if errors.As(err, &openAIError) && openAIError != nil {
-			if openAIError.FromUpstream {
-				slog.Error("upstream returned an error",
-					"status", openAIError.Status,
-					"code", openAIError.ErrorBody.Code,
-					"message", openAIError.ErrorBody.Message,
-					"type", openAIError.ErrorBody.Type,
-				)
-			} else {
-				if openAIError.Status >= 500 {
-					slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause)
-				}
-			}
-
-			writeResponse(openAIError.Status, openAIError, writer)
-
-			return
-		}
-
-		slog.Error("failed to handle request, unhandled error occurred", "error", err)
-		writeResponse(http.StatusInternalServerError, openai.NewErrorInternalError(), writer)
-	}
-}
-
-func (l *OpenAIChatCompletionListener) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/chat/completions", l.wrapErrorHandler(l.onChatCompletionRequestWithError))
+func (l *OpenAIChatCompletionsListener) RegisterRoutes(mux *mux.Router) error {
+	mux.HandleFunc("/v1/chat/completions", openai.WrapHandlerForOpenAIError(l.onChatCompletionsRequestWithError))
 
 	return nil
 }

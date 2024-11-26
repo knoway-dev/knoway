@@ -17,14 +17,14 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"log/slog"
-	"os"
-	"os/signal"
-	"syscall"
+	"time"
 
 	"knoway.dev/cmd/gw"
 	"knoway.dev/cmd/server"
+	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/registry/cluster"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -33,12 +33,15 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
+var (
+	metricsAddr          string
+	enableLeaderElection bool
+	probeAddr            string
+	secureMetrics        bool
+	enableHTTP2          bool
+)
+
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-	var secureMetrics bool
-	var enableHTTP2 bool
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. "+
 		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -50,7 +53,7 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 
-	stop := make(chan struct{})
+	app := bootkit.New(bootkit.StartTimeout(time.Second * 10))
 
 	// 开发配置
 	devStaticServer := false
@@ -61,38 +64,30 @@ func main() {
 		}
 	} else {
 		// Start the server and handle errors gracefully
-		go func() {
-			slog.Info("Starting controller ...")
-
-			if err := server.StartServer(stop, server.Options{
+		app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
+			return server.StartController(ctx, lifeCycle, server.Options{
 				EnableHTTP2:          enableHTTP2,
 				EnableLeaderElection: enableLeaderElection,
 				SecureMetrics:        secureMetrics,
 				MetricsAddr:          metricsAddr,
 				ProbeAddr:            probeAddr,
-			}); err != nil {
-				slog.Error("Controller failed to start", "error", err)
-			}
-
-			slog.Info("Controller started successfully.")
-		}()
+			})
+		})
 	}
 
-	err := gw.StartProxy(stop)
-	if err != nil {
-		slog.Error("Failed to start proxy", "error", err)
-	}
+	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
+		return gw.StartGateway(ctx, lifeCycle)
+	})
 
 	slog.Info("Proxy started successfully.")
 
-	WaitSignal(stop)
-	slog.Info("Server is shut down.")
-}
+	app.Start()
 
-// WaitSignal awaits for SIGINT or SIGTERM and closes the channel
-func WaitSignal(stop chan struct{}) {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-	close(stop)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	err := app.Stop(ctx)
+	if err != nil {
+		slog.Error("Failed to stop app", "error", err)
+	}
 }

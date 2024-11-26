@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"knoway.dev/pkg/filters/auth"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/gorilla/mux"
 	"google.golang.org/protobuf/proto"
+
+	"knoway.dev/pkg/filters/auth"
 
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/filters"
@@ -82,27 +82,6 @@ func writeResponse(status int, resp any, writer http.ResponseWriter) {
 	_, _ = writer.Write(bs)
 }
 
-func UnmarshalLLMRequestHeader(ctx context.Context, request *http.Request) (object.RequestHeader, error) {
-	authHeader := request.Header.Get("Authorization")
-	if authHeader == "" {
-		return object.RequestHeader{}, errors.New("missing Authorization header")
-	}
-
-	// 检查是否为 Bearer 格式
-	const prefix = "Bearer "
-	if !strings.HasPrefix(authHeader, prefix) {
-		return object.RequestHeader{}, errors.New("invalid Authorization header format")
-	}
-
-	// 提取 API Key
-	apiKey := strings.TrimPrefix(authHeader, prefix)
-	if apiKey == "" {
-		return object.RequestHeader{}, errors.New("missing API Key in Authorization header")
-	}
-
-	return object.RequestHeader{APIKey: apiKey}, nil
-}
-
 func prepareWriteEventStream(writer http.ResponseWriter) {
 	writer.Header().Set("Content-Type", "text/event-stream; charset=utf-8")
 	writer.Header().Set("Cache-Control", "no-cache")
@@ -165,23 +144,11 @@ func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer h
 		return nil, err
 	}
 
-	head, err := UnmarshalLLMRequestHeader(request.Context(), request)
-	if err != nil {
-		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return nil, err
-	}
 	for _, f := range l.filters {
 		authFilter, ok := f.(*auth.AuthFilter)
 		if ok {
-			authResp, err := authFilter.APIKeyAuth(request.Context(), head.APIKey)
-			if err != nil {
-				http.Error(writer, err.Error(), http.StatusUnauthorized)
-				return nil, openai.NewErrorIncorrectAPIKey()
-			}
-
-			if !authResp.IsValid || !authResp.CanAccessModel(req.GetModel()) {
-				http.Error(writer, err.Error(), http.StatusUnauthorized)
-				return nil, openai.NewErrorModelNotFoundOrNotAccessible(req.GetModel())
+			if _, err = Auth(authFilter, request, AuthZOption{CanAccessModel: req.GetModel()}); err != nil {
+				return nil, err
 			}
 		}
 	}
@@ -230,7 +197,7 @@ func (l *OpenAIChatCompletionListener) onChatCompletionRequestWithError(writer h
 	return nil, errSkipWriteResponse
 }
 
-func (l *OpenAIChatCompletionListener) wrapErrorHandler(fn func(writer http.ResponseWriter, request *http.Request) (any, error)) http.HandlerFunc {
+func wrapErrorHandler(fn func(writer http.ResponseWriter, request *http.Request) (any, error)) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		resp, err := fn(writer, request)
 		if err == nil {
@@ -266,12 +233,12 @@ func (l *OpenAIChatCompletionListener) wrapErrorHandler(fn func(writer http.Resp
 		}
 
 		slog.Error("failed to handle request, unhandled error occurred", "error", err)
-		writeResponse(http.StatusInternalServerError, openai.NewErrorInternalError(), writer)
+		writeResponse(http.StatusInternalServerError, openai.NewErrorInternalError().WithCause(err), writer)
 	}
 }
 
 func (l *OpenAIChatCompletionListener) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/chat/completions", l.wrapErrorHandler(l.onChatCompletionRequestWithError))
+	mux.HandleFunc("/v1/chat/completions", wrapErrorHandler(l.onChatCompletionRequestWithError))
 
 	return nil
 }

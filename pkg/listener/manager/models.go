@@ -1,11 +1,15 @@
 package manager
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/samber/lo"
+
+	v1alpha12 "knoway.dev/api/service/v1alpha1"
+	"knoway.dev/pkg/filters/auth"
 
 	"github.com/gorilla/mux"
 	"github.com/sashabaranov/go-openai"
@@ -17,7 +21,6 @@ import (
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/config"
-	"knoway.dev/pkg/utils"
 )
 
 func NewModelsManagerWithConfigs(cfg proto.Message) (listener.Listener, error) {
@@ -49,13 +52,26 @@ type ListenerModelsManager struct {
 }
 
 func (l *ListenerModelsManager) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/models", l.listModels)
+	mux.HandleFunc("/v1/models", wrapErrorHandler(l.listModels))
 	return nil
 }
 
-func (l *ListenerModelsManager) listModels(writer http.ResponseWriter, request *http.Request) {
-	// todo add auth, get can access models to filter models
+func (l *ListenerModelsManager) listModels(writer http.ResponseWriter, request *http.Request) (any, error) {
+	var err error
+	authResp := &v1alpha12.APIKeyAuthResponse{}
+	for _, f := range l.filters {
+		authFilter, ok := f.(*auth.AuthFilter)
+		if ok {
+			if authResp, err = Auth(authFilter, request, AuthZOption{}); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	clusters := cluster.ListModels()
+	clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
+		return authResp.CanAccessModel(item.GetName())
+	})
 	sort.Slice(clusters, func(i, j int) bool {
 		return strings.Compare(clusters[i].Name, clusters[j].Name) < 0
 	})
@@ -64,14 +80,7 @@ func (l *ListenerModelsManager) listModels(writer http.ResponseWriter, request *
 	body := openai.ModelsList{
 		Models: ms,
 	}
-
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusOK)
-	utils.SafeFlush(writer)
-
-	if err := json.NewEncoder(writer).Encode(body); err != nil {
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
-	}
+	return body, nil
 }
 
 func ClustersToOpenAIModels(clusters []*v1alpha4.Cluster) []openai.Model {

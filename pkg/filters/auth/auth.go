@@ -3,11 +3,13 @@ package auth
 import (
 	context "context"
 	"fmt"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"log"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
+
 	"google.golang.org/protobuf/types/known/anypb"
+
 	v1alpha12 "knoway.dev/api/service/v1alpha1"
 
 	"knoway.dev/api/filters/v1alpha1"

@@ -78,14 +78,22 @@ func (r *ChatCompletionResponse) processBytes(bs []byte) error {
 	r.Usage = usage
 
 	if len(respErrMap) > 0 {
-		respErr, err := utils.FromMap[Error](respErrMap)
+		respErr, err := utils.FromMap[ResponseError](respErrMap)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal error: %w", err)
 		}
 
+		code := fmt.Sprintf("%d", respErr.Code)
+		rErr := &Error{
+			Code:    &code,
+			Message: respErr.Message,
+			Param:   respErr.Param,
+			Type:    respErr.Type,
+		}
+
 		r.Error = &ErrorResponse{
 			FromUpstream: true,
-			ErrorBody:    respErr,
+			ErrorBody:    rErr,
 		}
 	}
 

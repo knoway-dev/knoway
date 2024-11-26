@@ -1,7 +1,12 @@
 package cluster
 
 import (
+	"fmt"
+	"log/slog"
 	"sync"
+
+	v1alpha3 "knoway.dev/api/route/v1alpha1"
+	"knoway.dev/pkg/registry/route"
 
 	"knoway.dev/api/clusters/v1alpha1"
 	clusters2 "knoway.dev/pkg/clusters"
@@ -56,29 +61,9 @@ func NewClusterRegister() *Register {
 	return r
 }
 
-// Start starts the config client
-func (cr *Register) Start() {
-	// noting
-}
-
 func InitClusterRegister() {
 	c := NewClusterRegister()
 	clusterRegister = c
-}
-
-// RegisterClusterWithConfig registers a cluster
-func (cr *Register) RegisterClusterWithConfig(name string, cluster *v1alpha1.Cluster) error {
-	cr.clustersLock.Lock()
-	defer cr.clustersLock.Unlock()
-
-	c, err := manager.NewWithConfigs(cluster)
-	if err != nil {
-		return err
-	}
-
-	cr.clusters[name] = c
-
-	return nil
 }
 
 func (cr *Register) DeleteCluster(name string) {
@@ -87,6 +72,9 @@ func (cr *Register) DeleteCluster(name string) {
 
 	delete(cr.clusters, name)
 	delete(cr.clustersDetails, name)
+
+	route.RemoveRoute(name)
+	slog.Info(fmt.Sprintf("remove cluster and direct route: %s", name))
 }
 
 func (cr *Register) FindClusterByName(name string) (clusters2.Cluster, bool) {
@@ -108,18 +96,28 @@ func (cr *Register) UpsertAndRegisterCluster(cluster *v1alpha1.Cluster) error {
 	if err != nil {
 		return err
 	}
-
 	cr.clustersDetails[cluster.Name] = cluster
 	cr.clusters[name] = c
 
+	rConfig := &v1alpha3.Route{
+		Name: name,
+		Matches: []*v1alpha3.Match{
+			{
+				Model: &v1alpha3.StringMatch{
+					Match: &v1alpha3.StringMatch_Exact{
+						Exact: name,
+					},
+				},
+			},
+		},
+		ClusterName: name,
+		Filters:     nil, // todo future
+	}
+	if err = route.RegisterRouteWithConfig(rConfig); err != nil {
+		return err
+	}
+	slog.Info(fmt.Sprintf("register cluster and direct route: %s", name))
 	return nil
-}
-
-func (cr *Register) RemoveCluster(cluster *v1alpha1.Cluster) {
-	cr.clustersLock.Lock()
-	defer cr.clustersLock.Unlock()
-
-	cr.DeleteCluster(cluster.Name)
 }
 
 func StaticRegisterClusters(clusterDetails map[string]*v1alpha1.Cluster) error {

@@ -17,7 +17,7 @@ import (
 )
 
 func NewResponseUnmarshallerWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, error) {
-	c, err := protoutils.FromAny[*v1alpha1.OpenAIResponseUnmarshallerConfig](cfg)
+	c, err := protoutils.FromAny[*v1alpha1.OpenAIResponseUnmarshallerConfig](cfg, &v1alpha1.OpenAIResponseUnmarshallerConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}

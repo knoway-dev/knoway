@@ -80,7 +80,7 @@ spec:
                       such as the authentication header for the API key.\nExample:\n\nheaders：\n\t-
                       key: apikey\n\t  valueFrom:\n\t\tprefix: sk-or-v1-\n\t\trefType:
                       Secret\n\t\trefName: common-gpt4-apikey\n\nheaders：\n\t- key:
-                      apikey\n\t  value: sk-or-v1-xxxxxxxxxx"
+                      apikey\n\t  value: \"sk-or-v1-xxxxxxxxxx\""
                     items:
                       properties:
                         key:

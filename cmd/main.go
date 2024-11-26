@@ -39,6 +39,9 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var apiKeyServer string
+	flag.StringVar(&apiKeyServer, "api-key-server", "", "The address the api key server address, example: 10.33.2.23:30943 . "+
+		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. "+
 		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -78,7 +81,7 @@ func main() {
 		}()
 	}
 
-	err := gw.StartProxy(stop)
+	err := gw.StartProxy(stop, apiKeyServer)
 	if err != nil {
 		slog.Error("Failed to start proxy", "error", err)
 	}

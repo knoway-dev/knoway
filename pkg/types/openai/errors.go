@@ -8,6 +8,13 @@ import (
 	"github.com/samber/lo"
 )
 
+type ResponseError struct {
+	Code    int     `json:"code"`
+	Message string  `json:"message"`
+	Param   *string `json:"param"`
+	Type    string  `json:"type"`
+}
+
 type Error struct {
 	Code    *string `json:"code"`
 	Message string  `json:"message"`
@@ -26,13 +33,26 @@ func (e *ErrorResponse) Error() string {
 	return e.ErrorBody.Message
 }
 
+func (e *ErrorResponse) appendCause(err error) *ErrorResponse {
+	if e.ErrorBody == nil {
+		e.ErrorBody = &Error{}
+	}
+	if e.ErrorBody.Message != "" {
+		e.ErrorBody.Message = fmt.Sprintf("%s:%s", e.ErrorBody.Message, err.Error())
+	} else {
+		e.ErrorBody.Message = err.Error()
+	}
+	return e
+}
+
 func (e *ErrorResponse) WithCause(err error) *ErrorResponse {
 	e.Cause = err
+	e.appendCause(err)
 	return e
 }
 
 func (e *ErrorResponse) WithCausef(format string, args ...interface{}) *ErrorResponse {
-	e.Cause = fmt.Errorf(format, args...)
+	e.WithCause(fmt.Errorf(format, args...))
 	return e
 }
 

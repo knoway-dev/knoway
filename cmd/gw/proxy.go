@@ -11,50 +11,33 @@ import (
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
-	v1alpha3 "knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/listener/manager"
-	"knoway.dev/pkg/registry/route"
 )
 
-func StartProxy(stop chan struct{}) error {
-	rConfig := &v1alpha3.Route{
-		Name: "default",
-		Matches: []*v1alpha3.Match{
-			{
-				Model: &v1alpha3.StringMatch{
-					Match: &v1alpha3.StringMatch_Exact{
-						Exact: "some",
-					},
-				},
-			},
-		},
-		ClusterName: "openai/gpt-3.5-turbo",
-		Filters:     nil,
-	}
-	if err := route.RegisterRouteWithConfig(rConfig); err != nil {
-		return err
+func StartProxy(stop chan struct{}, authServer string) error {
+	baseListenConfig := &v1alpha1.ChatCompletionListener{
+		Name:    "openai",
+		Filters: []*v1alpha1.ListenerFilter{},
 	}
 
-	baseListenConfig := &v1alpha1.ChatCompletionListener{
-		Name: "openai",
-		Filters: []*v1alpha1.ListenerFilter{
-			{
-				Name: "api-key-auth",
-				Config: func() *anypb.Any {
-					c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
-						AuthServer: nil,
-					})
-					if err != nil {
-						return nil
-					}
-					return c
-				}(),
-			},
-		},
+	if authServer != "" {
+		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
+			Name: "api-key-auth",
+			Config: func() *anypb.Any {
+				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
+					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
+						Url: authServer,
+					},
+				})
+				if err != nil {
+					return nil
+				}
+				return c
+			}(),
+		})
 	}
 
 	r := mux.NewRouter()
-
 	l, err := manager.NewWithConfigs(baseListenConfig)
 	if err != nil {
 		return err
@@ -64,7 +47,6 @@ func StartProxy(stop chan struct{}) error {
 	if err != nil {
 		return err
 	}
-
 	modelsListen, err := manager.NewModelsManagerWithConfigs(baseListenConfig)
 	if err != nil {
 		return err

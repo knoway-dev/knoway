@@ -32,6 +32,14 @@ func RegisterRouteWithConfig(cfg *v1alpha1.Route) error {
 	return nil
 }
 
+func RemoveRoute(rName string) {
+	routeLock.Lock()
+	defer routeLock.Unlock()
+
+	delete(routeRegistry, rName)
+	routes = lo.Values(routeRegistry)
+}
+
 func ForeachRoute(f func(route.Route) bool) {
 	routeLock.RLock()
 	defer routeLock.RUnlock()

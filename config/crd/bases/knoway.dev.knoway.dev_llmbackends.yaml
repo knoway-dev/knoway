@@ -14,7 +14,23 @@ spec:
     singular: llmbackend
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.provider
+      name: Provider
+      type: string
+    - jsonPath: .spec.modelName
+      name: Model
+      type: string
+    - jsonPath: .spec.upstream.server.address
+      name: Upstream
+      type: string
+    - jsonPath: .spec.upstream.server.api
+      name: API
+      type: string
+    - jsonPath: .status.status
+      name: Status
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: LLMBackend is the Schema for the llmbackends API
@@ -80,7 +96,7 @@ spec:
                       such as the authentication header for the API key.\nExample:\n\nheaders：\n\t-
                       key: apikey\n\t  valueFrom:\n\t\tprefix: sk-or-v1-\n\t\trefType:
                       Secret\n\t\trefName: common-gpt4-apikey\n\nheaders：\n\t- key:
-                      apikey\n\t  value: sk-or-v1-xxxxxxxxxx"
+                      apikey\n\t  value: \"sk-or-v1-xxxxxxxxxx\""
                     items:
                       properties:
                         key:

@@ -4,6 +4,7 @@ dictionaryDefinitions: []
 dictionaries: []
 words:
   - anypb
+  - apikey
   - apimachinery
   - Causef
   - clientgoscheme
@@ -16,6 +17,7 @@ words:
   - evanphx
   - exhaustive
   - forcetypeassert
+  - genclient
   - ginkgolinter
   - goconst
   - gocyclo
@@ -28,6 +30,7 @@ words:
   - ineffassign
   - jsonpatch
   - knoway
+  - knowaydevv1alpha1
   - kubebuilder
   - listenerfilters
   - lll
@@ -43,6 +46,7 @@ words:
   - nosprintfhostport
   - prealloc
   - predeclared
+  - printcolumn
   - protoutils
   - readyz
   - reassign
@@ -52,6 +56,7 @@ words:
   - sashabaranov
   - staticcheck
   - stretchr
+  - subresource
   - typecheck
   - unconvert
   - unmarshalled
@@ -62,7 +67,5 @@ words:
   - utilruntime
   - whitespace
   - wsl
-  - knowaydevv1alpha1
-  - llmbackends
 ignoreWords: []
 import: []

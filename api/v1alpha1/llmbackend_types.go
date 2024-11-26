@@ -24,6 +24,11 @@ import (
 // +genclient
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
+//+kubebuilder:printcolumn:name="Model",type=string,JSONPath=`.spec.modelName`
+//+kubebuilder:printcolumn:name="Upstream",type=string,JSONPath=`.spec.upstream.server.address`
+//+kubebuilder:printcolumn:name="API",type=string,JSONPath=`.spec.upstream.server.api`
+//+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
 // LLMBackend is the Schema for the llmbackends API
 type LLMBackend struct {

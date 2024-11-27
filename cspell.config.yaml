@@ -6,6 +6,7 @@ words:
   - anypb
   - apikey
   - apimachinery
+  - bootkit
   - Causef
   - clientgoscheme
   - clusterfilters

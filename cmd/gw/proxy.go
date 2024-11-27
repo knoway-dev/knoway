@@ -5,19 +5,19 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"time"
 
 	"google.golang.org/protobuf/types/known/anypb"
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
 	v1alpha3 "knoway.dev/api/route/v1alpha1"
+	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/listener/manager"
 	"knoway.dev/pkg/registry/route"
 )
 
-func StartProxy(stop chan struct{}) error {
+func StartGateway(ctx context.Context, lifecycle bootkit.LifeCycle) error {
 	rConfig := &v1alpha3.Route{
 		Name: "default",
 		Matches: []*v1alpha3.Match{
@@ -67,29 +67,30 @@ func StartProxy(stop chan struct{}) error {
 		return err
 	}
 
-	slog.Info("Starting server on :8080")
+	lifecycle.Append(bootkit.LifeCycleHook{
+		OnStart: func(ctx context.Context) error {
+			slog.Info("Starting server...", "addr", ln.Addr().String())
 
-	go func() {
-		err := server.Serve(ln)
-		if err != nil && err != http.ErrServerClosed {
-			slog.Error("Server failed", "error", err)
-		}
-	}()
+			err := server.Serve(ln)
+			if err != nil && err != http.ErrServerClosed {
+				return err
+			}
 
-	// Wait for graceful shutdown
-	// This could be replaced with a more sophisticated signal handling
-	// mechanism if needed.
-	<-stop
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			slog.Info("Stopping server...")
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*10) // TODO: how long?
-	defer cancel()
+			err = server.Shutdown(ctx)
+			if err != nil {
+				return err
+			}
 
-	err = server.Shutdown(ctx)
-	if err != nil {
-		slog.Error("Server shutdown failed", "error", err)
-	}
+			slog.Info("Server stopped gracefully.")
 
-	slog.Info("Server stopped gracefully.")
+			return nil
+		},
+	})
 
 	return nil
 }

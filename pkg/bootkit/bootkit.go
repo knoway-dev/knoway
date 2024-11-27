@@ -157,11 +157,7 @@ func (b *BootKit) Start() {
 	err := callRunnable(ctx, b.parallelRun, b.lifeCycle)
 	if err != nil {
 		slog.Error("failed to run", "error", err)
-
-		err := b.stop()
-		if err != nil {
-			slog.Error("failed to stop", "error", err)
-		}
+		b.mayStop()
 
 		return
 	}
@@ -176,12 +172,7 @@ func (b *BootKit) Start() {
 		b.selfCancel()
 	}()
 
-	defer func() {
-		err := b.stop()
-		if err != nil {
-			slog.Error("failed to stop", "error", err)
-		}
-	}()
+	defer b.mayStop()
 
 	for {
 		select {
@@ -197,10 +188,21 @@ func (b *BootKit) Start() {
 }
 
 func (b *BootKit) stop() error {
+	if len(b.lifeCycle.hooks) == 0 {
+		return nil
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), b.options.stopTimeout)
 	defer cancel()
 
 	return callStopHooks(ctx, b.lifeCycle.hooks)
+}
+
+func (b *BootKit) mayStop() {
+	err := b.stop()
+	if err != nil {
+		slog.Error("failed to stop", "error", err)
+	}
 }
 
 func (b *BootKit) Stop(ctx context.Context) error {
@@ -208,10 +210,6 @@ func (b *BootKit) Stop(ctx context.Context) error {
 	defer b.mutex.Unlock()
 
 	b.selfCancel()
-
-	if b.lifeCycle == nil {
-		return nil
-	}
 
 	return b.stop()
 }

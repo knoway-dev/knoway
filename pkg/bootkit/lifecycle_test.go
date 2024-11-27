@@ -9,6 +9,8 @@ import (
 )
 
 func TestLifeCycleHook_Start(t *testing.T) {
+	t.Parallel()
+
 	l := LifeCycleHook{}
 
 	require.NotPanics(t, func() {
@@ -29,6 +31,8 @@ func TestLifeCycleHook_Start(t *testing.T) {
 }
 
 func TestLifeCycleHook_Stop(t *testing.T) {
+	t.Parallel()
+
 	l := LifeCycleHook{}
 
 	require.NotPanics(t, func() {
@@ -49,6 +53,8 @@ func TestLifeCycleHook_Stop(t *testing.T) {
 }
 
 func TestLifeCycle_Append(t *testing.T) {
+	t.Parallel()
+
 	l := newLifeCycle()
 
 	l.Append(LifeCycleHook{})

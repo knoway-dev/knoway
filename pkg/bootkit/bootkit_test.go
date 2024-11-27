@@ -12,6 +12,8 @@ import (
 )
 
 func TestNew(t *testing.T) {
+	t.Parallel()
+
 	bootkit := New(
 		StartTimeout(time.Second*2),
 		StopTimeout(time.Second*5),
@@ -26,6 +28,8 @@ func TestNew(t *testing.T) {
 }
 
 func TestBootkit_Add(t *testing.T) {
+	t.Parallel()
+
 	bootkit := New()
 
 	var wg sync.WaitGroup
@@ -48,7 +52,11 @@ func TestBootkit_Add(t *testing.T) {
 }
 
 func TestWaitDoneOrContextDone(t *testing.T) {
+	t.Parallel()
+
 	t.Run("ImmediatelyWaitGroupDone", func(t *testing.T) {
+		t.Parallel()
+
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
@@ -60,6 +68,8 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 	})
 
 	t.Run("OneSecondWaitGroupDone", func(t *testing.T) {
+		t.Parallel()
+
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 		defer cancel()
 
@@ -80,6 +90,8 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 	})
 
 	t.Run("ContextDoneBeforeWaitGroupDone", func(t *testing.T) {
+		t.Parallel()
+
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 		defer cancel()
 
@@ -101,6 +113,8 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 	})
 
 	t.Run("ErrorCircuitBreak", func(t *testing.T) {
+		t.Parallel()
+
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 		defer cancel()
 
@@ -128,7 +142,11 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 }
 
 func TestCallRunnable(t *testing.T) {
+	t.Parallel()
+
 	t.Run("TwoSecondsRunnable", func(t *testing.T) {
+		t.Parallel()
+
 		lf := newLifeCycle()
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
@@ -169,9 +187,11 @@ func TestCallRunnable(t *testing.T) {
 	})
 
 	t.Run("ContextDoneBeforeRunnable-StartTimeout", func(t *testing.T) {
+		t.Parallel()
+
 		lf := newLifeCycle()
 
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 		defer cancel()
 
 		err := callRunnable(ctx, []Runnable{
@@ -191,6 +211,8 @@ func TestCallRunnable(t *testing.T) {
 	})
 
 	t.Run("ContextDoneBeforeRunnable-EarlyCancel", func(t *testing.T) {
+		t.Parallel()
+
 		lf := newLifeCycle()
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
@@ -215,6 +237,8 @@ func TestCallRunnable(t *testing.T) {
 	})
 
 	t.Run("ErrorCircuitBreak", func(t *testing.T) {
+		t.Parallel()
+
 		lf := newLifeCycle()
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
@@ -234,7 +258,11 @@ func TestCallRunnable(t *testing.T) {
 }
 
 func TestCallStartHooks(t *testing.T) {
+	t.Parallel()
+
 	t.Run("TwoSecondsStartHooks", func(t *testing.T) {
+		t.Parallel()
+
 		wg := new(sync.WaitGroup)
 		errChan := make(chan error)
 
@@ -278,6 +306,8 @@ func TestCallStartHooks(t *testing.T) {
 	})
 
 	t.Run("Errors", func(t *testing.T) {
+		t.Parallel()
+
 		wg := new(sync.WaitGroup)
 
 		startHookRan := make([]bool, 2)
@@ -321,7 +351,11 @@ func TestCallStartHooks(t *testing.T) {
 }
 
 func TestCallStopHooks(t *testing.T) {
+	t.Parallel()
+
 	t.Run("TwoSecondsStopHooks", func(t *testing.T) {
+		t.Parallel()
+
 		startHookRan := make([]bool, 2)
 		stopHookRan := make([]bool, 2)
 		hooks := []lifeCycler{
@@ -364,6 +398,8 @@ func TestCallStopHooks(t *testing.T) {
 	})
 
 	t.Run("Errors", func(t *testing.T) {
+		t.Parallel()
+
 		startHookRan := make([]bool, 2)
 		stopHookRan := make([]bool, 2)
 		hooks := []lifeCycler{
@@ -403,6 +439,8 @@ func TestCallStopHooks(t *testing.T) {
 	})
 
 	t.Run("ContextDoneBeforeStopHook-StopTimeout", func(t *testing.T) {
+		t.Parallel()
+
 		startHookRan := make([]bool, 2)
 		stopHookRan := make([]bool, 2)
 		hooks := []lifeCycler{
@@ -443,6 +481,8 @@ func TestCallStopHooks(t *testing.T) {
 	})
 
 	t.Run("ContextDoneBeforeStopHook-EarlyCancel", func(t *testing.T) {
+		t.Parallel()
+
 		startHookRan := make([]bool, 2)
 		stopHookRan := make([]bool, 2)
 		hooks := []lifeCycler{
@@ -484,6 +524,8 @@ func TestCallStopHooks(t *testing.T) {
 }
 
 func TestWaitGroupToChan(t *testing.T) {
+	t.Parallel()
+
 	wg := new(sync.WaitGroup)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
@@ -513,7 +555,11 @@ func TestWaitGroupToChan(t *testing.T) {
 }
 
 func TestBootkit_Start(t *testing.T) {
+	t.Parallel()
+
 	t.Run("TwoSecondsStart", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New()
 
 		bootkit.Add(func(ctx context.Context, lifeCycle LifeCycle) error {
@@ -543,6 +589,8 @@ func TestBootkit_Start(t *testing.T) {
 	})
 
 	t.Run("RunnableError", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New()
 
 		startCalled := false
@@ -570,6 +618,8 @@ func TestBootkit_Start(t *testing.T) {
 	})
 
 	t.Run("LaterRunnableError", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New()
 
 		startCalled := make([]bool, 2)
@@ -616,6 +666,8 @@ func TestBootkit_Start(t *testing.T) {
 	})
 
 	t.Run("RunnableTimeout", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New(StartTimeout(time.Second))
 
 		startCalled := make([]bool, 2)
@@ -662,6 +714,8 @@ func TestBootkit_Start(t *testing.T) {
 	})
 
 	t.Run("StartTimeout", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New(StartTimeout(time.Second))
 
 		startCalled := make([]bool, 2)
@@ -691,6 +745,8 @@ func TestBootkit_Start(t *testing.T) {
 	})
 
 	t.Run("Errors", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New()
 
 		bootkit.Add(func(ctx context.Context, lifeCycle LifeCycle) error {
@@ -701,6 +757,8 @@ func TestBootkit_Start(t *testing.T) {
 	})
 
 	t.Run("Errors-StopHookCalled", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New()
 
 		startCalled := false
@@ -728,6 +786,8 @@ func TestBootkit_Start(t *testing.T) {
 	})
 
 	t.Run("StartHookErrors-StopHookCalled", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New()
 
 		startCalled := false
@@ -755,6 +815,8 @@ func TestBootkit_Start(t *testing.T) {
 	})
 
 	t.Run("BothHookErrors-BothHookCalled", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New()
 
 		startCalled := false
@@ -783,7 +845,11 @@ func TestBootkit_Start(t *testing.T) {
 }
 
 func TestBootkit_Stop(t *testing.T) {
+	t.Parallel()
+
 	t.Run("Stop", func(t *testing.T) {
+		t.Parallel()
+
 		bootkit := New()
 
 		startCalled := false
@@ -814,5 +880,22 @@ func TestBootkit_Stop(t *testing.T) {
 
 		assert.True(t, startCalled)
 		assert.True(t, stopCalled)
+	})
+
+	t.Run("Stop-NoStopHook", func(t *testing.T) {
+		t.Parallel()
+
+		bootkit := New()
+
+		bootkit.Add(func(ctx context.Context, lifeCycle LifeCycle) error {
+			return nil
+		})
+
+		time.AfterFunc(time.Second, func() {
+			err := bootkit.Stop(context.Background())
+			assert.NoError(t, err)
+		})
+
+		bootkit.Start()
 	})
 }

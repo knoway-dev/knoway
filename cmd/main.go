@@ -82,12 +82,4 @@ func main() {
 	slog.Info("Proxy started successfully.")
 
 	app.Start()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-
-	err := app.Stop(ctx)
-	if err != nil {
-		slog.Error("Failed to stop app", "error", err)
-	}
 }

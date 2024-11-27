@@ -17,6 +17,7 @@ import (
 
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/internal/controller"
+	"knoway.dev/pkg/bootkit"
 )
 
 var (
@@ -39,7 +40,7 @@ type Options struct {
 	ProbeAddr            string
 }
 
-func StartServer(stop chan struct{}, opts Options) error {
+func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, opts Options) error {
 	copts := zap.Options{
 		Development: true,
 	}
@@ -117,22 +118,22 @@ func StartServer(stop chan struct{}, opts Options) error {
 		os.Exit(1)
 	}
 
-	// Create a context that listens for the stop signal
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	managerCtx, cancel := context.WithCancel(context.Background())
 
-	go func() {
-		<-stop
-		cancel()
-	}()
+	lifecycle.Append(bootkit.LifeCycleHook{
+		OnStart: func(ctx context.Context) error {
+			setupLog.Info("starting controller manager")
+			err := mgr.Start(managerCtx)
 
-	setupLog.Info("starting manager")
+			return err
+		},
+		OnStop: func(context.Context) error {
+			setupLog.Info("stopping controller manager")
+			cancel()
 
-	err = mgr.Start(ctx)
-	if err != nil {
-		setupLog.Error(err, "problem running manager")
-		os.Exit(1)
-	}
+			return nil
+		},
+	})
 
 	return nil
 }

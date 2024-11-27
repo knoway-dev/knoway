@@ -1,7 +1,7 @@
 package auth
 
 import (
-	context "context"
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -72,7 +72,7 @@ func BearerMarshal(request *http.Request) (token string, err error) {
 }
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) filters.RequestFilterResult {
-	slog.Debug(fmt.Sprintf("starting auth filter OnCompletionRequest ..."))
+	slog.Debug(fmt.Sprintf("starting auth filter OnCompletionRequest"))
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHttpRequest)
 	if err != nil {
@@ -81,7 +81,7 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	request.SetApiKey(apiKey)
 
 	// check apikey
-	slog.Debug(fmt.Sprintf("auth filter: rpc APIKeyAuth ..."))
+	slog.Debug(fmt.Sprintf("auth filter: rpc APIKeyAuth"))
 	response, err := a.authClient.APIKeyAuth(ctx, &v1alpha12.APIKeyAuthRequest{
 		ApiKey: apiKey,
 	})

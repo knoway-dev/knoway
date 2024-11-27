@@ -17,14 +17,15 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
+	"time"
 
 	"knoway.dev/cmd/gw"
 	"knoway.dev/cmd/server"
+	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/registry/cluster"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -54,7 +55,7 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.Parse()
 
-	stop := make(chan struct{})
+	app := bootkit.New(bootkit.StartTimeout(time.Second * 10))
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
@@ -69,38 +70,22 @@ func main() {
 		}
 	} else {
 		// Start the server and handle errors gracefully
-		go func() {
-			slog.Info("Starting controller ...")
-
-			if err := server.StartServer(stop, server.Options{
+		app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
+			return server.StartController(ctx, lifeCycle, server.Options{
 				EnableHTTP2:          enableHTTP2,
 				EnableLeaderElection: enableLeaderElection,
 				SecureMetrics:        secureMetrics,
 				MetricsAddr:          metricsAddr,
 				ProbeAddr:            probeAddr,
-			}); err != nil {
-				slog.Error("Controller failed to start", "error", err)
-			}
-
-			slog.Info("Controller started successfully.")
-		}()
+			})
+		})
 	}
 
-	err := gw.StartProxy(stop, apiKeyServer)
-	if err != nil {
-		slog.Error("Failed to start proxy", "error", err)
-	}
+	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
+		return gw.StartGateway(ctx, gw.GatewayConfig{
+			AuthServerAddress: apiKeyServer,
+		}, lifeCycle)
+	})
 
-	slog.Info("Proxy started successfully.")
-
-	WaitSignal(stop)
-	slog.Info("Server is shut down.")
-}
-
-// WaitSignal awaits for SIGINT or SIGTERM and closes the channel
-func WaitSignal(stop chan struct{}) {
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-	close(stop)
+	app.Start()
 }

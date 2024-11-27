@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
-	"time"
 
 	"knoway.dev/pkg/registry/config"
 
@@ -13,24 +12,30 @@ import (
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
+	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/listener/manager"
 )
 
-func StartProxy(stop chan struct{}, authServer string) error {
+type GatewayConfig struct {
+	AuthServerAddress    string
+	GatewayListenAddress string
+}
+
+func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCycle) error {
 	baseListenConfig := &v1alpha1.ChatCompletionListener{
 		Name:    "openai",
 		Filters: []*v1alpha1.ListenerFilter{},
 	}
 
-	if authServer != "" {
+	if cfg.AuthServerAddress != "" {
 		config.EnabledAuthFilter()
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Name: "api-key-auth",
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
 					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url: authServer,
+						Url: cfg.AuthServerAddress,
 					},
 				})
 				if err != nil {
@@ -41,41 +46,49 @@ func StartProxy(stop chan struct{}, authServer string) error {
 		})
 	}
 
+	addr := cfg.GatewayListenAddress
+	if addr == "" {
+		//default address
+		addr = ":8080"
+	}
+
 	server, err := listener.NewMux().
 		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig)).
 		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig)).
-		BuildServer(&http.Server{Addr: ":8080"})
+		BuildServer(&http.Server{Addr: addr})
 	if err != nil {
 		return err
 	}
 
-	ln, err := net.Listen("tcp", ":8080")
+	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		return err
 	}
-	slog.Info("Starting server on :8080")
 
-	go func() {
-		err := server.Serve(ln)
-		if err != nil && err != http.ErrServerClosed {
-			slog.Error("Server failed", "error", err)
-		}
-	}()
+	lifecycle.Append(bootkit.LifeCycleHook{
+		OnStart: func(ctx context.Context) error {
+			slog.Info("Starting gateway ...", "addr", ln.Addr().String())
 
-	// Wait for graceful shutdown
-	// This could be replaced with a more sophisticated signal handling
-	// mechanism if needed.
-	<-stop
+			err := server.Serve(ln)
+			if err != nil && err != http.ErrServerClosed {
+				return err
+			}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*10) // TODO: how long?
-	defer cancel()
+			return nil
+		},
+		OnStop: func(ctx context.Context) error {
+			slog.Info("Stopping gateway ...")
 
-	err = server.Shutdown(ctx)
-	if err != nil {
-		slog.Error("Server shutdown failed", "error", err)
-	}
+			err = server.Shutdown(ctx)
+			if err != nil {
+				return err
+			}
 
-	slog.Info("Server stopped gracefully.")
+			slog.Info("Gateway stopped gracefully.")
+
+			return nil
+		},
+	})
 
 	return nil
 }

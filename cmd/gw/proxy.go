@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"time"
 
+	"knoway.dev/pkg/registry/config"
+
 	"google.golang.org/protobuf/types/known/anypb"
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
@@ -22,6 +24,7 @@ func StartProxy(stop chan struct{}, authServer string) error {
 	}
 
 	if authServer != "" {
+		config.EnabledAuthFilter()
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Name: "api-key-auth",
 			Config: func() *anypb.Any {

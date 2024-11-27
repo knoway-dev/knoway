@@ -8,14 +8,13 @@ import (
 
 	"github.com/samber/lo"
 
-	v1alpha12 "knoway.dev/api/service/v1alpha1"
-	"knoway.dev/pkg/filters/auth"
+	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/object"
 
 	"github.com/gorilla/mux"
 	goopenai "github.com/sashabaranov/go-openai"
 	"google.golang.org/protobuf/proto"
 
-	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/listener"
@@ -53,21 +52,19 @@ type OpenAIModelsListener struct {
 }
 
 func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *http.Request) (any, error) {
-	var err error
-	var authResp *v1alpha12.APIKeyAuthResponse
+	llmRequest := &object.BaseLLMRequest{}
+
 	for _, f := range l.filters {
-		authFilter, ok := f.(*auth.AuthFilter)
-		if ok {
-			if authResp, err = Auth(authFilter, request, AuthZOption{}); err != nil {
-				return nil, err
-			}
+		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
+		if fResult.IsFailed() {
+			return nil, fResult.Error
 		}
 	}
 
 	clusters := cluster.ListModels()
-	if authResp != nil {
+	if config.HasAuthFilter() {
 		clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
-			return authResp.CanAccessModel(item.GetName())
+			return llmRequest.CanAccessModel(item.GetName())
 		})
 	}
 

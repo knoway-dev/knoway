@@ -26,7 +26,6 @@ import (
 	"knoway.dev/cmd/gw"
 	"knoway.dev/cmd/server"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/registry/cluster"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -62,9 +61,9 @@ func main() {
 	})))
 
 	// 开发配置
-	devStaticServer := false
+	devStaticServer := true
 	if devStaticServer {
-		err := cluster.StaticRegisterClusters(gw.StaticClustersConfig)
+		err := gw.StaticRegisterClusters(gw.StaticClustersConfig)
 		if err != nil {
 			slog.Error("Failed to register static clusters", "error", err)
 		}

@@ -4,9 +4,6 @@ import (
 	"log/slog"
 	"sync"
 
-	v1alpha3 "knoway.dev/api/route/v1alpha1"
-	"knoway.dev/pkg/registry/route"
-
 	"knoway.dev/api/clusters/v1alpha1"
 	clusters2 "knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/manager"
@@ -71,9 +68,7 @@ func (cr *Register) DeleteCluster(name string) {
 
 	delete(cr.clusters, name)
 	delete(cr.clustersDetails, name)
-
-	route.RemoveRoute(name)
-	slog.Info("remove cluster and direct route: %s", "name", name)
+	slog.Info("remove cluster", "name", name)
 }
 
 func (cr *Register) FindClusterByName(name string) (clusters2.Cluster, bool) {
@@ -98,34 +93,7 @@ func (cr *Register) UpsertAndRegisterCluster(cluster *v1alpha1.Cluster) error {
 	cr.clustersDetails[cluster.Name] = cluster
 	cr.clusters[name] = c
 
-	rConfig := &v1alpha3.Route{
-		Name: name,
-		Matches: []*v1alpha3.Match{
-			{
-				Model: &v1alpha3.StringMatch{
-					Match: &v1alpha3.StringMatch_Exact{
-						Exact: name,
-					},
-				},
-			},
-		},
-		ClusterName: name,
-		Filters:     nil, // todo future
-	}
-	if err = route.RegisterRouteWithConfig(rConfig); err != nil {
-		return err
-	}
-	slog.Info("register cluster and direct route: %s", "name", name)
-	return nil
-}
-
-func StaticRegisterClusters(clusterDetails map[string]*v1alpha1.Cluster) error {
-	for _, cluster := range clusterDetails {
-		if err := UpsertAndRegisterCluster(cluster); err != nil {
-			return err
-		}
-	}
-
+	slog.Info("register cluster", "name", name)
 	return nil
 }
 

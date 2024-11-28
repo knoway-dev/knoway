@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"strings"
 
+	"knoway.dev/pkg/registry/route"
+
 	"google.golang.org/protobuf/types/known/anypb"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -66,7 +68,14 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if clusterCfg != nil {
 		err := cluster.UpsertAndRegisterCluster(clusterCfg)
 		if err != nil {
-			log.Log.Error(err, "Failed to upsert cluster", "cluster", clusterCfg)
+			log.Log.Error(err, "Failed to upsert cluster", "cluster", clusterCfg, "error", err)
+			return ctrl.Result{}, nil
+		}
+
+		mName := llmBackend.Spec.ModelName
+		if err = route.RegisterRouteWithConfig(route.InitDirectModelRoute(mName)); err != nil {
+			log.Log.Error(err, "Failed to register route", "route", mName, "error", err)
+			return ctrl.Result{}, nil
 		}
 	}
 

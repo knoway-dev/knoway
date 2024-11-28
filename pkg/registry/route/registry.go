@@ -1,6 +1,7 @@
 package route
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/samber/lo"
@@ -16,6 +17,23 @@ var (
 	routeLock     sync.RWMutex
 )
 
+func InitDirectModelRoute(modelName string) *v1alpha1.Route {
+	return &v1alpha1.Route{
+		Name: modelName,
+		Matches: []*v1alpha1.Match{
+			{
+				Model: &v1alpha1.StringMatch{
+					Match: &v1alpha1.StringMatch_Exact{
+						Exact: modelName,
+					},
+				},
+			},
+		},
+		ClusterName: modelName,
+		Filters:     nil, // todo future
+	}
+}
+
 func RegisterRouteWithConfig(cfg *v1alpha1.Route) error {
 	routeLock.Lock()
 	defer routeLock.Unlock()
@@ -26,9 +44,9 @@ func RegisterRouteWithConfig(cfg *v1alpha1.Route) error {
 	}
 
 	routeRegistry[cfg.GetName()] = r
-	// todo reorder routes
 	routes = lo.Values(routeRegistry)
 
+	slog.Info("register route", "name", cfg.GetName())
 	return nil
 }
 

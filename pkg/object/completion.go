@@ -19,11 +19,11 @@ type LLMRequest interface {
 	SetModel(modelName string) error
 
 	SetApiKey(key string)
-	SetAuthInfo(apikeyIsValid bool, user string, allowModels []string)
-	CanAccessModel(inModel string) bool
-	GetAllowModels() []string
+	SetUser(user string)
+	SetAllowModels(allowModels []string)
 	GetUser() string
 	GetApiKey() string
+	GetAllowModels() []string
 }
 
 type LLMResponse interface {
@@ -68,10 +68,9 @@ type BaseLLMRequest struct {
 	Model string `json:"model,omitempty"`
 
 	// auth info
-	ApiKeyIsValid bool     `json:"api_key_is_valid,omitempty"`
-	ApiKey        string   `json:"api_key,omitempty"`
-	AllowModels   []string `json:"allow_models,omitempty"`
-	User          string   `json:"user,omitempty"`
+	ApiKey      string   `json:"api_key,omitempty"`
+	AllowModels []string `json:"allow_models,omitempty"`
+	User        string   `json:"user,omitempty"`
 }
 
 func (r *BaseLLMRequest) IsStream() bool {
@@ -90,13 +89,18 @@ func (r *BaseLLMRequest) GetIncomingRequest() *http.Request {
 	return nil
 }
 
-func (r *BaseLLMRequest) SetAuthInfo(apikeyIsValid bool, user string, allowModels []string) {
+func (r *BaseLLMRequest) SetAllowModels(allowModels []string) {
 	if r == nil {
 		return
 	}
 	r.AllowModels = allowModels
+}
+
+func (r *BaseLLMRequest) SetUser(user string) {
+	if r == nil {
+		return
+	}
 	r.User = user
-	r.ApiKeyIsValid = apikeyIsValid
 }
 
 func (r *BaseLLMRequest) SetApiKey(key string) {
@@ -104,21 +108,6 @@ func (r *BaseLLMRequest) SetApiKey(key string) {
 		return
 	}
 	r.ApiKey = key
-}
-
-func (r *BaseLLMRequest) CanAccessModel(inModel string) bool {
-	if r == nil {
-		return false
-	}
-	for _, m := range r.AllowModels {
-		if m == "*" {
-			return true
-		}
-		if inModel == m {
-			return true
-		}
-	}
-	return false
 }
 
 func (r *BaseLLMRequest) GetAllowModels() []string {

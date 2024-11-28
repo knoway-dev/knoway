@@ -9,6 +9,8 @@ import (
 	"github.com/samber/lo"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/filters/auth"
+
 	"knoway.dev/pkg/object"
 
 	"github.com/gorilla/mux"
@@ -64,7 +66,7 @@ func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *h
 	clusters := cluster.ListModels()
 	if config.HasAuthFilter() {
 		clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
-			return llmRequest.CanAccessModel(item.GetName())
+			return auth.CanAccessModel(llmRequest.GetAllowModels(), item.GetName())
 		})
 	}
 

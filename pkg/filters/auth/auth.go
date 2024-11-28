@@ -71,6 +71,35 @@ func BearerMarshal(request *http.Request) (token string, err error) {
 	return
 }
 
+// CanAccessModel 判断是否可以访问指定的模型
+func CanAccessModel(allowModels []string, requestModel string) bool {
+	for _, rule := range allowModels {
+		// 处理 "*/*"，允许访问任意模型
+		if rule == "*/*" {
+			return true
+		}
+
+		// 处理具体模型名称的匹配
+		if rule == requestModel {
+			return true
+		}
+
+		// 处理 "*"，允许访问所有公开模型
+		if rule == "*" && !strings.Contains(requestModel, "/") {
+			return true
+		}
+
+		// 处理 "ns/*"，允许访问特定 ns 下的所有模型
+		if strings.HasSuffix(rule, "/*") {
+			if strings.HasPrefix(requestModel, strings.TrimSuffix(rule, "/*")+"/") {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
 	// parse apikey
@@ -90,13 +119,8 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
 	}
-
-	if response != nil {
-		request.SetAuthInfo(
-			response.IsValid,
-			response.UserId,
-			response.AllowModels)
-	}
+	request.SetUser(response.UserId)
+	request.SetAllowModels(response.AllowModels)
 
 	if !response.IsValid {
 		slog.Debug("auth filter: user apikey invalid", "user", response.UserId)
@@ -104,11 +128,12 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	}
 
 	accessModel := request.GetModel()
-	if accessModel != "" && !request.CanAccessModel(accessModel) {
+	if accessModel != "" && !CanAccessModel(response.AllowModels, accessModel) {
 		slog.Debug("auth filter: user can not access model", "user", response.UserId, "model", accessModel)
 		return filters.NewFailed(openai.NewErrorModelNotFoundOrNotAccessible(accessModel))
 	}
 	slog.Debug("auth filter: user authorization succeeds", "user", response.UserId, "allow models", response.AllowModels)
+
 	return filters.NewOK()
 }
 

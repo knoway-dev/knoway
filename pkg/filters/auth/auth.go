@@ -104,7 +104,7 @@ func CanAccessModel(allowModels []string, requestModel string) bool {
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
-	SetEnabledAuthFilter(ctx, true)
+	SetEnabledAuthFilterToCtx(ctx, true)
 
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHttpRequest)
@@ -123,7 +123,7 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
 	}
-	SetAuthInfo(ctx, response)
+	SetAuthInfoToCtx(ctx, response)
 	request.SetUser(response.UserId)
 	sourceHttpRequest.WithContext(ctx)
 
@@ -155,19 +155,19 @@ const (
 	authInfoKey          = "authInfo"
 )
 
-func SetAuthInfo(ctx context.Context, info *v1alpha12.APIKeyAuthResponse) context.Context {
-	return properties.AppendToPropertiesContext(ctx, authInfoKey, info)
+func SetAuthInfoToCtx(ctx context.Context, info *v1alpha12.APIKeyAuthResponse) context.Context {
+	return properties.SetProperty(ctx, authInfoKey, info)
 }
 
-func GetAuthInfo(ctx context.Context) (*v1alpha12.APIKeyAuthResponse, bool) {
-	return properties.ValueFromPropertiesContext[*v1alpha12.APIKeyAuthResponse](ctx, authInfoKey)
+func GetAuthInfoFromCtx(ctx context.Context) (*v1alpha12.APIKeyAuthResponse, bool) {
+	return properties.GetProperty[*v1alpha12.APIKeyAuthResponse](ctx, authInfoKey)
 }
 
-func SetEnabledAuthFilter(ctx context.Context, enabled bool) context.Context {
-	return properties.AppendToPropertiesContext(ctx, enabledAuthFilterKey, enabled)
+func SetEnabledAuthFilterToCtx(ctx context.Context, enabled bool) context.Context {
+	return properties.SetProperty(ctx, enabledAuthFilterKey, enabled)
 }
 
-func EnabledAuthFilter(ctx context.Context) bool {
-	value, ok := properties.ValueFromPropertiesContext[bool](ctx, enabledAuthFilterKey)
+func EnabledAuthFilterFromCtx(ctx context.Context) bool {
+	value, ok := properties.GetProperty[bool](ctx, enabledAuthFilterKey)
 	return value && ok
 }

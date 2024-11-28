@@ -20,10 +20,8 @@ type LLMRequest interface {
 
 	SetApiKey(key string)
 	SetUser(user string)
-	SetAllowModels(allowModels []string)
 	GetUser() string
 	GetApiKey() string
-	GetAllowModels() []string
 }
 
 type LLMResponse interface {
@@ -68,9 +66,8 @@ type BaseLLMRequest struct {
 	Model string `json:"model,omitempty"`
 
 	// auth info
-	ApiKey      string   `json:"api_key,omitempty"`
-	AllowModels []string `json:"allow_models,omitempty"`
-	User        string   `json:"user,omitempty"`
+	ApiKey string `json:"api_key,omitempty"`
+	User   string `json:"user,omitempty"`
 }
 
 func (r *BaseLLMRequest) IsStream() bool {
@@ -89,13 +86,6 @@ func (r *BaseLLMRequest) GetIncomingRequest() *http.Request {
 	return nil
 }
 
-func (r *BaseLLMRequest) SetAllowModels(allowModels []string) {
-	if r == nil {
-		return
-	}
-	r.AllowModels = allowModels
-}
-
 func (r *BaseLLMRequest) SetUser(user string) {
 	if r == nil {
 		return
@@ -108,13 +98,6 @@ func (r *BaseLLMRequest) SetApiKey(key string) {
 		return
 	}
 	r.ApiKey = key
-}
-
-func (r *BaseLLMRequest) GetAllowModels() []string {
-	if r == nil {
-		return nil
-	}
-	return r.AllowModels
 }
 
 func (r *BaseLLMRequest) GetUser() string {

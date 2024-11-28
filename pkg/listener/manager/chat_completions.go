@@ -172,7 +172,7 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 }
 
 func (l *OpenAIChatCompletionsListener) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/chat/completions", openai.WrapHandlerForOpenAIError(l.onChatCompletionsRequestWithError))
+	mux.HandleFunc("/v1/chat/completions", WrapRequest(openai.WrapHandlerForOpenAIError(l.onChatCompletionsRequestWithError)))
 
 	return nil
 }

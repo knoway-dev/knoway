@@ -6,8 +6,6 @@ import (
 	"net"
 	"net/http"
 
-	"knoway.dev/pkg/registry/config"
-
 	"google.golang.org/protobuf/types/known/anypb"
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
@@ -29,7 +27,6 @@ func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCy
 	}
 
 	if cfg.AuthServerAddress != "" {
-		config.EnabledAuthFilter()
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Name: "api-key-auth",
 			Config: func() *anypb.Any {

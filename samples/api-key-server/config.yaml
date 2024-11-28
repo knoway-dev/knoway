@@ -1,0 +1,20 @@
+api_keys:
+  - api_key: "valid-api-key-1"
+    is_valid: true
+    allow_models:
+      - "kebe/*"
+      - "llama2-70b"
+      - "openai/*"
+    api_key_id: "1"
+    user_id: "user-1"
+  - api_key: "valid-api-key-2"
+    is_valid: true
+    allow_models:
+      - "*"
+    api_key_id: "2"
+    user_id: "user-2"
+  - api_key: "invalid-api-key"
+    api_key_id: "3"
+    is_valid: false
+    allow_models: []
+    user_id: "xxx"

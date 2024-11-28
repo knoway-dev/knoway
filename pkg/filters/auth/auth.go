@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 
+	context2 "knoway.dev/pkg/context"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -102,6 +104,8 @@ func CanAccessModel(allowModels []string, requestModel string) bool {
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
+	context2.SetEnabledAuthFilter(ctx, true)
+
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHttpRequest)
 	if err != nil {
@@ -119,8 +123,9 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
 	}
+	context2.SetAuthInfo(ctx, response)
 	request.SetUser(response.UserId)
-	request.SetAllowModels(response.AllowModels)
+	sourceHttpRequest.WithContext(ctx)
 
 	if !response.IsValid {
 		slog.Debug("auth filter: user apikey invalid", "user", response.UserId)

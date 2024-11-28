@@ -15,8 +15,7 @@ import (
 )
 
 var (
-	enabledAuthFilter bool
-	requestFilters    = map[string]func(cfg *anypb.Any) (listenerfilters.RequestFilter, error){}
+	requestFilters = map[string]func(cfg *anypb.Any) (listenerfilters.RequestFilter, error){}
 
 	clustersFilters = map[string]func(cfg *anypb.Any) (clusterfilters.ClusterFilter, error){}
 )
@@ -80,16 +79,4 @@ func NewClustersFiltersKeys() []string {
 	}
 
 	return keys
-}
-
-func HasAuthFilter() bool {
-	return enabledAuthFilter
-}
-
-func EnabledAuthFilter() {
-	enabledAuthFilter = true
-}
-
-func DisableAuthFilter() {
-	enabledAuthFilter = false
 }

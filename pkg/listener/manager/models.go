@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	"knoway.dev/pkg/context"
+
 	"github.com/samber/lo"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
@@ -56,24 +58,29 @@ type OpenAIModelsListener struct {
 func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *http.Request) (any, error) {
 	llmRequest := &object.BaseLLMRequest{}
 
+	ctx := request.Context()
 	for _, f := range l.filters {
-		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
+		fResult := f.OnCompletionRequest(ctx, llmRequest, request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error
 		}
 	}
 
 	clusters := cluster.ListModels()
-	if config.HasAuthFilter() {
-		clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
-			return auth.CanAccessModel(llmRequest.GetAllowModels(), item.GetName())
-		})
+
+	// auth filters
+	if context.EnabledAuthFilter(ctx) {
+		if authInfo, ok := context.GetAuthInfo(ctx); ok {
+			allowModels := authInfo.GetAllowModels()
+			clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
+				return auth.CanAccessModel(allowModels, item.GetName())
+			})
+		}
 	}
 
 	sort.Slice(clusters, func(i, j int) bool {
 		return strings.Compare(clusters[i].Name, clusters[j].Name) < 0
 	})
-
 	ms := ClustersToOpenAIModels(clusters)
 	body := goopenai.ModelsList{
 		Models: ms,
@@ -82,7 +89,7 @@ func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *h
 }
 
 func (l *OpenAIModelsListener) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/models", openai.WrapHandlerForOpenAIError(l.listModels))
+	mux.HandleFunc("/v1/models", WrapRequest(openai.WrapHandlerForOpenAIError(l.listModels)))
 
 	return nil
 }

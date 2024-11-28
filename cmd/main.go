@@ -61,7 +61,7 @@ func main() {
 	})))
 
 	// 开发配置
-	devStaticServer := true
+	devStaticServer := false
 	if devStaticServer {
 		err := gw.StaticRegisterClusters(gw.StaticClustersConfig)
 		if err != nil {

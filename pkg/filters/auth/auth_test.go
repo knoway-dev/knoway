@@ -6,6 +6,9 @@ import (
 	"net"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	pb "knoway.dev/api/service/v1alpha1" // 替换为生成的包路径
 
 	"google.golang.org/grpc"
@@ -81,9 +84,7 @@ func TestAPIKeyAuth(t *testing.T) {
 
 	// 创建 gRPC 客户端连接
 	conn, err := grpc.DialContext(context.Background(), "bufnet", grpc.WithContextDialer(dialer(listener)), grpc.WithInsecure())
-	if err != nil {
-		t.Fatalf("Failed to dial bufnet: %v", err)
-	}
+	require.NoError(t, err)
 	defer conn.Close()
 
 	client := pb.NewAuthServiceClient(conn)
@@ -101,12 +102,8 @@ func TestAPIKeyAuth(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := client.APIKeyAuth(context.Background(), &pb.APIKeyAuthRequest{ApiKey: tt.apiKey})
-			if err != nil {
-				t.Fatalf("APIKeyAuth failed: %v", err)
-			}
-			if resp.IsValid != tt.wantValid {
-				t.Errorf("Expected IsValid=%v, got %v", tt.wantValid, resp.IsValid)
-			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.wantValid, resp.IsValid)
 		})
 	}
 }

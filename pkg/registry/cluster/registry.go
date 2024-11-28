@@ -1,7 +1,6 @@
 package cluster
 
 import (
-	"fmt"
 	"log/slog"
 	"sync"
 
@@ -74,7 +73,7 @@ func (cr *Register) DeleteCluster(name string) {
 	delete(cr.clustersDetails, name)
 
 	route.RemoveRoute(name)
-	slog.Info(fmt.Sprintf("remove cluster and direct route: %s", name))
+	slog.Info("remove cluster and direct route: %s", "name", name)
 }
 
 func (cr *Register) FindClusterByName(name string) (clusters2.Cluster, bool) {
@@ -116,7 +115,7 @@ func (cr *Register) UpsertAndRegisterCluster(cluster *v1alpha1.Cluster) error {
 	if err = route.RegisterRouteWithConfig(rConfig); err != nil {
 		return err
 	}
-	slog.Info(fmt.Sprintf("register cluster and direct route: %s", name))
+	slog.Info("register cluster and direct route: %s", "name", name)
 	return nil
 }
 

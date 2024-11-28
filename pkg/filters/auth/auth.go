@@ -72,21 +72,22 @@ func BearerMarshal(request *http.Request) (token string, err error) {
 }
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) filters.RequestFilterResult {
-	slog.Debug(fmt.Sprintf("starting auth filter OnCompletionRequest"))
+	slog.Debug("starting auth filter OnCompletionRequest")
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHttpRequest)
 	if err != nil {
+		// todo added generic error handling, non-Hardcode openai error
 		return filters.NewFailed(openai.NewErrorIncorrectAPIKey())
 	}
 	request.SetApiKey(apiKey)
 
 	// check apikey
-	slog.Debug(fmt.Sprintf("auth filter: rpc APIKeyAuth"))
+	slog.Debug("auth filter: rpc APIKeyAuth")
 	response, err := a.authClient.APIKeyAuth(ctx, &v1alpha12.APIKeyAuthRequest{
 		ApiKey: apiKey,
 	})
 	if err != nil {
-		slog.Error(fmt.Sprintf("auth filter: APIKeyAuth error: %s", err))
+		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
 	}
 
@@ -98,16 +99,16 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	}
 
 	if !response.IsValid {
-		slog.Debug(fmt.Sprintf("auth filter: user %s apikey invalid", response.UserId))
+		slog.Debug("auth filter: user apikey invalid", "user", response.UserId)
 		return filters.NewFailed(openai.NewErrorIncorrectAPIKey())
 	}
 
 	accessModel := request.GetModel()
 	if accessModel != "" && !request.CanAccessModel(accessModel) {
-		slog.Debug(fmt.Sprintf("auth filter: user %s can not access model %s", response.UserId, accessModel))
+		slog.Debug("auth filter: user can not access model", "user", response.UserId, "model", accessModel)
 		return filters.NewFailed(openai.NewErrorModelNotFoundOrNotAccessible(accessModel))
 	}
-	slog.Debug(fmt.Sprintf("auth filter: user %s authorization succeeds: allowMoldes %v", response.UserId, response.AllowModels))
+	slog.Debug("auth filter: user authorization succeeds", "user", response.UserId, "allow models", response.AllowModels)
 	return filters.NewOK()
 }
 

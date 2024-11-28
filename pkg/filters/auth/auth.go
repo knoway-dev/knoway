@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"knoway.dev/pkg/properties"
 	"log"
 	"log/slog"
 	"net/http"
 	"strings"
-
-	context2 "knoway.dev/pkg/context"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -104,7 +103,7 @@ func CanAccessModel(allowModels []string, requestModel string) bool {
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
-	context2.SetEnabledAuthFilter(ctx, true)
+	SetEnabledAuthFilter(ctx, true)
 
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHttpRequest)
@@ -123,7 +122,7 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
 	}
-	context2.SetAuthInfo(ctx, response)
+	SetAuthInfo(ctx, response)
 	request.SetUser(response.UserId)
 	sourceHttpRequest.WithContext(ctx)
 
@@ -148,4 +147,26 @@ func (a *AuthFilter) OnCompletionResponse(ctx context.Context, response object.L
 
 func (a *AuthFilter) OnCompletionStreamResponse(ctx context.Context, response object.LLMRequest, endStream bool) filters.RequestFilterResult {
 	return filters.NewOK()
+}
+
+const (
+	enabledAuthFilterKey = "enabledAuthFilter"
+	authInfoKey          = "authInfo"
+)
+
+func SetAuthInfo(ctx context.Context, info *v1alpha12.APIKeyAuthResponse) context.Context {
+	return properties.AppendToPropertiesContext(ctx, authInfoKey, info)
+}
+
+func GetAuthInfo(ctx context.Context) (*v1alpha12.APIKeyAuthResponse, bool) {
+	return properties.ValueFromIncomingContext[*v1alpha12.APIKeyAuthResponse](ctx, authInfoKey)
+}
+
+func SetEnabledAuthFilter(ctx context.Context, enabled bool) context.Context {
+	return properties.AppendToPropertiesContext(ctx, enabledAuthFilterKey, enabled)
+}
+
+func EnabledAuthFilter(ctx context.Context) bool {
+	value, ok := properties.ValueFromIncomingContext[bool](ctx, enabledAuthFilterKey)
+	return value && ok
 }

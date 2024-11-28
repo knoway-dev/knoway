@@ -6,8 +6,6 @@ import (
 	"sort"
 	"strings"
 
-	"knoway.dev/pkg/context"
-
 	"github.com/samber/lo"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
@@ -69,8 +67,8 @@ func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *h
 	clusters := cluster.ListModels()
 
 	// auth filters
-	if context.EnabledAuthFilter(ctx) {
-		if authInfo, ok := context.GetAuthInfo(ctx); ok {
+	if auth.EnabledAuthFilter(ctx) {
+		if authInfo, ok := auth.GetAuthInfo(ctx); ok {
 			allowModels := authInfo.GetAllowModels()
 			clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
 				return auth.CanAccessModel(allowModels, item.GetName())

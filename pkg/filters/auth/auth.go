@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"knoway.dev/pkg/properties"
 	"log"
 	"log/slog"
 	"net/http"
 	"strings"
+
+	"knoway.dev/pkg/properties"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -159,7 +160,7 @@ func SetAuthInfo(ctx context.Context, info *v1alpha12.APIKeyAuthResponse) contex
 }
 
 func GetAuthInfo(ctx context.Context) (*v1alpha12.APIKeyAuthResponse, bool) {
-	return properties.ValueFromIncomingContext[*v1alpha12.APIKeyAuthResponse](ctx, authInfoKey)
+	return properties.ValueFromPropertiesContext[*v1alpha12.APIKeyAuthResponse](ctx, authInfoKey)
 }
 
 func SetEnabledAuthFilter(ctx context.Context, enabled bool) context.Context {
@@ -167,6 +168,6 @@ func SetEnabledAuthFilter(ctx context.Context, enabled bool) context.Context {
 }
 
 func EnabledAuthFilter(ctx context.Context) bool {
-	value, ok := properties.ValueFromIncomingContext[bool](ctx, enabledAuthFilterKey)
+	value, ok := properties.ValueFromPropertiesContext[bool](ctx, enabledAuthFilterKey)
 	return value && ok
 }

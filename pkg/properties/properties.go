@@ -31,8 +31,8 @@ func AppendToPropertiesContext(ctx context.Context, key string, value interface{
 	return context.WithValue(ctx, propertiesKey, props)
 }
 
-// ValueFromIncomingContext 获取任意类型的值从 context 中
-func ValueFromIncomingContext[T any](ctx context.Context, key string) (T, bool) {
+// ValueFromPropertiesContext 获取任意类型的值从 context 中
+func ValueFromPropertiesContext[T any](ctx context.Context, key string) (T, bool) {
 	var zero T
 	props := fromPropertiesContext(ctx)
 	if props == nil {

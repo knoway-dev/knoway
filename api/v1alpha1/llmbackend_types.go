@@ -165,7 +165,7 @@ type FilterConfig struct {
 	//
 	// +kubebuilder:validation:OneOf
 	// +optional
-	Custom runtime.RawExtension `json:"custom,omitempty"`
+	Custom *runtime.RawExtension `json:"custom,omitempty"`
 }
 
 // UsageStatsConfig defines the configuration for usage statistics.

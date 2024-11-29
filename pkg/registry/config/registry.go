@@ -5,57 +5,58 @@ import (
 
 	"google.golang.org/protobuf/types/known/anypb"
 
-	v1alpha2 "knoway.dev/api/filters/v1alpha1"
+	filtersv1alpha1 "knoway.dev/api/filters/v1alpha1"
+	"knoway.dev/pkg/bootkit"
 	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/clusters/filters/openai"
 	"knoway.dev/pkg/clusters/filters/stats"
-	listenerfilters "knoway.dev/pkg/filters"
+	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/filters/auth"
 	"knoway.dev/pkg/protoutils"
 )
 
 var (
-	requestFilters = map[string]func(cfg *anypb.Any) (listenerfilters.RequestFilter, error){}
+	requestFilters = map[string]func(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error){}
 
-	clustersFilters = map[string]func(cfg *anypb.Any) (clusterfilters.ClusterFilter, error){}
+	clustersFilters = map[string]func(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (clusterfilters.ClusterFilter, error){}
 )
 
-func ClusterDefaultFilters() []clusterfilters.ClusterFilter {
+func ClusterDefaultFilters(lifecycle bootkit.LifeCycle) []clusterfilters.ClusterFilter {
 	res := make([]clusterfilters.ClusterFilter, 0)
 
-	pb, _ := anypb.New(&v1alpha2.OpenAIRequestMarshallerConfig{})
-	reqMar, _ := NewClusterFilterWithConfig("global", pb)
+	pb, _ := anypb.New(&filtersv1alpha1.OpenAIRequestMarshallerConfig{})
+	reqMar, _ := NewClusterFilterWithConfig("global", pb, lifecycle)
 	res = append(res, reqMar)
 
-	responsePb, _ := anypb.New(&v1alpha2.OpenAIResponseUnmarshallerConfig{})
-	respMar, _ := NewClusterFilterWithConfig("global", responsePb)
+	responsePb, _ := anypb.New(&filtersv1alpha1.OpenAIResponseUnmarshallerConfig{})
+	respMar, _ := NewClusterFilterWithConfig("global", responsePb, lifecycle)
 	res = append(res, respMar)
 
 	return res
 }
 
 func init() {
-	requestFilters[protoutils.TypeURLOrDie(&v1alpha2.APIKeyAuthConfig{})] = auth.NewWithConfig
+	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.APIKeyAuthConfig{})] = auth.NewWithConfig
 
-	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.UsageStatsConfig{})] = stats.NewWithConfig
-	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIModelNameRewriteConfig{})] = openai.NewModelNameRewriteWithConfig
+	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.UsageStatsConfig{})] = stats.NewWithConfig
+	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.OpenAIModelNameRewriteConfig{})] = openai.NewModelNameRewriteWithConfig
 
 	// internal base Filters
-	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIRequestMarshallerConfig{})] = openai.NewRequestMarshallerWithConfig
-	clustersFilters[protoutils.TypeURLOrDie(&v1alpha2.OpenAIResponseUnmarshallerConfig{})] = openai.NewResponseUnmarshallerWithConfig
+	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.OpenAIRequestMarshallerConfig{})] = openai.NewRequestMarshallerWithConfig
+	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.OpenAIResponseUnmarshallerConfig{})] = openai.NewResponseUnmarshallerWithConfig
 }
 
-func NewRequestFilterWithConfig(name string, cfg *anypb.Any) (listenerfilters.RequestFilter, error) {
+func NewRequestFilterWithConfig(name string, cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {
 	if f, ok := requestFilters[cfg.GetTypeUrl()]; ok {
-		return f(cfg)
+		return f(cfg, lifecycle)
 	}
 
 	return nil, fmt.Errorf("unknown listener filter %q, %s", name, cfg.GetTypeUrl())
 }
 
-func NewClusterFilterWithConfig(name string, cfg *anypb.Any) (clusterfilters.ClusterFilter, error) {
+func NewClusterFilterWithConfig(name string, cfg *anypb.Any, lifecycle bootkit.LifeCycle) (clusterfilters.ClusterFilter, error) {
 	if f, ok := clustersFilters[cfg.GetTypeUrl()]; ok {
-		return f(cfg)
+		return f(cfg, lifecycle)
 	}
 
 	return nil, fmt.Errorf("unknown cluster filter %q, %s", name, cfg.GetTypeUrl())

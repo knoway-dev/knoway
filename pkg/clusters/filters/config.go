@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/utils"
 )
 
 type ClusterFilterRequestMarshaller interface {
@@ -46,6 +47,28 @@ type ClusterFilterResponseHandler interface {
 
 type ClusterFilter interface {
 	isClusterFilter()
+}
+
+type ClusterFilters []ClusterFilter
+
+func (c ClusterFilters) OnRequestMarshallers() []ClusterFilterRequestMarshaller {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestMarshaller](c)
+}
+
+func (c ClusterFilters) OnResponseUnmarshallers() []ClusterFilterResponseUnmarshaller {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseUnmarshaller](c)
+}
+
+func (c ClusterFilters) OnEndpointSelectors() []ClusterFilterEndpointSelector {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterEndpointSelector](c)
+}
+
+func (c ClusterFilters) OnRequestHandlers() []ClusterFilterRequestHandler {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestHandler](c)
+}
+
+func (c ClusterFilters) OnResponseHandlers() []ClusterFilterResponseHandler {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseHandler](c)
 }
 
 type IsClusterFilter struct{}

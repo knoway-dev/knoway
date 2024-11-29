@@ -51,8 +51,8 @@ func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCy
 	}
 
 	server, err := listener.NewMux().
-		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig)).
-		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig)).
+		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig, lifecycle)).
+		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig, lifecycle)).
 		BuildServer(&http.Server{Addr: addr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err

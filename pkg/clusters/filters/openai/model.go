@@ -7,13 +7,14 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"knoway.dev/api/filters/v1alpha1"
-	filters2 "knoway.dev/pkg/clusters/filters"
+	"knoway.dev/pkg/bootkit"
+	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/protoutils"
 )
 
-func NewModelNameRewriteWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, error) {
-	c, err := protoutils.FromAny[*v1alpha1.OpenAIModelNameRewriteConfig](cfg, &v1alpha1.OpenAIModelNameRewriteConfig{})
+func NewModelNameRewriteWithConfig(cfg *anypb.Any, _ bootkit.LifeCycle) (clusterfilters.ClusterFilter, error) {
+	c, err := protoutils.FromAny(cfg, &v1alpha1.OpenAIModelNameRewriteConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
@@ -23,10 +24,10 @@ func NewModelNameRewriteWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, erro
 	}, nil
 }
 
-var _ filters2.ClusterFilterRequestHandler = (*modelNameRewriter)(nil)
+var _ clusterfilters.ClusterFilterRequestHandler = (*modelNameRewriter)(nil)
 
 type modelNameRewriter struct {
-	filters2.IsClusterFilter
+	clusterfilters.IsClusterFilter
 
 	cfg *v1alpha1.OpenAIModelNameRewriteConfig
 }

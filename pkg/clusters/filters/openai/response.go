@@ -10,14 +10,15 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"knoway.dev/api/filters/v1alpha1"
-	filters2 "knoway.dev/pkg/clusters/filters"
+	"knoway.dev/pkg/bootkit"
+	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/protoutils"
 	"knoway.dev/pkg/types/openai"
 )
 
-func NewResponseUnmarshallerWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, error) {
-	c, err := protoutils.FromAny[*v1alpha1.OpenAIResponseUnmarshallerConfig](cfg, &v1alpha1.OpenAIResponseUnmarshallerConfig{})
+func NewResponseUnmarshallerWithConfig(cfg *anypb.Any, _ bootkit.LifeCycle) (clusterfilters.ClusterFilter, error) {
+	c, err := protoutils.FromAny(cfg, &v1alpha1.OpenAIResponseUnmarshallerConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
@@ -27,11 +28,11 @@ func NewResponseUnmarshallerWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, 
 	}, nil
 }
 
-var _ filters2.ClusterFilterResponseUnmarshaller = (*responseUnmarshaller)(nil)
+var _ clusterfilters.ClusterFilterResponseUnmarshaller = (*responseUnmarshaller)(nil)
 
 type responseUnmarshaller struct {
 	cfg *v1alpha1.OpenAIResponseUnmarshallerConfig
-	filters2.ClusterFilter
+	clusterfilters.ClusterFilter
 }
 
 func (f *responseUnmarshaller) UnmarshalResponseBody(ctx context.Context, req object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {

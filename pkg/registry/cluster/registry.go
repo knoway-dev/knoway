@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/bootkit"
 	clusters2 "knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/manager"
 )
@@ -19,8 +20,8 @@ func RemoveCluster(cluster *v1alpha1.Cluster) {
 	clusterRegister.DeleteCluster(cluster.GetName())
 }
 
-func UpsertAndRegisterCluster(cluster *v1alpha1.Cluster) error {
-	return clusterRegister.UpsertAndRegisterCluster(cluster)
+func UpsertAndRegisterCluster(cluster *v1alpha1.Cluster, lifecycle bootkit.LifeCycle) error {
+	return clusterRegister.UpsertAndRegisterCluster(cluster, lifecycle)
 }
 
 func ListModels() []*v1alpha1.Cluster {
@@ -80,13 +81,13 @@ func (cr *Register) FindClusterByName(name string) (clusters2.Cluster, bool) {
 	return c, ok
 }
 
-func (cr *Register) UpsertAndRegisterCluster(cluster *v1alpha1.Cluster) error {
+func (cr *Register) UpsertAndRegisterCluster(cluster *v1alpha1.Cluster, lifecycle bootkit.LifeCycle) error {
 	cr.clustersLock.Lock()
 	defer cr.clustersLock.Unlock()
 
 	name := cluster.GetName()
 
-	c, err := manager.NewWithConfigs(cluster)
+	c, err := manager.NewWithConfigs(cluster, lifecycle)
 	if err != nil {
 		return err
 	}

@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
+	"knoway.dev/pkg/bootkit"
 )
 
 var _ = Describe("LLMBackend Controller", func() {
@@ -69,8 +70,9 @@ var _ = Describe("LLMBackend Controller", func() {
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &LLMBackendReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client:    k8sClient,
+				Scheme:    k8sClient.Scheme(),
+				LifeCycle: bootkit.NewEmptyLifeCycle(),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

@@ -2,11 +2,8 @@ package openai
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
-
-	jsonpatch "github.com/evanphx/json-patch/v5"
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/utils"
@@ -38,7 +35,7 @@ func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionsReques
 		return nil, NewErrorInvalidBody()
 	}
 
-	return &ChatCompletionsRequest{
+	req := &ChatCompletionsRequest{
 		Model:  utils.GetByJSONPath[string](parsed, "{ .model }"),
 		Stream: utils.GetByJSONPath[bool](parsed, "{ .stream }"),
 		StreamOptions: StreamOptions{
@@ -47,7 +44,20 @@ func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionsReques
 		bodyParsed:      parsed,
 		bodyBuffer:      buffer,
 		incomingRequest: httpRequest,
-	}, nil
+	}
+
+	if req.Stream && !req.StreamOptions.IncludeUsage {
+		var err error
+
+		req.bodyBuffer, req.bodyParsed, err = modifyBodyAndParsed(req.bodyBuffer, NewAdd("/stream_options", StreamOptions{IncludeUsage: true}))
+		if err != nil {
+			return nil, err
+		}
+
+		req.StreamOptions.IncludeUsage = true
+	}
+
+	return req, nil
 }
 
 func (r *ChatCompletionsRequest) IsStream() bool {
@@ -59,23 +69,9 @@ func (r *ChatCompletionsRequest) GetModel() string {
 }
 
 func (r *ChatCompletionsRequest) SetModel(model string) error {
-	patch, err := jsonpatch.DecodePatch(NewPatches(
-		NewReplace("/model", model),
-	))
-	if err != nil {
-		return err
-	}
+	var err error
 
-	patched, err := patch.Apply(r.bodyBuffer.Bytes())
-	if err != nil {
-		return err
-	}
-
-	r.bodyBuffer = bytes.NewBuffer(patched)
-
-	var m map[string]any
-
-	err = json.Unmarshal(patched, &m)
+	r.bodyBuffer, r.bodyParsed, err = modifyBodyAndParsed(r.bodyBuffer, NewReplace("/model", model))
 	if err != nil {
 		return err
 	}

@@ -61,13 +61,13 @@ func main() {
 		Level: slog.LevelDebug,
 	})))
 
-	// 开发配置
+	// development static server
 	devStaticServer := false
+
 	if devStaticServer {
-		err := gw.StaticRegisterClusters(gw.StaticClustersConfig)
-		if err != nil {
-			slog.Error("Failed to register static clusters", "error", err)
-		}
+		app.Add(func(_ context.Context, lifeCycle bootkit.LifeCycle) error {
+			return gw.StaticRegisterClusters(gw.StaticClustersConfig, lifeCycle)
+		})
 	} else {
 		// Start the server and handle errors gracefully
 		app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {

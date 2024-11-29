@@ -6,6 +6,7 @@ words:
   - anypb
   - apikey
   - apimachinery
+  - bodyclose
   - bootkit
   - bufconn
   - bufnet
@@ -29,6 +30,8 @@ words:
   - exhaustive
   - exhaustruct
   - exportloopref
+  - filtersv1alpha1
+  - finalizers
   - forcetypeassert
   - funlen
   - gci
@@ -59,8 +62,10 @@ words:
   - kubebuilder
   - listenerfilters
   - lll
+  - llmbackend
   - llmbackends
   - maintidx
+  - Marshallers
   - metav1
   - metricsserver
   - misspell
@@ -85,6 +90,7 @@ words:
   - revive
   - samber
   - sashabaranov
+  - servicev1alpha1
   - staticcheck
   - stretchr
   - stylecheck
@@ -96,6 +102,7 @@ words:
   - unconvert
   - unmarshalled
   - Unmarshaller
+  - Unmarshallers
   - unparam
   - unused
   - usestdlibvars

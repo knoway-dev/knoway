@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/utils"
 )
 
 const (
@@ -39,8 +40,42 @@ func NewFailed(err error) RequestFilterResult {
 	return RequestFilterResult{Type: ListenerFilterResultTypeFailed, Error: err}
 }
 
-type RequestFilter interface {
+type OnCompletionRequestFilter interface {
+	isRequestFilter()
+
 	OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) RequestFilterResult
+}
+
+type OnCompletionResponseFilter interface {
+	isRequestFilter()
+
 	OnCompletionResponse(ctx context.Context, response object.LLMResponse) RequestFilterResult
+}
+
+type OnCompletionStreamResponse interface {
+	isRequestFilter()
+
 	OnCompletionStreamResponse(ctx context.Context, response object.LLMRequest, endStream bool) RequestFilterResult
 }
+
+type RequestFilter interface {
+	isRequestFilter()
+}
+
+type RequestFilters []RequestFilter
+
+func (r RequestFilters) OnCompletionRequestFilters() []OnCompletionRequestFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnCompletionRequestFilter](r)
+}
+
+func (r RequestFilters) OnCompletionResponseFilters() []OnCompletionResponseFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnCompletionResponseFilter](r)
+}
+
+func (r RequestFilters) OnCompletionStreamResponseFilters() []OnCompletionStreamResponse {
+	return utils.TypeAssertFrom[RequestFilter, OnCompletionStreamResponse](r)
+}
+
+type IsRequestFilter struct{}
+
+func (IsRequestFilter) isRequestFilter() {}

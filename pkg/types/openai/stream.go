@@ -10,17 +10,21 @@ import (
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/types/sse"
+	"knoway.dev/pkg/utils"
 )
 
 var _ object.LLMChunkResponse = (*ChatCompletionStreamChunk)(nil)
 
 type ChatCompletionStreamChunk struct {
+	Usage *Usage `json:"usage,omitempty"`
+
 	response         object.LLMStreamResponse
 	responseBody     json.RawMessage
 	unmarshalledBody map[string]any
 
 	isEmpty bool
 	isDone  bool
+	isUsage bool
 }
 
 func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
@@ -40,7 +44,6 @@ func NewEmptyChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *Cha
 	resp := new(ChatCompletionStreamChunk)
 
 	resp.isEmpty = true
-
 	resp.response = streamResp
 
 	return resp
@@ -50,10 +53,30 @@ func NewDoneChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *Chat
 	resp := new(ChatCompletionStreamChunk)
 
 	resp.isDone = true
-
 	resp.response = streamResp
 
 	return resp
+}
+
+func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
+	resp := new(ChatCompletionStreamChunk)
+
+	err := resp.processBytes(bs)
+	if err != nil {
+		return NewEmptyChatCompletionStreamChunk(streamResp), err
+	}
+
+	usageMap := utils.GetByJSONPath[map[string]any](resp.unmarshalledBody, "{ .usage }")
+
+	resp.Usage, err = utils.FromMap[Usage](usageMap)
+	if err != nil {
+		return NewEmptyChatCompletionStreamChunk(streamResp), err
+	}
+
+	resp.isUsage = true
+	resp.response = streamResp
+
+	return resp, nil
 }
 
 func (r *ChatCompletionStreamChunk) IsEmpty() bool {
@@ -62,6 +85,10 @@ func (r *ChatCompletionStreamChunk) IsEmpty() bool {
 
 func (r *ChatCompletionStreamChunk) IsDone() bool {
 	return r.isDone
+}
+
+func (r *ChatCompletionStreamChunk) IsUsage() bool {
+	return r.isUsage
 }
 
 func (r *ChatCompletionStreamChunk) processBytes(bs []byte) error {
@@ -104,15 +131,16 @@ func (r *ChatCompletionStreamChunk) ToServerSentEvent() (*sse.Event, error) {
 
 // https://github.com/sashabaranov/go-openai/blob/74ed75f291f8f55d1104a541090d46c021169115/stream_reader.go#L13C1-L16C2
 var (
-	headerData  = []byte("data: ")
-	errorPrefix = []byte(`data: {"error":`)
+	headerData            = []byte("data: ")
+	errorPrefix           = []byte(`data: {"error":`)
+	usageCompletionTokens = []byte(`"completion_tokens":`)
 )
 
 var _ object.LLMStreamResponse = (*ChatCompletionStreamResponse)(nil)
 
 type ChatCompletionStreamResponse struct {
 	Model string         `json:"model"`
-	Usage *object.Usage  `json:"usage,omitempty"`
+	Usage *Usage         `json:"usage,omitempty"`
 	Error *ErrorResponse `json:"error,omitempty"`
 
 	// TODO: add more fields
@@ -178,6 +206,14 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		r.isDone = true
 		return NewDoneChatCompletionStreamChunk(r), io.EOF
 	}
+	if bytes.Contains(noPrefixLine, usageCompletionTokens) {
+		chunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine)
+		if err != nil {
+			return chunk, err
+		}
+
+		r.Usage = chunk.Usage
+	}
 
 	return NewChatCompletionStreamChunk(r, noPrefixLine)
 }
@@ -195,7 +231,7 @@ func (r *ChatCompletionStreamResponse) GetModel() string {
 	return r.Model
 }
 
-func (r *ChatCompletionStreamResponse) GetUsage() *object.Usage {
+func (r *ChatCompletionStreamResponse) GetUsage() object.LLMUsage {
 	return r.Usage
 }
 

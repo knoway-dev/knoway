@@ -50,8 +50,16 @@ func (l *lifeCycle) Append(hook LifeCycleHook) {
 	l.hooks = append(l.hooks, hook)
 }
 
+type EmptyLifeCycle struct{}
+
+func (*EmptyLifeCycle) Append(LifeCycleHook) {}
+
 func newLifeCycle() *lifeCycle {
 	return &lifeCycle{
 		hooks: make([]lifeCycler, 0),
 	}
+}
+
+func NewEmptyLifeCycle() LifeCycle {
+	return &EmptyLifeCycle{}
 }

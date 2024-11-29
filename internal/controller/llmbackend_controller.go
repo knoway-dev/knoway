@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strings"
 
+	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/registry/route"
 
 	"google.golang.org/protobuf/types/known/anypb"
@@ -40,7 +41,8 @@ import (
 type LLMBackendReconciler struct {
 	client.Client
 
-	Scheme *runtime.Scheme
+	Scheme    *runtime.Scheme
+	LifeCycle bootkit.LifeCycle
 }
 
 // +kubebuilder:rbac:groups=knoway.dev.knoway.dev,resources=llmbackends,verbs=get;list;watch;create;update;patch;delete
@@ -66,7 +68,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	clusterCfg := llmBackendToClusterCfg(llmBackend)
 	if clusterCfg != nil {
-		err := cluster.UpsertAndRegisterCluster(clusterCfg)
+		err := cluster.UpsertAndRegisterCluster(clusterCfg, r.LifeCycle)
 		if err != nil {
 			log.Log.Error(err, "Failed to upsert cluster", "cluster", clusterCfg, "error", err)
 			return ctrl.Result{}, nil
@@ -118,7 +120,8 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 	for _, fc := range backend.Spec.Filters {
 		var fcConfig *anypb.Any
 
-		if fc.UsageStats != nil {
+		switch {
+		case fc.UsageStats != nil:
 			c := &v1alpha12.UsageStatsConfig{
 				StatsServer: &v1alpha12.UsageStatsConfig_StatsServer{
 					Url: fc.UsageStats.Address,
@@ -131,7 +134,9 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 			} else {
 				fcConfig = us
 			}
-		} else if fc.ModelRewrite != nil {
+
+			log.Log.Info("Discovered filter during registration of cluster", "type", "UsageStats", "cluster", backend.Name, "modelName", mName, "filter_name", fc.Name)
+		case fc.ModelRewrite != nil:
 			rf := &v1alpha12.OpenAIModelNameRewriteConfig{
 				ModelName: fc.ModelRewrite.ModelName,
 			}
@@ -142,6 +147,14 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 			} else {
 				fcConfig = us
 			}
+
+			log.Log.Info("Discovered filter during registration of cluster", "type", "ModelRewrite", "cluster", backend.Name, "modelName", mName)
+		case fc.Custom != nil:
+			// TODO: Implement custom filter
+			log.Log.Info("Discovered filter during registration of cluster", "type", "Custom", "cluster", backend.Name, "modelName", mName)
+		default:
+			// TODO: Implement unknown filter
+			log.Log.Info("Discovered filter during registration of cluster", "type", "Unknown", "cluster", backend.Name, "modelName", mName)
 		}
 
 		if fcConfig != nil {

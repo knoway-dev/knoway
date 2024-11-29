@@ -98,8 +98,9 @@ func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, opts Opti
 	}
 
 	if err = (&controller.LLMBackendReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		LifeCycle: lifecycle,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "LLMBackend")
 		os.Exit(1)

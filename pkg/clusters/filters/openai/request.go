@@ -7,13 +7,14 @@ import (
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"knoway.dev/api/filters/v1alpha1"
-	filters2 "knoway.dev/pkg/clusters/filters"
+	"knoway.dev/pkg/bootkit"
+	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/protoutils"
 )
 
-func NewRequestMarshallerWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, error) {
-	c, err := protoutils.FromAny[*v1alpha1.OpenAIRequestMarshallerConfig](cfg, &v1alpha1.OpenAIRequestMarshallerConfig{})
+func NewRequestMarshallerWithConfig(cfg *anypb.Any, _ bootkit.LifeCycle) (clusterfilters.ClusterFilter, error) {
+	c, err := protoutils.FromAny(cfg, &v1alpha1.OpenAIRequestMarshallerConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
@@ -23,10 +24,10 @@ func NewRequestMarshallerWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, err
 	}, nil
 }
 
-var _ filters2.ClusterFilterRequestMarshaller = (*requestMarshaller)(nil)
+var _ clusterfilters.ClusterFilterRequestMarshaller = (*requestMarshaller)(nil)
 
 type requestMarshaller struct {
-	filters2.IsClusterFilter
+	clusterfilters.IsClusterFilter
 
 	cfg *v1alpha1.OpenAIRequestMarshallerConfig
 }

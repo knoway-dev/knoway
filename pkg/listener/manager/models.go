@@ -8,24 +8,23 @@ import (
 
 	"github.com/samber/lo"
 
-	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
-	"knoway.dev/pkg/filters/auth"
-
-	"knoway.dev/pkg/object"
-
 	"github.com/gorilla/mux"
 	goopenai "github.com/sashabaranov/go-openai"
 	"google.golang.org/protobuf/proto"
 
+	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
+	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/listener"
+	"knoway.dev/pkg/modules/auth"
+	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/config"
 	"knoway.dev/pkg/types/openai"
 )
 
-func NewOpenAIModelsListenerWithConfigs(cfg proto.Message) (listener.Listener, error) {
+func NewOpenAIModelsListenerWithConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle) (listener.Listener, error) {
 	c, ok := cfg.(*v1alpha1.ChatCompletionListener)
 	if !ok {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
@@ -36,7 +35,7 @@ func NewOpenAIModelsListenerWithConfigs(cfg proto.Message) (listener.Listener, e
 	}
 
 	for _, fc := range c.GetFilters() {
-		f, err := config.NewRequestFilterWithConfig(fc.GetName(), fc.GetConfig())
+		f, err := config.NewRequestFilterWithConfig(fc.GetName(), fc.GetConfig(), lifecycle)
 		if err != nil {
 			return nil, err
 		}
@@ -49,16 +48,15 @@ func NewOpenAIModelsListenerWithConfigs(cfg proto.Message) (listener.Listener, e
 
 type OpenAIModelsListener struct {
 	cfg               *v1alpha1.ChatCompletionListener
-	filters           []filters.RequestFilter
+	filters           filters.RequestFilters
 	listener.Listener // TODO: implement the interface
 }
 
 func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *http.Request) (any, error) {
 	llmRequest := &object.BaseLLMRequest{}
 
-	ctx := request.Context()
-	for _, f := range l.filters {
-		fResult := f.OnCompletionRequest(ctx, llmRequest, request)
+	for _, f := range l.filters.OnCompletionRequestFilters() {
+		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error
 		}
@@ -67,8 +65,8 @@ func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *h
 	clusters := cluster.ListModels()
 
 	// auth filters
-	if auth.EnabledAuthFilterFromCtx(ctx) {
-		if authInfo, ok := auth.GetAuthInfoFromCtx(ctx); ok {
+	if auth.EnabledAuthFilterFromCtx(request.Context()) {
+		if authInfo, ok := auth.GetAuthInfoFromCtx(request.Context()); ok {
 			allowModels := authInfo.GetAllowModels()
 			clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
 				return auth.CanAccessModel(allowModels, item.GetName())
@@ -79,6 +77,7 @@ func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *h
 	sort.Slice(clusters, func(i, j int) bool {
 		return strings.Compare(clusters[i].GetName(), clusters[j].GetName()) < 0
 	})
+
 	ms := ClustersToOpenAIModels(clusters)
 	body := goopenai.ModelsList{
 		Models: ms,

@@ -74,6 +74,11 @@ func BearerMarshal(request *http.Request) (token string, err error) {
 }
 
 // CanAccessModel 判断是否可以访问指定的模型
+// 规范如下：
+//
+//	如果是 *，代表可以访问所有公开模型，无法匹配 /。
+//	如果是 u-kebe/* 代表可以访问 kebe 的所有模型。
+//	如果是 */* 表示可以访问任意模型。
 func CanAccessModel(allowModels []string, requestModel string) bool {
 	for _, rule := range allowModels {
 		// 处理 "*/*"，允许访问任意模型

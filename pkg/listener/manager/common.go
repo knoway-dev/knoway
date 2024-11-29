@@ -1,6 +1,10 @@
 package manager
 
 import (
+	"net/http"
+
+	"knoway.dev/pkg/properties"
+
 	goopenai "github.com/sashabaranov/go-openai"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
@@ -27,5 +31,11 @@ func ClusterToOpenAIModel(cluster *v1alpha4.Cluster) goopenai.Model {
 		Permission: nil,
 		Root:       "",
 		Parent:     "",
+	}
+}
+
+func WrapRequest(fn func(writer http.ResponseWriter, request *http.Request)) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		fn(writer, request.WithContext(properties.NewPropertiesContext(request.Context())))
 	}
 }

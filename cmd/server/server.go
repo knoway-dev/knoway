@@ -122,13 +122,13 @@ func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, opts Opti
 
 	lifecycle.Append(bootkit.LifeCycleHook{
 		OnStart: func(ctx context.Context) error {
-			setupLog.Info("starting manager")
+			setupLog.Info("starting controller manager")
 			err := mgr.Start(managerCtx)
 
 			return err
 		},
 		OnStop: func(context.Context) error {
-			setupLog.Info("stopping manager")
+			setupLog.Info("stopping controller manager")
 			cancel()
 
 			return nil

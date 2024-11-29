@@ -13,7 +13,7 @@ import (
 )
 
 func NewWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, error) {
-	c, err := protoutils.FromAny[*v1alpha1.UsageStatsConfig](cfg)
+	c, err := protoutils.FromAny[*v1alpha1.UsageStatsConfig](cfg, &v1alpha1.UsageStatsConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}

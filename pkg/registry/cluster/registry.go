@@ -1,6 +1,7 @@
 package cluster
 
 import (
+	"log/slog"
 	"sync"
 
 	"knoway.dev/api/clusters/v1alpha1"
@@ -56,29 +57,9 @@ func NewClusterRegister() *Register {
 	return r
 }
 
-// Start starts the config client
-func (cr *Register) Start() {
-	// noting
-}
-
 func InitClusterRegister() {
 	c := NewClusterRegister()
 	clusterRegister = c
-}
-
-// RegisterClusterWithConfig registers a cluster
-func (cr *Register) RegisterClusterWithConfig(name string, cluster *v1alpha1.Cluster) error {
-	cr.clustersLock.Lock()
-	defer cr.clustersLock.Unlock()
-
-	c, err := manager.NewWithConfigs(cluster)
-	if err != nil {
-		return err
-	}
-
-	cr.clusters[name] = c
-
-	return nil
 }
 
 func (cr *Register) DeleteCluster(name string) {
@@ -87,6 +68,7 @@ func (cr *Register) DeleteCluster(name string) {
 
 	delete(cr.clusters, name)
 	delete(cr.clustersDetails, name)
+	slog.Info("remove cluster", "name", name)
 }
 
 func (cr *Register) FindClusterByName(name string) (clusters2.Cluster, bool) {
@@ -108,27 +90,10 @@ func (cr *Register) UpsertAndRegisterCluster(cluster *v1alpha1.Cluster) error {
 	if err != nil {
 		return err
 	}
-
 	cr.clustersDetails[cluster.Name] = cluster
 	cr.clusters[name] = c
 
-	return nil
-}
-
-func (cr *Register) RemoveCluster(cluster *v1alpha1.Cluster) {
-	cr.clustersLock.Lock()
-	defer cr.clustersLock.Unlock()
-
-	cr.DeleteCluster(cluster.Name)
-}
-
-func StaticRegisterClusters(clusterDetails map[string]*v1alpha1.Cluster) error {
-	for _, cluster := range clusterDetails {
-		if err := UpsertAndRegisterCluster(cluster); err != nil {
-			return err
-		}
-	}
-
+	slog.Info("register cluster", "name", name)
 	return nil
 }
 

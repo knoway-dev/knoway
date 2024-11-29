@@ -13,7 +13,7 @@ import (
 )
 
 func NewRequestMarshallerWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, error) {
-	c, err := protoutils.FromAny[*v1alpha1.OpenAIRequestMarshallerConfig](cfg)
+	c, err := protoutils.FromAny[*v1alpha1.OpenAIRequestMarshallerConfig](cfg, &v1alpha1.OpenAIRequestMarshallerConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}

@@ -5,6 +5,8 @@ import (
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
+	cluster2 "knoway.dev/pkg/registry/cluster"
+	"knoway.dev/pkg/registry/route"
 )
 
 var StaticClustersConfig = map[string]*v1alpha4.Cluster{
@@ -58,4 +60,18 @@ var StaticClustersConfig = map[string]*v1alpha4.Cluster{
 			},
 		},
 	},
+}
+
+func StaticRegisterClusters(clusterDetails map[string]*v1alpha4.Cluster) error {
+	for _, cluster := range clusterDetails {
+		if err := cluster2.UpsertAndRegisterCluster(cluster); err != nil {
+			return err
+		}
+
+		if err := route.RegisterRouteWithConfig(route.InitDirectModelRoute(cluster.GetName())); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

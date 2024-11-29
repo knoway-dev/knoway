@@ -12,6 +12,8 @@ var (
 	SkipResponse = errors.New("skip writing response") //nolint:errname
 )
 
+// WrapHandlerForOpenAIError
+// todo added generic error handling, non-Hardcode openai error
 func WrapHandlerForOpenAIError(fn func(writer http.ResponseWriter, request *http.Request) (any, error)) http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		resp, err := fn(writer, request)

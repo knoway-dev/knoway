@@ -13,7 +13,7 @@ import (
 )
 
 func NewModelNameRewriteWithConfig(cfg *anypb.Any) (filters2.ClusterFilter, error) {
-	c, err := protoutils.FromAny[*v1alpha1.OpenAIModelNameRewriteConfig](cfg)
+	c, err := protoutils.FromAny[*v1alpha1.OpenAIModelNameRewriteConfig](cfg, &v1alpha1.OpenAIModelNameRewriteConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}

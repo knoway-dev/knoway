@@ -76,6 +76,21 @@ func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
 	r.Usage = usage
 
 	if len(respErrMap) > 0 {
+		// todo
+		// compatible with openai
+		// server error type:
+		//     "error": {
+		//        "message": "Invalid credentials",
+		//        "code": 401
+		//    }
+		// business error type:
+		//  "error": {
+		//        "type": "invalid_request_error",
+		//        "code": "invalid_event",
+		//        "message": "The 'type' field is missing.",
+		//        "param": null,
+		//        "event_id": "event_567"
+		//    }
 		respErr, err := utils.FromMap[Error](respErrMap)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal error: %w", err)

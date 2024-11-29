@@ -115,15 +115,15 @@ func (l *OpenAIChatCompletionsListener) handleChatCompletionsChunks(resp object.
 }
 
 func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
-	req, err := l.UnmarshalLLMRequest(request.Context(), request)
+	llmRequest, err := l.UnmarshalLLMRequest(request.Context(), request)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, f := range l.filters {
-		res := f.OnCompletionRequest(request.Context(), req)
-		if res.Type == filters.ListenerFilterResultTypeFailed {
-			return nil, openai.NewErrorIncorrectAPIKey()
+		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
+		if fResult.IsFailed() {
+			return nil, fResult.Error
 		}
 	}
 
@@ -132,7 +132,7 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 
 	// TODO: do route
 	route.ForeachRoute(func(item route2.Route) bool {
-		if cn, ok := item.Match(request.Context(), req); ok {
+		if cn, ok := item.Match(request.Context(), llmRequest); ok {
 			clusterName = cn
 			r = item
 
@@ -143,15 +143,15 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 	})
 
 	if r == nil {
-		return nil, openai.NewErrorModelNotFoundOrNotAccessible(req.GetModel())
+		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
 	}
 
 	c, ok := cluster.FindClusterByName(clusterName)
 	if !ok {
-		return nil, openai.NewErrorModelNotFoundOrNotAccessible(req.GetModel())
+		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
 	}
 
-	resp, err := c.DoUpstreamRequest(request.Context(), req)
+	resp, err := c.DoUpstreamRequest(request.Context(), llmRequest)
 	if err != nil {
 		return nil, openai.NewErrorInternalError().WithCause(err)
 	}
@@ -172,7 +172,7 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 }
 
 func (l *OpenAIChatCompletionsListener) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/chat/completions", openai.WrapHandlerForOpenAIError(l.onChatCompletionsRequestWithError))
+	mux.HandleFunc("/v1/chat/completions", WrapRequest(openai.WrapHandlerForOpenAIError(l.onChatCompletionsRequestWithError)))
 
 	return nil
 }

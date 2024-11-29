@@ -28,6 +28,8 @@ type ChatCompletionsRequest struct {
 	bodyParsed      map[string]any
 	bodyBuffer      *bytes.Buffer
 	incomingRequest *http.Request
+
+	object.BaseLLMRequest
 }
 
 func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionsRequest, error) {

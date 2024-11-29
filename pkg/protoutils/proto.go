@@ -16,16 +16,14 @@ func TypeURLOrDie(obj proto.Message) string {
 	return a.GetTypeUrl()
 }
 
-func FromAny[T proto.Message](a *anypb.Any) (T, error) {
-	var obj T
+func FromAny[T proto.Message](a *anypb.Any, prototype T) (T, error) {
+	//var obj T
+	//objType := reflect.TypeOf(obj).Elem() // 获取目标类型
+	//newObj := reflect.New(objType).Interface().(T)
 
-	objType := reflect.TypeOf(obj).Elem() // 获取目标类型
-	newObj, _ := reflect.New(objType).Interface().(T)
-
-	err := a.UnmarshalTo(newObj)
-	if err != nil {
-		return obj, err
+	newObj := reflect.New(reflect.TypeOf(prototype).Elem()).Interface().(T)
+	if err := a.UnmarshalTo(newObj); err != nil {
+		return newObj, err
 	}
-
 	return newObj, nil
 }

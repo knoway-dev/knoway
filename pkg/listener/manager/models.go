@@ -6,6 +6,13 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/samber/lo"
+
+	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/filters/auth"
+
+	"knoway.dev/pkg/object"
+
 	"github.com/gorilla/mux"
 	goopenai "github.com/sashabaranov/go-openai"
 	"google.golang.org/protobuf/proto"
@@ -47,22 +54,40 @@ type OpenAIModelsListener struct {
 }
 
 func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *http.Request) (any, error) {
-	// TODO: add auth, get can access models to filter models
+	llmRequest := &object.BaseLLMRequest{}
+
+	ctx := request.Context()
+	for _, f := range l.filters {
+		fResult := f.OnCompletionRequest(ctx, llmRequest, request)
+		if fResult.IsFailed() {
+			return nil, fResult.Error
+		}
+	}
+
 	clusters := cluster.ListModels()
+
+	// auth filters
+	if auth.EnabledAuthFilterFromCtx(ctx) {
+		if authInfo, ok := auth.GetAuthInfoFromCtx(ctx); ok {
+			allowModels := authInfo.GetAllowModels()
+			clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
+				return auth.CanAccessModel(allowModels, item.GetName())
+			})
+		}
+	}
+
 	sort.Slice(clusters, func(i, j int) bool {
 		return strings.Compare(clusters[i].Name, clusters[j].Name) < 0
 	})
-
 	ms := ClustersToOpenAIModels(clusters)
 	body := goopenai.ModelsList{
 		Models: ms,
 	}
-
 	return body, nil
 }
 
 func (l *OpenAIModelsListener) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/models", openai.WrapHandlerForOpenAIError(l.listModels))
+	mux.HandleFunc("/v1/models", WrapRequest(openai.WrapHandlerForOpenAIError(l.listModels)))
 
 	return nil
 }

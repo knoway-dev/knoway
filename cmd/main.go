@@ -20,12 +20,12 @@ import (
 	"context"
 	"flag"
 	"log/slog"
+	"os"
 	"time"
 
 	"knoway.dev/cmd/gw"
 	"knoway.dev/cmd/server"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/registry/cluster"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -33,15 +33,15 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
-var (
-	metricsAddr          string
-	enableLeaderElection bool
-	probeAddr            string
-	secureMetrics        bool
-	enableHTTP2          bool
-)
-
 func main() {
+	var metricsAddr string
+	var enableLeaderElection bool
+	var probeAddr string
+	var secureMetrics bool
+	var enableHTTP2 bool
+	var apiKeyServer string
+	flag.StringVar(&apiKeyServer, "api-key-server", "", "The address the api key server address, example: 10.33.2.23:30943 . "+
+		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. "+
 		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -52,13 +52,18 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.Parse()
 
 	app := bootkit.New(bootkit.StartTimeout(time.Second * 10))
+
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	})))
 
 	// 开发配置
 	devStaticServer := false
 	if devStaticServer {
-		err := cluster.StaticRegisterClusters(gw.StaticClustersConfig)
+		err := gw.StaticRegisterClusters(gw.StaticClustersConfig)
 		if err != nil {
 			slog.Error("Failed to register static clusters", "error", err)
 		}
@@ -76,10 +81,10 @@ func main() {
 	}
 
 	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
-		return gw.StartGateway(ctx, lifeCycle)
+		return gw.StartGateway(ctx, gw.GatewayConfig{
+			AuthServerAddress: apiKeyServer,
+		}, lifeCycle)
 	})
-
-	slog.Info("Proxy started successfully.")
 
 	app.Start()
 }

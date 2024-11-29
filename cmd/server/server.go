@@ -6,6 +6,8 @@ import (
 	"flag"
 	"os"
 
+	"knoway.dev/config"
+
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -32,15 +34,14 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-type Options struct {
-	EnableHTTP2          bool
-	EnableLeaderElection bool
-	SecureMetrics        bool
-	MetricsAddr          string
-	ProbeAddr            string
-}
+func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, cfg config.ControllerConfig) error {
+	if cfg.MetricsAddr == "" {
+		cfg.MetricsAddr = "0"
+	}
+	if cfg.ProbeAddr == "" {
+		cfg.ProbeAddr = ":8081"
+	}
 
-func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, opts Options) error {
 	copts := zap.Options{
 		Development: true,
 	}
@@ -61,7 +62,7 @@ func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, opts Opti
 	}
 
 	tlsOpts := []func(*tls.Config){}
-	if !opts.EnableHTTP2 {
+	if !cfg.EnableHTTP2 {
 		tlsOpts = append(tlsOpts, disableHTTP2)
 	}
 
@@ -72,13 +73,13 @@ func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, opts Opti
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
-			BindAddress:   opts.MetricsAddr,
-			SecureServing: opts.SecureMetrics,
+			BindAddress:   cfg.MetricsAddr,
+			SecureServing: cfg.SecureMetrics,
 			TLSOpts:       tlsOpts,
 		},
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: opts.ProbeAddr,
-		LeaderElection:         opts.EnableLeaderElection,
+		HealthProbeBindAddress: cfg.ProbeAddr,
+		LeaderElection:         cfg.EnableLeaderElection,
 		LeaderElectionID:       "3db676b9.knoway.dev",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
 		// when the Manager ends. This requires the binary to immediately end when the

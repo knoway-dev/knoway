@@ -1,0 +1,26 @@
+global:
+  imageRegistry: release.daocloud.io
+  prod: knoway
+  # If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  #  requests:
+  #    cpu: 300m
+  #    memory: 200Mi
+  #  limits:
+  #    cpu: 900m
+  #    memory: 200Mi
+  resources: {}
+  imagePullPolicy: IfNotPresent
+  # -- Global Docker registry secret names as an array
+  imagePullSecrets: []
+  high_available: false
+  debug: false
+  config:
+    auth_server_url: 10.33.2.23:31960
+    stats_server_url: ''
+
+gateway:
+  image:
+    registry: ''
+    repository: knoway/knoway-gateway
+    tag:

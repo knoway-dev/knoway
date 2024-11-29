@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"
@@ -39,7 +39,7 @@ func loadAPIKeysFromYAML(filePath string) (map[string]*APIKeyAuthResponse, error
 	}
 
 	// 读取文件内容
-	data, err := ioutil.ReadFile(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read YAML file: %w", err)
 	}

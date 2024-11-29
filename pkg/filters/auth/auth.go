@@ -104,7 +104,9 @@ func CanAccessModel(allowModels []string, requestModel string) bool {
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
-	SetEnabledAuthFilterToCtx(ctx, true)
+	if err := SetEnabledAuthFilterToCtx(ctx, true); err != nil {
+		return filters.NewFailed(err)
+	}
 
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHttpRequest)
@@ -123,7 +125,10 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
 	}
-	SetAuthInfoToCtx(ctx, response)
+	if err = SetAuthInfoToCtx(ctx, response); err != nil {
+		return filters.NewFailed(err)
+	}
+
 	request.SetUser(response.UserId)
 	sourceHttpRequest.WithContext(ctx)
 
@@ -155,7 +160,7 @@ const (
 	authInfoKey          = "authInfo"
 )
 
-func SetAuthInfoToCtx(ctx context.Context, info *v1alpha12.APIKeyAuthResponse) context.Context {
+func SetAuthInfoToCtx(ctx context.Context, info *v1alpha12.APIKeyAuthResponse) error {
 	return properties.SetProperty(ctx, authInfoKey, info)
 }
 
@@ -163,7 +168,7 @@ func GetAuthInfoFromCtx(ctx context.Context) (*v1alpha12.APIKeyAuthResponse, boo
 	return properties.GetProperty[*v1alpha12.APIKeyAuthResponse](ctx, authInfoKey)
 }
 
-func SetEnabledAuthFilterToCtx(ctx context.Context, enabled bool) context.Context {
+func SetEnabledAuthFilterToCtx(ctx context.Context, enabled bool) error {
 	return properties.SetProperty(ctx, enabledAuthFilterKey, enabled)
 }
 

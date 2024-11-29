@@ -1,74 +1,74 @@
-run:
-  timeout: 5m
-  allow-parallel-runners: true
-
-issues:
-  # don't skip warning about doc comments
-  # don't exclude the default set of lint
-  exclude-use-default: false
-  # restore some of the defaults
-  # (fill in the rest as needed)
-  exclude-rules:
-    - path: "api/*"
-      linters:
-        - lll
-    - path: "internal/*"
-      linters:
-        - dupl
-        - lll
 linters:
-  disable-all: true
-  enable:
-    - dupl
-    - errcheck
-    - copyloopvar
-    - ginkgolinter
-    - goconst
-    - gocyclo
-    - gofmt
-    - goimports
-    - gosimple
-    - govet
-    - ineffassign
+  enable-all: true
+  disable:
+    - depguard
+    - exportloopref
+    - execinquery
+    - gomnd
+    - funlen
+    - containedctx
+    - exhaustruct
+    - testpackage
+    - varnamelen
+    - maintidx
+    - err113
+    - nlreturn
+    - wrapcheck
+    - tagliatelle
+    - paralleltest
     - lll
-    - misspell
-    - nakedret
-    - prealloc
-    - staticcheck
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - usestdlibvars
-    - whitespace
-    - wsl
-    - nolintlint
-    - nosprintfhostport
-    - predeclared
-    - reassign
-    - revive
-    - durationcheck
-    - errname
-    - exhaustive
-    - forcetypeassert
+    - contextcheck
+    - gochecknoglobals
+    - tagalign
+    - nilnil
+    - godot
+    - godox
+    - gci
+    - gocognit
+    - gocyclo
+    - cyclop
+    - ireturn
+    - gofumpt
+    - gochecknoinits
 
 linters-settings:
+  wsl:
+    allow-assign-and-call: false
+    strict-append: false
+    allow-trailing-comment: true
+    allow-cuddle-declarations: true
+    allow-separated-leading-comment: true
   revive:
     rules:
-      - name: exported
+      - name: blank-imports
         disabled: true
-  lll:
-    # Max line length, lines longer will be reported.
-    # '\t' is counted as 1 character by default, and can be changed with the tab-width option.
-    # Default: 120.
-    line-length: 200
-  wsl:
-    strict-append: false
-    # Allow multiple var/declaration statements to be cuddled.
-    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-cuddle-declarations
-    # Default: false
-    allow-cuddle-declarations: true
-    # Allow blocks to end with comments.
-    # https://github.com/bombsimon/wsl/blob/master/doc/configuration.md#allow-trailing-comment
-    # Default: false
-    allow-trailing-comment: true
+  nestif:
+    # Minimal complexity of if statements to report.
+    # Default: 5
+    min-complexity: 9
+  dupl:
+    # Tokens count to trigger issue.
+    # Default: 150
+    threshold: 600
+  mnd:
+    ignored-functions:
+      - "context.WithTimeout"
+      - "strconv.ParseComplex"
+    ignored-files:
+      - "examples/.*"
+  gocritic:
+    disabled-checks:
+      - ifElseChain
+  gosec:
+    excludes:
+      - G115
+
+issues:
+  exclude:
+    - "if statements should only be cuddled with assignments" # from wsl
+    - "if statements should only be cuddled with assignments used in the if statement itself" # from wsl
+    - "assignments should only be cuddled with other assignments" # from wsl. false positive case: var a bool\nb := true
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - perfsprint

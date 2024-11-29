@@ -20,7 +20,7 @@ func TestFromString(t *testing.T) {
 
 		mapVal, err = FromString[map[string]any]("")
 		require.NoError(t, err)
-		assert.Zero(t, len(mapVal))
+		assert.Empty(t, mapVal)
 
 		sliceVal, err := FromString[[]string]("")
 		require.NoError(t, err)
@@ -28,7 +28,7 @@ func TestFromString(t *testing.T) {
 
 		sliceVal, err = FromString[[]string]("")
 		require.NoError(t, err)
-		assert.Len(t, sliceVal, 0)
+		assert.Empty(t, sliceVal)
 
 		structVal, err := FromString[struct{}]("")
 		require.NoError(t, err)
@@ -36,7 +36,7 @@ func TestFromString(t *testing.T) {
 
 		funcVal, err = FromString[func()]("{}")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type func(): json: cannot unmarshal object into Go value of type func()")
+		require.EqualError(t, err, "failed to convert string to type func(): json: cannot unmarshal object into Go value of type func()")
 		assert.Nil(t, funcVal)
 	})
 
@@ -133,107 +133,107 @@ func TestFromString(t *testing.T) {
 	t.Run("Invalid", func(t *testing.T) {
 		intVal, err := FromString[int]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type int: strconv.ParseInt: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type int: strconv.ParseInt: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, intVal)
 
 		int8Val, err := FromString[int8]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type int8: strconv.ParseInt: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type int8: strconv.ParseInt: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, int8Val)
 
 		int16Val, err := FromString[int16]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type int16: strconv.ParseInt: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type int16: strconv.ParseInt: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, int16Val)
 
 		int32Val, err := FromString[int32]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type int32: strconv.ParseInt: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type int32: strconv.ParseInt: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, int32Val)
 
 		int64Val, err := FromString[int64]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type int64: strconv.ParseInt: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type int64: strconv.ParseInt: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, int64Val)
 
 		uintVal, err := FromString[uint]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type uint: strconv.ParseUint: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type uint: strconv.ParseUint: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, uintVal)
 
 		uint8Val, err := FromString[uint8]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type uint8: strconv.ParseUint: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type uint8: strconv.ParseUint: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, uint8Val)
 
 		uint16Val, err := FromString[uint16]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type uint16: strconv.ParseUint: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type uint16: strconv.ParseUint: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, uint16Val)
 
 		uint32Val, err := FromString[uint32]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type uint32: strconv.ParseUint: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type uint32: strconv.ParseUint: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, uint32Val)
 
 		uint64Val, err := FromString[uint64]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type uint64: strconv.ParseUint: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type uint64: strconv.ParseUint: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, uint64Val)
 
 		float32Val, err := FromString[float32]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type float32: strconv.ParseFloat: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type float32: strconv.ParseFloat: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, float32Val)
 
 		float64Val, err := FromString[float64]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type float64: strconv.ParseFloat: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type float64: strconv.ParseFloat: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, float64Val)
 
 		complex64Val, err := FromString[complex64]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type complex64: strconv.ParseComplex: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type complex64: strconv.ParseComplex: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, complex64Val)
 
 		complex128Val, err := FromString[complex128]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type complex128: strconv.ParseComplex: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type complex128: strconv.ParseComplex: parsing \"invalid\": invalid syntax")
 		assert.Zero(t, complex128Val)
 
 		boolVal, err := FromString[bool]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type bool: strconv.ParseBool: parsing \"invalid\": invalid syntax")
+		require.EqualError(t, err, "failed to convert string to type bool: strconv.ParseBool: parsing \"invalid\": invalid syntax")
 		assert.False(t, boolVal)
 
 		mapVal, err := FromString[map[string]any]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type map[string]interface {}: invalid character 'i' looking for beginning of value")
+		require.EqualError(t, err, "failed to convert string to type map[string]interface {}: invalid character 'i' looking for beginning of value")
 		assert.Nil(t, mapVal)
 
 		mapVal, err = FromString[map[string]any]("[]")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type map[string]interface {}: json: cannot unmarshal array into Go value of type map[string]interface {}")
-		assert.Zero(t, len(mapVal))
+		require.EqualError(t, err, "failed to convert string to type map[string]interface {}: json: cannot unmarshal array into Go value of type map[string]interface {}")
+		assert.Empty(t, mapVal)
 
 		sliceVal, err := FromString[[]string]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type []string: invalid character 'i' looking for beginning of value")
+		require.EqualError(t, err, "failed to convert string to type []string: invalid character 'i' looking for beginning of value")
 		assert.Nil(t, sliceVal)
 
 		sliceVal, err = FromString[[]string]("{}")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type []string: json: cannot unmarshal object into Go value of type []string")
+		require.EqualError(t, err, "failed to convert string to type []string: json: cannot unmarshal object into Go value of type []string")
 		assert.Nil(t, sliceVal)
 
 		structVal, err := FromString[struct{}]("invalid")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type struct {}: invalid character 'i' looking for beginning of value")
+		require.EqualError(t, err, "failed to convert string to type struct {}: invalid character 'i' looking for beginning of value")
 		assert.Empty(t, structVal)
 
 		structVal, err = FromString[struct{}]("[]")
 		require.Error(t, err)
-		assert.EqualError(t, err, "failed to convert string to type struct {}: json: cannot unmarshal array into Go value of type struct {}")
+		require.EqualError(t, err, "failed to convert string to type struct {}: json: cannot unmarshal array into Go value of type struct {}")
 		assert.Empty(t, structVal)
 	})
 
@@ -284,11 +284,11 @@ func TestFromString(t *testing.T) {
 
 		float32Val, err := FromString[float32]("1234.56")
 		require.NoError(t, err)
-		assert.Equal(t, float32(1234.56), float32Val)
+		assert.InDelta(t, float32(1234.56), float32Val, 0.0001)
 
 		float64Val, err := FromString[float64]("1234.56")
 		require.NoError(t, err)
-		assert.Equal(t, float64(1234.56), float64Val)
+		assert.InDelta(t, float64(1234.56), float64Val, 0.0001)
 
 		complex64Val, err := FromString[complex64]("1234.56")
 		require.NoError(t, err)
@@ -320,18 +320,18 @@ func TestFromStringOrEmpty(t *testing.T) {
 	t.Run("Unsupported", func(t *testing.T) {
 		assert.Nil(t, FromStringOrEmpty[func()](""))
 		assert.Nil(t, FromStringOrEmpty[map[string]any](""))
-		assert.Zero(t, len(FromStringOrEmpty[map[string]any]("")))
+		assert.Empty(t, FromStringOrEmpty[map[string]any](""))
 		assert.Nil(t, FromStringOrEmpty[[]string](""))
-		assert.Len(t, FromStringOrEmpty[[]string](""), 0)
+		assert.Empty(t, FromStringOrEmpty[[]string](""))
 		assert.Empty(t, FromStringOrEmpty[struct{}](""))
 	})
 
 	t.Run("Empty", func(t *testing.T) {
 		assert.Nil(t, FromStringOrEmpty[func()]("abcd"))
 		assert.Nil(t, FromStringOrEmpty[map[string]any]("abcd"))
-		assert.Zero(t, len(FromStringOrEmpty[map[string]any]("abcd")))
+		assert.Empty(t, FromStringOrEmpty[map[string]any]("abcd"))
 		assert.Nil(t, FromStringOrEmpty[[]string]("abcd"))
-		assert.Len(t, FromStringOrEmpty[[]string]("abcd"), 0)
+		assert.Empty(t, FromStringOrEmpty[[]string]("abcd"))
 		assert.Empty(t, FromStringOrEmpty[struct{}]("abcd"))
 		assert.Equal(t, "", FromStringOrEmpty[string](""))
 		assert.Zero(t, FromStringOrEmpty[int](""))
@@ -370,8 +370,8 @@ func TestFromStringOrEmpty(t *testing.T) {
 		assert.Equal(t, uint16(1234), FromStringOrEmpty[uint16]("1234"))
 		assert.Equal(t, uint32(1234), FromStringOrEmpty[uint32]("1234"))
 		assert.Equal(t, uint64(1234), FromStringOrEmpty[uint64]("1234"))
-		assert.Equal(t, float32(1234.56), FromStringOrEmpty[float32]("1234.56"))
-		assert.Equal(t, float64(1234.56), FromStringOrEmpty[float64]("1234.56"))
+		assert.InDelta(t, float32(1234.56), FromStringOrEmpty[float32]("1234.56"), 0.0001)
+		assert.InDelta(t, float64(1234.56), FromStringOrEmpty[float64]("1234.56"), 0.0001)
 		assert.Equal(t, complex64(1234.56), FromStringOrEmpty[complex64]("1234.56"))
 		assert.Equal(t, complex128(1234.56), FromStringOrEmpty[complex128]("1234.56"))
 		assert.True(t, FromStringOrEmpty[bool]("true"))

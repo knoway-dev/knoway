@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"net"
 	"os"
 
@@ -17,8 +18,8 @@ import (
 type APIKeyAuthResponse struct {
 	IsValid     bool     `yaml:"is_valid"`
 	AllowModels []string `yaml:"allow_models"`
-	ApiKeyId    string   `yaml:"api_key_id"`
-	UserId      string   `yaml:"user_id"`
+	APIKeyID    string   `yaml:"api_key_id"`
+	UserID      string   `yaml:"user_id"`
 }
 
 type APIKeyAuthServer struct {
@@ -33,8 +34,8 @@ func loadAPIKeysFromYAML(filePath string) (map[string]*APIKeyAuthResponse, error
 			APIKey      string   `yaml:"api_key"`
 			IsValid     bool     `yaml:"is_valid"`
 			AllowModels []string `yaml:"allow_models"`
-			ApiKeyId    string   `yaml:"api_key_id"`
-			UserId      string   `yaml:"user_id"`
+			APIKeyID    string   `yaml:"api_key_id"`
+			UserID      string   `yaml:"user_id"`
 		} `yaml:"api_keys"`
 	}
 
@@ -55,8 +56,8 @@ func loadAPIKeysFromYAML(filePath string) (map[string]*APIKeyAuthResponse, error
 		validAPIKeys[apiKey.APIKey] = &APIKeyAuthResponse{
 			IsValid:     apiKey.IsValid,
 			AllowModels: apiKey.AllowModels,
-			ApiKeyId:    apiKey.ApiKeyId,
-			UserId:      apiKey.UserId,
+			APIKeyID:    apiKey.APIKeyID,
+			UserID:      apiKey.UserID,
 		}
 	}
 
@@ -66,13 +67,13 @@ func loadAPIKeysFromYAML(filePath string) (map[string]*APIKeyAuthResponse, error
 // APIKeyAuth 处理 API Key 验证请求
 func (s *APIKeyAuthServer) APIKeyAuth(ctx context.Context, req *v1alpha1.APIKeyAuthRequest) (*v1alpha1.APIKeyAuthResponse, error) {
 	// 从 YAML 加载的 API Keys
-	if res, exists := s.ValidAPIKeys[req.ApiKey]; exists {
+	if res, exists := s.ValidAPIKeys[req.GetApiKey()]; exists {
 		// 返回相应的认证结果
 		return &v1alpha1.APIKeyAuthResponse{
 			IsValid:     res.IsValid,
 			AllowModels: res.AllowModels,
-			ApiKeyId:    res.ApiKeyId,
-			UserId:      res.UserId,
+			ApiKeyId:    res.APIKeyID,
+			UserId:      res.UserID,
 		}, nil
 	}
 
@@ -102,13 +103,13 @@ func main() {
 	v1alpha1.RegisterAuthServiceServer(server, authServer)
 
 	// 监听指定端口
-	listener, err := net.Listen("tcp", ":50051")
+	listener, err := net.Listen("tcp", ":50051") //nolint:gosec
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
 	// 启动 gRPC 服务器
-	fmt.Println("Starting APIKeyAuthServer on port 50051...")
+	slog.Info("Starting APIKeyAuthServer on port 50051...")
 	if err := server.Serve(listener); err != nil {
 		log.Fatalf("failed to serve: %v", err)
 	}

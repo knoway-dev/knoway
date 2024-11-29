@@ -35,17 +35,20 @@ func (e *ErrorResponse) appendCause(err error) *ErrorResponse {
 	} else {
 		e.ErrorBody.Message = err.Error()
 	}
+
 	return e
 }
 
 func (e *ErrorResponse) WithCause(err error) *ErrorResponse {
 	e.Cause = err
-	e.appendCause(err)
+	e.appendCause(err) //nolint:errcheck
+
 	return e
 }
 
 func (e *ErrorResponse) WithCausef(format string, args ...interface{}) *ErrorResponse {
-	e.WithCause(fmt.Errorf(format, args...))
+	e.WithCause(fmt.Errorf(format, args...)) //nolint:errcheck
+
 	return e
 }
 

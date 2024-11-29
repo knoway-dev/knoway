@@ -34,7 +34,7 @@ func TestBootkit_Add(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		wg.Add(1)
 
 		go func() {
@@ -76,7 +76,7 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 		wg := new(sync.WaitGroup)
 		errChan := make(chan error)
 
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			wg.Add(1)
 
 			go func() {
@@ -98,7 +98,7 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 		wg := new(sync.WaitGroup)
 		errChan := make(chan error)
 
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			wg.Add(1)
 
 			go func() {
@@ -109,7 +109,7 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 
 		err := waitDoneOrContextDone(ctx, wg, errChan)
 		require.Error(t, err)
-		assert.ErrorIs(t, context.DeadlineExceeded, err)
+		require.ErrorIs(t, context.DeadlineExceeded, err)
 	})
 
 	t.Run("ErrorCircuitBreak", func(t *testing.T) {
@@ -121,7 +121,7 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 		wg := new(sync.WaitGroup)
 		errChan := make(chan error)
 
-		for i := 0; i < 100; i++ {
+		for i := range 100 {
 			wg.Add(1)
 
 			go func() {
@@ -137,7 +137,7 @@ func TestWaitDoneOrContextDone(t *testing.T) {
 
 		err := waitDoneOrContextDone(ctx, wg, errChan)
 		require.Error(t, err)
-		assert.EqualError(t, err, "error")
+		require.EqualError(t, err, "error")
 	})
 }
 
@@ -207,7 +207,7 @@ func TestCallRunnable(t *testing.T) {
 			},
 		}, lf)
 		require.Error(t, err)
-		assert.ErrorIs(t, context.DeadlineExceeded, err)
+		require.ErrorIs(t, context.DeadlineExceeded, err)
 	})
 
 	t.Run("ContextDoneBeforeRunnable-EarlyCancel", func(t *testing.T) {
@@ -233,7 +233,7 @@ func TestCallRunnable(t *testing.T) {
 			},
 		}, lf)
 		require.Error(t, err)
-		assert.ErrorIs(t, context.Canceled, err)
+		require.ErrorIs(t, context.Canceled, err)
 	})
 
 	t.Run("ErrorCircuitBreak", func(t *testing.T) {
@@ -253,7 +253,7 @@ func TestCallRunnable(t *testing.T) {
 			},
 		}, lf)
 		require.Error(t, err)
-		assert.EqualError(t, err, "error")
+		require.EqualError(t, err, "error")
 	})
 }
 
@@ -298,7 +298,7 @@ func TestCallStartHooks(t *testing.T) {
 		callStartHook(context.TODO(), wg, errChan, hooks)
 		wg.Wait()
 
-		assert.Len(t, errChan, 0)
+		assert.Empty(t, errChan)
 		assert.True(t, startHookRan[0])
 		assert.True(t, startHookRan[1])
 		assert.False(t, stopHookRan[0])
@@ -341,7 +341,7 @@ func TestCallStartHooks(t *testing.T) {
 
 		err := <-errChan
 		require.Error(t, err)
-		assert.EqualError(t, err, "error")
+		require.EqualError(t, err, "error")
 
 		assert.True(t, startHookRan[0])
 		assert.True(t, startHookRan[1])
@@ -430,7 +430,7 @@ func TestCallStopHooks(t *testing.T) {
 
 		err := callStopHooks(ctx, hooks)
 		require.Error(t, err)
-		assert.EqualError(t, err, "error")
+		require.EqualError(t, err, "error")
 
 		assert.False(t, startHookRan[0])
 		assert.False(t, startHookRan[1])
@@ -472,7 +472,7 @@ func TestCallStopHooks(t *testing.T) {
 
 		err := callStopHooks(ctx, hooks)
 		require.Error(t, err)
-		assert.ErrorIs(t, context.DeadlineExceeded, err)
+		require.ErrorIs(t, context.DeadlineExceeded, err)
 
 		assert.False(t, startHookRan[0])
 		assert.False(t, startHookRan[1])
@@ -514,7 +514,7 @@ func TestCallStopHooks(t *testing.T) {
 
 		err := callStopHooks(ctx, hooks)
 		require.Error(t, err)
-		assert.ErrorIs(t, context.Canceled, err)
+		require.ErrorIs(t, context.Canceled, err)
 
 		assert.False(t, startHookRan[0])
 		assert.False(t, startHookRan[1])

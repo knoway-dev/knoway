@@ -32,7 +32,7 @@ type modelNameRewriter struct {
 }
 
 func (f *modelNameRewriter) RequestPreflight(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error) {
-	err := request.SetModel(f.cfg.ModelName)
+	err := request.SetModel(f.cfg.GetModelName())
 	if err != nil {
 		return nil, err
 	}

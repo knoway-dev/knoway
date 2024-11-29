@@ -40,7 +40,7 @@ func (ev *Event) MarshalTo(w io.Writer) error {
 
 	defer utils.SafeFlush(w)
 
-	if len(ev.Data) > 0 {
+	if len(ev.Data) > 0 { //nolint:nestif
 		if len(ev.ID) > 0 {
 			if _, err := fmt.Fprintf(w, "id: %s\n", ev.ID); err != nil {
 				return err

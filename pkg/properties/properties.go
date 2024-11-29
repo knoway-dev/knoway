@@ -2,7 +2,7 @@ package properties
 
 import (
 	"context"
-	"fmt"
+	"errors"
 )
 
 type propertiesKey struct{}
@@ -25,16 +25,18 @@ func NewPropertiesContext(ctx context.Context) context.Context {
 func SetProperty(ctx context.Context, key string, value interface{}) error {
 	props, ok := fromPropertiesContext(ctx)
 	if !ok {
-		return fmt.Errorf("context does not have properties space, please use NewPropertiesContext to initialize it")
+		return errors.New("context does not have properties space, please use NewPropertiesContext to initialize it")
 	}
 	// update old ctx
 	props[key] = value
+
 	return nil
 }
 
 // GetProperty 获取任意类型的值从 context 中
 func GetProperty[T any](ctx context.Context, key string) (T, bool) {
 	var zero T
+
 	props, pok := fromPropertiesContext(ctx)
 	if !pok {
 		return zero, false
@@ -49,5 +51,6 @@ func GetProperty[T any](ctx context.Context, key string) (T, bool) {
 	if !ok {
 		return zero, false
 	}
+
 	return v, true
 }

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,8 +36,8 @@ func NewWithConfigs(cfg proto.Message) (clusters.Cluster, error) {
 	} else {
 		conf = cfg
 
-		for _, fc := range cfg.Filters {
-			if f, err := registryfilters.NewClusterFilterWithConfig(fc.Name, fc.Config); err != nil {
+		for _, fc := range cfg.GetFilters() {
+			if f, err := registryfilters.NewClusterFilterWithConfig(fc.GetName(), fc.GetConfig()); err != nil {
 				return nil, err
 			} else {
 				fs = append(fs, f)
@@ -45,7 +46,7 @@ func NewWithConfigs(cfg proto.Message) (clusters.Cluster, error) {
 	}
 
 	// check lb
-	switch conf.LoadBalancePolicy {
+	switch conf.GetLoadBalancePolicy() {
 	case v1alpha1.LoadBalancePolicy_IP_HASH:
 		// TODO: implement
 	case v1alpha1.LoadBalancePolicy_LEAST_CONNECTION:
@@ -53,11 +54,12 @@ func NewWithConfigs(cfg proto.Message) (clusters.Cluster, error) {
 	case v1alpha1.LoadBalancePolicy_ROUND_ROBIN:
 		// TODO: implement
 	case v1alpha1.LoadBalancePolicy_CUSTOM, v1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED:
-		if _, ok := lo.Find(fs, func(f filters.ClusterFilter) bool {
+		_, ok := lo.Find(fs, func(f filters.ClusterFilter) bool {
 			selector, ok := f.(filters.ClusterFilterEndpointSelector)
 			return ok && selector != nil
-		}); !ok {
-			return nil, fmt.Errorf("custom load balance policy must be implemented")
+		})
+		if !ok {
+			return nil, errors.New("custom load balance policy must be implemented")
 		}
 	default:
 		// if use internal lb, filter must NOT implement SelectEndpoint
@@ -65,7 +67,7 @@ func NewWithConfigs(cfg proto.Message) (clusters.Cluster, error) {
 			selector, ok := f.(filters.ClusterFilterEndpointSelector)
 			return ok && selector != nil
 		}) {
-			return nil, fmt.Errorf("internal load balance policy must NOT be implemented")
+			return nil, errors.New("internal load balance policy must NOT be implemented")
 		}
 	}
 
@@ -148,7 +150,7 @@ func forEachResponseMarshaller(
 	return resp, nil
 }
 
-func composeRequestBody(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest) (io.ReadCloser, error) {
+func composeRequestBody(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest) (io.Reader, error) {
 	var err error
 
 	req, err = forEachRequestHandler(ctx, f, req)
@@ -161,7 +163,7 @@ func composeRequestBody(ctx context.Context, f []filters.ClusterFilter, req obje
 		return nil, err
 	}
 
-	return io.NopCloser(bytes.NewReader(bs)), nil
+	return bytes.NewReader(bs), nil
 }
 
 func composeLLMResponse(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
@@ -176,10 +178,12 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRe
 	}
 
 	// TODO: lb policy
-	rawResp, buffer, err := doRequest(ctx, m.cfg.Upstream, body, RequestWithStream(req.IsStream()))
+	rawResp, buffer, err := doRequest(ctx, m.cfg.GetUpstream(), body, RequestWithStream(req.IsStream()))
 	if err != nil {
 		return nil, err
 	}
+
+	defer rawResp.Body.Close()
 
 	return composeLLMResponse(ctx, m.LoadFilters(), req, rawResp, buffer)
 }
@@ -203,7 +207,7 @@ func RequestWithEndpoint(endpoint string) requestCallOption {
 	}
 }
 
-func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.ReadCloser, callOpts ...requestCallOption) (*http.Response, *bufio.Reader, error) {
+func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.Reader, callOpts ...requestCallOption) (*http.Response, *bufio.Reader, error) {
 	opts := &requestOptions{}
 
 	for _, opt := range callOpts {
@@ -215,18 +219,18 @@ func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.ReadClo
 	// TODO: request
 	var method string
 
-	switch upstream.Method {
+	switch upstream.GetMethod() {
 	case v1alpha1.Upstream_GET:
 		method = http.MethodGet
 	case v1alpha1.Upstream_POST:
 		method = http.MethodPost
 	case v1alpha1.Upstream_METHOD_UNSPECIFIED:
-		return nil, nil, fmt.Errorf("unsupported method %s", upstream.Method)
+		return nil, nil, fmt.Errorf("unsupported method %s", upstream.GetMethod())
 	default:
-		return nil, nil, fmt.Errorf("unsupported method %s", upstream.Method)
+		return nil, nil, fmt.Errorf("unsupported method %s", upstream.GetMethod())
 	}
 
-	req, err := http.NewRequest(method, upstream.Url, body)
+	req, err := http.NewRequest(method, upstream.GetUrl(), body)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -240,8 +244,8 @@ func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.ReadClo
 		req.Header.Set("Connection", "keep-alive")
 	}
 
-	lo.ForEach(upstream.Headers, func(h *v1alpha1.Upstream_Header, _ int) {
-		req.Header.Set(h.Key, h.Value)
+	lo.ForEach(upstream.GetHeaders(), func(h *v1alpha1.Upstream_Header, _ int) {
+		req.Header.Set(h.GetKey(), h.GetValue())
 	})
 
 	// send request

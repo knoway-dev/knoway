@@ -12,7 +12,7 @@ type bootkitApplyOptions struct {
 }
 
 type Option interface {
-	apply(*bootkitApplyOptions)
+	apply(options *bootkitApplyOptions)
 }
 
 type startTimeoutOption time.Duration

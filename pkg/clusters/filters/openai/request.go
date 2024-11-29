@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"google.golang.org/protobuf/types/known/anypb"
@@ -10,28 +11,44 @@ import (
 	"knoway.dev/pkg/bootkit"
 	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
 )
 
-func NewRequestMarshallerWithConfig(cfg *anypb.Any, _ bootkit.LifeCycle) (clusterfilters.ClusterFilter, error) {
-	c, err := protoutils.FromAny(cfg, &v1alpha1.OpenAIRequestMarshallerConfig{})
+func NewRequestHandlerWithConfig(cfg *anypb.Any, _ bootkit.LifeCycle) (clusterfilters.ClusterFilter, error) {
+	c, err := protoutils.FromAny(cfg, &v1alpha1.OpenAIRequestHandlerConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
 
-	return &requestMarshaller{
+	return &requestHandler{
 		cfg: c,
 	}, nil
 }
 
-var _ clusterfilters.ClusterFilterRequestMarshaller = (*requestMarshaller)(nil)
+var _ clusterfilters.ClusterFilterRequestModifier = (*requestHandler)(nil)
+var _ clusterfilters.ClusterFilterRequestMarshaller = (*requestHandler)(nil)
 
-type requestMarshaller struct {
+type requestHandler struct {
 	clusterfilters.IsClusterFilter
 
-	cfg *v1alpha1.OpenAIRequestMarshallerConfig
+	cfg *v1alpha1.OpenAIRequestHandlerConfig
 }
 
-func (f *requestMarshaller) MarshalRequestBody(ctx context.Context, request object.LLMRequest, pre []byte) ([]byte, error) {
+func (f *requestHandler) RequestModifier(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error) {
+	cluster, ok := properties.GetClusterFromContext(ctx)
+	if !ok {
+		return request, errors.New("cluster not found in context")
+	}
+
+	err := request.SetModel(cluster.GetName())
+	if err != nil {
+		return request, err
+	}
+
+	return request, nil
+}
+
+func (f *requestHandler) MarshalRequestBody(ctx context.Context, request object.LLMRequest, pre []byte) ([]byte, error) {
 	return request.GetBodyBuffer().Bytes(), nil
 }

@@ -7,6 +7,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,8 +17,8 @@ import (
 	service "knoway.dev/api/service/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
-	"knoway.dev/pkg/modules/auth"
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
 	"knoway.dev/pkg/types/openai"
 )
@@ -66,12 +67,12 @@ type AuthFilter struct {
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
-	if err := auth.SetEnabledAuthFilterToCtx(ctx, true); err != nil {
+	if err := properties.SetEnabledAuthFilterToCtx(ctx, true); err != nil {
 		return filters.NewFailed(err)
 	}
 
 	// parse apikey
-	apiKey, err := auth.BearerMarshal(sourceHTTPRequest)
+	apiKey, err := BearerMarshal(sourceHTTPRequest)
 	if err != nil {
 		// todo added generic error handling, non-Hardcode openai error
 		return filters.NewFailed(openai.NewErrorIncorrectAPIKey())
@@ -89,7 +90,7 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
 	}
-	if err = auth.SetAuthInfoToCtx(ctx, response); err != nil {
+	if err = properties.SetAuthInfoToCtx(ctx, response); err != nil {
 		return filters.NewFailed(err)
 	}
 
@@ -101,7 +102,7 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	}
 
 	accessModel := request.GetModel()
-	if accessModel != "" && !auth.CanAccessModel(response.GetAllowModels(), accessModel) {
+	if accessModel != "" && !CanAccessModel(response.GetAllowModels(), accessModel) {
 		slog.Debug("auth filter: user can not access model", "user", response.GetUserId(), "model", accessModel)
 		return filters.NewFailed(openai.NewErrorModelNotFoundOrNotAccessible(accessModel))
 	}
@@ -111,10 +112,60 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	return filters.NewOK()
 }
 
-func (a *AuthFilter) OnCompletionResponse(ctx context.Context, response object.LLMResponse) filters.RequestFilterResult {
-	return filters.NewOK()
+func BearerMarshal(request *http.Request) (string, error) {
+	authHeader := request.Header.Get("Authorization")
+	if authHeader == "" {
+		return "", errors.New("missing Authorization header")
+	}
+
+	const prefix = "Bearer "
+	if !strings.HasPrefix(authHeader, prefix) {
+		return "", errors.New("invalid Authorization header format")
+	}
+
+	token := strings.TrimPrefix(authHeader, prefix)
+	if token == "" {
+		return "", errors.New("missing API Key in Authorization header")
+	}
+
+	return token, nil
 }
 
-func (a *AuthFilter) OnCompletionStreamResponse(ctx context.Context, response object.LLMRequest, endStream bool) filters.RequestFilterResult {
-	return filters.NewOK()
+/*
+CanAccessModel determines whether the user can access the specified model.
+
+The rules defined in allowModels follows the spec of the following:
+
+- if * is provided, means that all public models can be accessed, except the ones with /.
+
+- if u-kebe/* is provided, means that all models under the u-kebe namespace can be accessed, if we define u- means all individual users, then u-kebe/* means that all models under the kebe user can be accessed.
+
+- if *\/* is provided, means that all models can be accessed.
+*/
+func CanAccessModel(allowModels []string, requestModel string) bool {
+	for _, rule := range allowModels {
+		// allow all models
+		if rule == "*/*" {
+			return true
+		}
+
+		// allow specific model
+		if rule == requestModel {
+			return true
+		}
+
+		// allow all public models
+		if rule == "*" && !strings.Contains(requestModel, "/") {
+			return true
+		}
+
+		// allow all models under a specific namespace, e.g. ns/*
+		if strings.HasSuffix(rule, "/*") {
+			if strings.HasPrefix(requestModel, strings.TrimSuffix(rule, "/*")+"/") {
+				return true
+			}
+		}
+	}
+
+	return false
 }

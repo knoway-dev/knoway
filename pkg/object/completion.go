@@ -33,6 +33,8 @@ type LLMResponse interface {
 	GetUsage() LLMUsage
 	GetOutgoingResponse() *http.Response
 	GetError() error
+
+	SetModel(modelName string) error
 }
 
 type LLMStreamResponse interface {
@@ -49,7 +51,10 @@ type LLMChunkResponse interface {
 	IsDone() bool
 	IsUsage() bool
 	GetResponse() LLMStreamResponse
+	GetModel() string
 	ToServerSentEvent() (*sse.Event, error)
+
+	SetModel(modelName string) error
 }
 
 type LLMUsage interface {

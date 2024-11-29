@@ -49,7 +49,7 @@ func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionsReques
 	if req.Stream && !req.StreamOptions.IncludeUsage {
 		var err error
 
-		req.bodyBuffer, req.bodyParsed, err = modifyBodyAndParsed(req.bodyBuffer, NewAdd("/stream_options", StreamOptions{IncludeUsage: true}))
+		req.bodyBuffer, req.bodyParsed, err = modifyBufferBodyAndParsed(req.bodyBuffer, NewAdd("/stream_options", StreamOptions{IncludeUsage: true}))
 		if err != nil {
 			return nil, err
 		}
@@ -71,7 +71,7 @@ func (r *ChatCompletionsRequest) GetModel() string {
 func (r *ChatCompletionsRequest) SetModel(model string) error {
 	var err error
 
-	r.bodyBuffer, r.bodyParsed, err = modifyBodyAndParsed(r.bodyBuffer, NewReplace("/model", model))
+	r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, NewReplace("/model", model))
 	if err != nil {
 		return err
 	}

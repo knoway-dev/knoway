@@ -16,9 +16,10 @@ import (
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
+	"knoway.dev/pkg/filters/auth"
 	"knoway.dev/pkg/listener"
-	"knoway.dev/pkg/modules/auth"
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/config"
 	"knoway.dev/pkg/types/openai"
@@ -65,8 +66,8 @@ func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *h
 	clusters := cluster.ListModels()
 
 	// auth filters
-	if auth.EnabledAuthFilterFromCtx(request.Context()) {
-		if authInfo, ok := auth.GetAuthInfoFromCtx(request.Context()); ok {
+	if properties.EnabledAuthFilterFromCtx(request.Context()) {
+		if authInfo, ok := properties.GetAuthInfoFromCtx(request.Context()); ok {
 			allowModels := authInfo.GetAllowModels()
 			clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
 				return auth.CanAccessModel(allowModels, item.GetName())

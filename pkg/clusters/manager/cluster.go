@@ -18,26 +18,27 @@ import (
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/properties"
 	registryfilters "knoway.dev/pkg/registry/config"
 )
 
 var _ clusters.Cluster = (*clusterManager)(nil)
 
 type clusterManager struct {
-	cfg     *v1alpha1.Cluster
+	cluster *v1alpha1.Cluster
 	filters filters.ClusterFilters
 }
 
-func NewWithConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle) (clusters.Cluster, error) {
+func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) (clusters.Cluster, error) {
 	var conf *v1alpha1.Cluster
 	var clusterFilters []filters.ClusterFilter
 
-	if cfg, ok := cfg.(*v1alpha1.Cluster); !ok {
-		return nil, fmt.Errorf("invalid config type %T", cfg)
+	if cluster, ok := clusterProtoMsg.(*v1alpha1.Cluster); !ok {
+		return nil, fmt.Errorf("invalid config type %T", cluster)
 	} else {
-		conf = cfg
+		conf = cluster
 
-		for _, fc := range cfg.GetFilters() {
+		for _, fc := range cluster.GetFilters() {
 			if f, err := registryfilters.NewClusterFilterWithConfig(fc.GetName(), fc.GetConfig(), lifecycle); err != nil {
 				return nil, err
 			} else {
@@ -73,7 +74,7 @@ func NewWithConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle) (clusters.Cl
 	}
 
 	return &clusterManager{
-		cfg:     conf,
+		cluster: conf,
 		filters: append(clusterFilters, registryfilters.ClusterDefaultFilters(lifecycle)...),
 	}, nil
 }
@@ -82,11 +83,11 @@ func (m *clusterManager) LoadFilters() []filters.ClusterFilter {
 	return m.filters
 }
 
-func forEachRequestHandler(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest) (object.LLMRequest, error) {
-	for _, f := range f.OnRequestHandlers() {
+func forEachRequestModifier(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest) (object.LLMRequest, error) {
+	for _, f := range f.OnRequestModifiers() {
 		var err error
 
-		req, err = f.RequestPreflight(ctx, req)
+		req, err = f.RequestModifier(ctx, req)
 		if err != nil {
 			return nil, err
 		}
@@ -140,10 +141,23 @@ func forEachResponseMarshaller(
 	return resp, nil
 }
 
-func composeRequestBody(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest) (io.Reader, error) {
+func forEachResponseModifier(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest, resp object.LLMResponse) (object.LLMResponse, error) {
+	for _, f := range lo.Reverse(f).OnResponseModifiers() {
+		var err error
+
+		resp, err = f.ResponseModifier(ctx, req, resp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return resp, nil
+}
+
+func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest) (io.Reader, error) {
 	var err error
 
-	req, err = forEachRequestHandler(ctx, f, req)
+	req, err = forEachRequestModifier(ctx, f, req)
 	if err != nil {
 		return nil, err
 	}
@@ -156,31 +170,48 @@ func composeRequestBody(ctx context.Context, f filters.ClusterFilters, req objec
 	return bytes.NewReader(bs), nil
 }
 
-func composeLLMResponse(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
+func composeLLMResponseFromBody(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
+	var err error
 	var resp object.LLMResponse
-	return forEachResponseMarshaller(ctx, f, req, rawResp, reader, resp)
+
+	resp, err = forEachResponseMarshaller(ctx, f, req, rawResp, reader, resp)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err = forEachResponseModifier(ctx, f, req, resp)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
 func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRequest) (object.LLMResponse, error) {
-	body, err := composeRequestBody(ctx, m.LoadFilters(), req)
+	err := properties.SetClusterToContext(ctx, m.cluster)
+	if err != nil {
+		return nil, err
+	}
+
+	body, err := composeLLMRequestBody(ctx, m.LoadFilters(), req)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: lb policy
 	// TODO: body close
-	rawResp, buffer, err := doRequest(ctx, m.cfg.GetUpstream(), body, RequestWithStream(req.IsStream())) //nolint:bodyclose
+	rawResp, buffer, err := doRequest(ctx, m.cluster.GetUpstream(), body, RequestWithStream(req.IsStream())) //nolint:bodyclose
 	if err != nil {
 		return nil, err
 	}
 
-	return composeLLMResponse(ctx, m.LoadFilters(), req, rawResp, buffer)
+	return composeLLMResponseFromBody(ctx, m.LoadFilters(), req, rawResp, buffer)
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {
 	fs := filters.ClusterFilters(m.LoadFilters())
 
-	for _, f := range fs.OnResponseHandlers() {
+	for _, f := range fs.OnResponseCompleters() {
 		err := f.ResponseComplete(ctx, req, res)
 		if err != nil {
 			return err

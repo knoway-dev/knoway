@@ -40,6 +40,7 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var apiKeyServer string
+	var usageStatsServer string
 
 	flag.StringVar(&apiKeyServer, "api-key-server", "", "The address the api key server address, example: 10.33.2.23:30943 . "+
 		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
@@ -83,7 +84,8 @@ func main() {
 
 	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
 		return gw.StartGateway(ctx, gw.GatewayConfig{
-			AuthServerAddress: apiKeyServer,
+			AuthServerAddress:       apiKeyServer,
+			UsageStatsServerAddress: usageStatsServer,
 		}, lifeCycle)
 	})
 

@@ -3,6 +3,7 @@ package openai
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -13,29 +14,31 @@ import (
 	"knoway.dev/pkg/bootkit"
 	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
 	"knoway.dev/pkg/types/openai"
 )
 
-func NewResponseUnmarshallerWithConfig(cfg *anypb.Any, _ bootkit.LifeCycle) (clusterfilters.ClusterFilter, error) {
-	c, err := protoutils.FromAny(cfg, &v1alpha1.OpenAIResponseUnmarshallerConfig{})
+func NewResponseHandlerWithConfig(cfg *anypb.Any, _ bootkit.LifeCycle) (clusterfilters.ClusterFilter, error) {
+	c, err := protoutils.FromAny(cfg, &v1alpha1.OpenAIResponseHandlerConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
 
-	return &responseUnmarshaller{
+	return &responseHandler{
 		cfg: c,
 	}, nil
 }
 
-var _ clusterfilters.ClusterFilterResponseUnmarshaller = (*responseUnmarshaller)(nil)
+var _ clusterfilters.ClusterFilterResponseUnmarshaller = (*responseHandler)(nil)
+var _ clusterfilters.ClusterFilterResponseModifier = (*responseHandler)(nil)
 
-type responseUnmarshaller struct {
-	cfg *v1alpha1.OpenAIResponseUnmarshallerConfig
+type responseHandler struct {
+	cfg *v1alpha1.OpenAIResponseHandlerConfig
 	clusterfilters.ClusterFilter
 }
 
-func (f *responseUnmarshaller) UnmarshalResponseBody(ctx context.Context, req object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
+func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, req object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
 	contentType := rawResponse.Header.Get("Content-Type")
 
 	switch {
@@ -46,4 +49,18 @@ func (f *responseUnmarshaller) UnmarshalResponseBody(ctx context.Context, req ob
 	default:
 		return nil, fmt.Errorf("unsupported content type %s", contentType)
 	}
+}
+
+func (f *responseHandler) ResponseModifier(ctx context.Context, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
+	cluster, ok := properties.GetClusterFromContext(ctx)
+	if !ok {
+		return response, errors.New("cluster not found in context")
+	}
+
+	err := response.SetModel(cluster.GetName())
+	if err != nil {
+		return response, err
+	}
+
+	return response, nil
 }

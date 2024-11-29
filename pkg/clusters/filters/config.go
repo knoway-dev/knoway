@@ -1,3 +1,14 @@
+// This package defines a set of dedicated interfaces of filters that can be applied to a cluster or take effects within the
+// scope of cluster operations. The filters are applied in a chain of responsibility pattern, where each filter is responsible
+// for a specific operation. The filters are divided into two categories: request filters and response filters.
+//
+// For simple illustrations, the workflow can be described as follows:
+//
+// Incoming Request -> Request Preflight x n -> Request Modifier x n -> Endpoint Selector -> Request Marshaller -> Outgoing Request
+//
+// Incoming Response -> Response Unmarshaller -> Response Modifier x n -> Response Completer x n -> Outgoing Response
+//
+// The filters are applied in the order they are defined in the configuration.
 package filters
 
 import (
@@ -8,6 +19,24 @@ import (
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/utils"
 )
+
+type ClusterFilterRequestPreflight interface {
+	isClusterFilter()
+
+	RequestPreflight(ctx context.Context, request object.LLMRequest) error
+}
+
+type ClusterFilterRequestModifier interface {
+	isClusterFilter()
+
+	RequestModifier(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error)
+}
+
+type ClusterFilterEndpointSelector interface {
+	isClusterFilter()
+
+	SelectEndpoint(ctx context.Context, request object.LLMRequest, endpoints []string) string
+}
 
 type ClusterFilterRequestMarshaller interface {
 	isClusterFilter()
@@ -27,19 +56,13 @@ type ClusterFilterResponseUnmarshaller interface {
 	UnmarshalResponseBody(ctx context.Context, request object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error)
 }
 
-type ClusterFilterEndpointSelector interface {
+type ClusterFilterResponseModifier interface {
 	isClusterFilter()
 
-	SelectEndpoint(ctx context.Context, request object.LLMRequest, endpoints []string) string
+	ResponseModifier(ctx context.Context, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error)
 }
 
-type ClusterFilterRequestHandler interface {
-	isClusterFilter()
-
-	RequestPreflight(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error)
-}
-
-type ClusterFilterResponseHandler interface {
+type ClusterFilterResponseComplete interface {
 	isClusterFilter()
 
 	ResponseComplete(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error
@@ -51,6 +74,18 @@ type ClusterFilter interface {
 
 type ClusterFilters []ClusterFilter
 
+func (c ClusterFilters) OnRequestPreflights() []ClusterFilterRequestPreflight {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestPreflight](c)
+}
+
+func (c ClusterFilters) OnRequestModifiers() []ClusterFilterRequestModifier {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestModifier](c)
+}
+
+func (c ClusterFilters) OnEndpointSelectors() []ClusterFilterEndpointSelector {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterEndpointSelector](c)
+}
+
 func (c ClusterFilters) OnRequestMarshallers() []ClusterFilterRequestMarshaller {
 	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestMarshaller](c)
 }
@@ -59,16 +94,12 @@ func (c ClusterFilters) OnResponseUnmarshallers() []ClusterFilterResponseUnmarsh
 	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseUnmarshaller](c)
 }
 
-func (c ClusterFilters) OnEndpointSelectors() []ClusterFilterEndpointSelector {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterEndpointSelector](c)
+func (c ClusterFilters) OnResponseModifiers() []ClusterFilterResponseModifier {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseModifier](c)
 }
 
-func (c ClusterFilters) OnRequestHandlers() []ClusterFilterRequestHandler {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestHandler](c)
-}
-
-func (c ClusterFilters) OnResponseHandlers() []ClusterFilterResponseHandler {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseHandler](c)
+func (c ClusterFilters) OnResponseCompleters() []ClusterFilterResponseComplete {
+	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseComplete](c)
 }
 
 type IsClusterFilter struct{}

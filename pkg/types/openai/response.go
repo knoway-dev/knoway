@@ -57,7 +57,7 @@ type ChatCompletionsResponse struct {
 
 	request          object.LLMRequest
 	responseBody     json.RawMessage
-	unmarshalledBody map[string]any
+	bodyParsed       map[string]any
 	outgoingResponse *http.Response
 }
 
@@ -96,7 +96,7 @@ func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
 		return fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
-	r.unmarshalledBody = body
+	r.bodyParsed = body
 
 	r.Model = utils.GetByJSONPath[string](body, "{ .model }")
 	usageMap := utils.GetByJSONPath[map[string]any](body, "{ .usage }")
@@ -154,6 +154,19 @@ func (r *ChatCompletionsResponse) GetRequestID() string {
 
 func (r *ChatCompletionsResponse) GetModel() string {
 	return r.Model
+}
+
+func (r *ChatCompletionsResponse) SetModel(model string) error {
+	var err error
+
+	r.responseBody, r.bodyParsed, err = modifyBytesBodyAndParsed(r.responseBody, NewReplace("/model", model))
+	if err != nil {
+		return err
+	}
+
+	r.Model = model
+
+	return nil
 }
 
 func (r *ChatCompletionsResponse) GetUsage() object.LLMUsage {

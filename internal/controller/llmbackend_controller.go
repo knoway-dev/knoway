@@ -136,19 +136,6 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) *v1alpha1.Clu
 			}
 
 			log.Log.Info("Discovered filter during registration of cluster", "type", "UsageStats", "cluster", backend.Name, "modelName", mName, "filter_name", fc.Name)
-		case fc.ModelRewrite != nil:
-			rf := &v1alpha12.OpenAIModelNameRewriteConfig{
-				ModelName: fc.ModelRewrite.ModelName,
-			}
-
-			us, err := anypb.New(rf)
-			if err != nil {
-				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
-			} else {
-				fcConfig = us
-			}
-
-			log.Log.Info("Discovered filter during registration of cluster", "type", "ModelRewrite", "cluster", backend.Name, "modelName", mName)
 		case fc.Custom != nil:
 			// TODO: Implement custom filter
 			log.Log.Info("Discovered filter during registration of cluster", "type", "Custom", "cluster", backend.Name, "modelName", mName)

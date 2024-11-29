@@ -49,13 +49,13 @@ type OnCompletionRequestFilter interface {
 type OnCompletionResponseFilter interface {
 	isRequestFilter()
 
-	OnCompletionResponse(ctx context.Context, response object.LLMResponse) RequestFilterResult
+	OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) RequestFilterResult
 }
 
-type OnCompletionStreamResponse interface {
+type OnCompletionStreamResponseFilter interface {
 	isRequestFilter()
 
-	OnCompletionStreamResponse(ctx context.Context, response object.LLMRequest, endStream bool) RequestFilterResult
+	OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, endStream bool) RequestFilterResult
 }
 
 type RequestFilter interface {
@@ -72,8 +72,8 @@ func (r RequestFilters) OnCompletionResponseFilters() []OnCompletionResponseFilt
 	return utils.TypeAssertFrom[RequestFilter, OnCompletionResponseFilter](r)
 }
 
-func (r RequestFilters) OnCompletionStreamResponseFilters() []OnCompletionStreamResponse {
-	return utils.TypeAssertFrom[RequestFilter, OnCompletionStreamResponse](r)
+func (r RequestFilters) OnCompletionStreamResponseFilters() []OnCompletionStreamResponseFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnCompletionStreamResponseFilter](r)
 }
 
 type IsRequestFilter struct{}

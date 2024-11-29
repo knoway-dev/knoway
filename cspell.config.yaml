@@ -82,6 +82,7 @@ words:
   - perfsprint
   - prealloc
   - predeclared
+  - Preflights
   - printcolumn
   - protoutils
   - readyz

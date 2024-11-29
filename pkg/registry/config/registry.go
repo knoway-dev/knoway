@@ -9,9 +9,9 @@ import (
 	"knoway.dev/pkg/bootkit"
 	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/clusters/filters/openai"
-	"knoway.dev/pkg/clusters/filters/stats"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/filters/auth"
+	"knoway.dev/pkg/filters/usage"
 	"knoway.dev/pkg/protoutils"
 )
 
@@ -24,11 +24,11 @@ var (
 func ClusterDefaultFilters(lifecycle bootkit.LifeCycle) []clusterfilters.ClusterFilter {
 	res := make([]clusterfilters.ClusterFilter, 0)
 
-	pb, _ := anypb.New(&filtersv1alpha1.OpenAIRequestMarshallerConfig{})
+	pb, _ := anypb.New(&filtersv1alpha1.OpenAIRequestHandlerConfig{})
 	reqMar, _ := NewClusterFilterWithConfig("global", pb, lifecycle)
 	res = append(res, reqMar)
 
-	responsePb, _ := anypb.New(&filtersv1alpha1.OpenAIResponseUnmarshallerConfig{})
+	responsePb, _ := anypb.New(&filtersv1alpha1.OpenAIResponseHandlerConfig{})
 	respMar, _ := NewClusterFilterWithConfig("global", responsePb, lifecycle)
 	res = append(res, respMar)
 
@@ -37,13 +37,11 @@ func ClusterDefaultFilters(lifecycle bootkit.LifeCycle) []clusterfilters.Cluster
 
 func init() {
 	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.APIKeyAuthConfig{})] = auth.NewWithConfig
-
-	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.UsageStatsConfig{})] = stats.NewWithConfig
-	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.OpenAIModelNameRewriteConfig{})] = openai.NewModelNameRewriteWithConfig
+	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.UsageStatsConfig{})] = usage.NewWithConfig
 
 	// internal base Filters
-	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.OpenAIRequestMarshallerConfig{})] = openai.NewRequestMarshallerWithConfig
-	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.OpenAIResponseUnmarshallerConfig{})] = openai.NewResponseUnmarshallerWithConfig
+	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.OpenAIRequestHandlerConfig{})] = openai.NewRequestHandlerWithConfig
+	clustersFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.OpenAIResponseHandlerConfig{})] = openai.NewResponseHandlerWithConfig
 }
 
 func NewRequestFilterWithConfig(name string, cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {

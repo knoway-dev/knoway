@@ -16,18 +16,19 @@ import (
 var _ object.LLMChunkResponse = (*ChatCompletionStreamChunk)(nil)
 
 type ChatCompletionStreamChunk struct {
+	Model string `json:"model"`
 	Usage *Usage `json:"usage,omitempty"`
 
-	response         object.LLMStreamResponse
-	responseBody     json.RawMessage
-	unmarshalledBody map[string]any
+	response     object.LLMStreamResponse
+	responseBody json.RawMessage
+	bodyParsed   map[string]any
 
 	isEmpty bool
 	isDone  bool
 	isUsage bool
 }
 
-func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
+func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte, model string) (*ChatCompletionStreamChunk, error) {
 	resp := new(ChatCompletionStreamChunk)
 
 	err := resp.processBytes(bs)
@@ -36,6 +37,11 @@ func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte
 	}
 
 	resp.response = streamResp
+
+	err = resp.SetModel(model)
+	if err != nil {
+		return NewEmptyChatCompletionStreamChunk(streamResp), err
+	}
 
 	return resp, nil
 }
@@ -58,7 +64,7 @@ func NewDoneChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *Chat
 	return resp
 }
 
-func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
+func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte, model string) (*ChatCompletionStreamChunk, error) {
 	resp := new(ChatCompletionStreamChunk)
 
 	err := resp.processBytes(bs)
@@ -66,7 +72,7 @@ func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs [
 		return NewEmptyChatCompletionStreamChunk(streamResp), err
 	}
 
-	usageMap := utils.GetByJSONPath[map[string]any](resp.unmarshalledBody, "{ .usage }")
+	usageMap := utils.GetByJSONPath[map[string]any](resp.bodyParsed, "{ .usage }")
 
 	resp.Usage, err = utils.FromMap[Usage](usageMap)
 	if err != nil {
@@ -75,6 +81,11 @@ func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs [
 
 	resp.isUsage = true
 	resp.response = streamResp
+
+	err = resp.SetModel(model)
+	if err != nil {
+		return NewEmptyChatCompletionStreamChunk(streamResp), err
+	}
 
 	return resp, nil
 }
@@ -91,6 +102,23 @@ func (r *ChatCompletionStreamChunk) IsUsage() bool {
 	return r.isUsage
 }
 
+func (r *ChatCompletionStreamChunk) GetModel() string {
+	return r.Model
+}
+
+func (r *ChatCompletionStreamChunk) SetModel(model string) error {
+	var err error
+
+	r.responseBody, r.bodyParsed, err = modifyBytesBodyAndParsed(r.responseBody, NewReplace("/model", model))
+	if err != nil {
+		return err
+	}
+
+	r.Model = model
+
+	return nil
+}
+
 func (r *ChatCompletionStreamChunk) processBytes(bs []byte) error {
 	r.responseBody = bs
 
@@ -101,7 +129,7 @@ func (r *ChatCompletionStreamChunk) processBytes(bs []byte) error {
 		return fmt.Errorf("failed to unmarshal response body: %w", err)
 	}
 
-	r.unmarshalledBody = body
+	r.bodyParsed = body
 
 	return nil
 }
@@ -115,7 +143,7 @@ func (r *ChatCompletionStreamChunk) MarshalJSON() ([]byte, error) {
 		return []byte("[DONE]"), nil
 	}
 
-	return json.Marshal(r.unmarshalledBody)
+	return json.Marshal(r.bodyParsed)
 }
 
 func (r *ChatCompletionStreamChunk) ToServerSentEvent() (*sse.Event, error) {
@@ -207,7 +235,7 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		return NewDoneChatCompletionStreamChunk(r), io.EOF
 	}
 	if bytes.Contains(noPrefixLine, usageCompletionTokens) {
-		chunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine)
+		chunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine, r.GetModel())
 		if err != nil {
 			return chunk, err
 		}
@@ -215,7 +243,7 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		r.Usage = chunk.Usage
 	}
 
-	return NewChatCompletionStreamChunk(r, noPrefixLine)
+	return NewChatCompletionStreamChunk(r, noPrefixLine, r.GetModel())
 }
 
 func (r *ChatCompletionStreamResponse) IsStream() bool {
@@ -229,6 +257,12 @@ func (r *ChatCompletionStreamResponse) GetRequestID() string {
 
 func (r *ChatCompletionStreamResponse) GetModel() string {
 	return r.Model
+}
+
+func (r *ChatCompletionStreamResponse) SetModel(model string) error {
+	r.Model = model
+
+	return nil
 }
 
 func (r *ChatCompletionStreamResponse) GetUsage() object.LLMUsage {

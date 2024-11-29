@@ -40,7 +40,7 @@ func NewFailed(err error) RequestFilterResult {
 }
 
 type RequestFilter interface {
-	OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) RequestFilterResult
+	OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) RequestFilterResult
 	OnCompletionResponse(ctx context.Context, response object.LLMResponse) RequestFilterResult
 	OnCompletionStreamResponse(ctx context.Context, response object.LLMRequest, endStream bool) RequestFilterResult
 }

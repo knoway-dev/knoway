@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"time"
 
 	"google.golang.org/protobuf/types/known/anypb"
 
@@ -38,6 +39,7 @@ func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCy
 				if err != nil {
 					return nil
 				}
+
 				return c
 			}(),
 		})
@@ -45,14 +47,13 @@ func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCy
 
 	addr := cfg.GatewayListenAddress
 	if addr == "" {
-		//default address
-		addr = ":8080"
+		addr = ":8080" // default address
 	}
 
 	server, err := listener.NewMux().
 		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig)).
 		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig)).
-		BuildServer(&http.Server{Addr: addr})
+		BuildServer(&http.Server{Addr: addr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err
 	}

@@ -35,8 +35,8 @@ func NewOpenAIModelsListenerWithConfigs(cfg proto.Message) (listener.Listener, e
 		cfg: c,
 	}
 
-	for _, fc := range c.Filters {
-		f, err := config.NewRequestFilterWithConfig(fc.Name, fc.Config)
+	for _, fc := range c.GetFilters() {
+		f, err := config.NewRequestFilterWithConfig(fc.GetName(), fc.GetConfig())
 		if err != nil {
 			return nil, err
 		}
@@ -77,12 +77,13 @@ func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *h
 	}
 
 	sort.Slice(clusters, func(i, j int) bool {
-		return strings.Compare(clusters[i].Name, clusters[j].Name) < 0
+		return strings.Compare(clusters[i].GetName(), clusters[j].GetName()) < 0
 	})
 	ms := ClustersToOpenAIModels(clusters)
 	body := goopenai.ModelsList{
 		Models: ms,
 	}
+
 	return body, nil
 }
 

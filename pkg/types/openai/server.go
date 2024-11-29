@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	SkipResponse = errors.New("skip writing response") //nolint:errname
+	SkipResponse = errors.New("skip writing response") //nolint:errname,stylecheck
 )
 
 // WrapHandlerForOpenAIError
@@ -38,10 +38,8 @@ func WrapHandlerForOpenAIError(fn func(writer http.ResponseWriter, request *http
 					"message", openAIError.ErrorBody.Message,
 					"type", openAIError.ErrorBody.Type,
 				)
-			} else {
-				if openAIError.Status >= 500 {
-					slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause)
-				}
+			} else if openAIError.Status >= http.StatusInternalServerError {
+				slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause)
 			}
 
 			utils.WriteJSONForHTTP(openAIError.Status, openAIError, writer)

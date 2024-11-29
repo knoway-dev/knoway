@@ -9,7 +9,7 @@ import (
 
 func TestNewRequestFiltersKeys(t *testing.T) {
 	checkKeys := func(expectedKeys []string, actualKeys []string) {
-		require.NotZero(t, len(actualKeys))
+		require.NotEmpty(t, actualKeys)
 
 		for _, expectedKey := range expectedKeys {
 			found := false

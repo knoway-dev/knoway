@@ -7,6 +7,8 @@ import (
 )
 
 func TestJSONPathExecute(t *testing.T) {
+	t.Parallel()
+
 	type testCase struct {
 		name     string
 		payload  map[string]any

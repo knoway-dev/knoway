@@ -16,7 +16,7 @@ func FindClusterByName(name string) (clusters2.Cluster, bool) {
 }
 
 func RemoveCluster(cluster *v1alpha1.Cluster) {
-	clusterRegister.DeleteCluster(cluster.Name)
+	clusterRegister.DeleteCluster(cluster.GetName())
 }
 
 func UpsertAndRegisterCluster(cluster *v1alpha1.Cluster) error {
@@ -31,7 +31,7 @@ func ListModels() []*v1alpha1.Cluster {
 	return clusterRegister.ListModels()
 }
 
-func init() {
+func init() { //nolint:gochecknoinits
 	if clusterRegister == nil {
 		InitClusterRegister()
 	}
@@ -84,16 +84,17 @@ func (cr *Register) UpsertAndRegisterCluster(cluster *v1alpha1.Cluster) error {
 	cr.clustersLock.Lock()
 	defer cr.clustersLock.Unlock()
 
-	name := cluster.Name
+	name := cluster.GetName()
 
 	c, err := manager.NewWithConfigs(cluster)
 	if err != nil {
 		return err
 	}
-	cr.clustersDetails[cluster.Name] = cluster
+	cr.clustersDetails[cluster.GetName()] = cluster
 	cr.clusters[name] = c
 
 	slog.Info("register cluster", "name", name)
+
 	return nil
 }
 

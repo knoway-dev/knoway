@@ -17,13 +17,10 @@ func TypeURLOrDie(obj proto.Message) string {
 }
 
 func FromAny[T proto.Message](a *anypb.Any, prototype T) (T, error) {
-	//var obj T
-	//objType := reflect.TypeOf(obj).Elem() // 获取目标类型
-	//newObj := reflect.New(objType).Interface().(T)
-
-	newObj := reflect.New(reflect.TypeOf(prototype).Elem()).Interface().(T)
+	newObj, _ := reflect.New(reflect.TypeOf(prototype).Elem()).Interface().(T)
 	if err := a.UnmarshalTo(newObj); err != nil {
 		return newObj, err
 	}
+
 	return newObj, nil
 }

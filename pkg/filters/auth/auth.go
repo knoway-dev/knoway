@@ -34,14 +34,16 @@ func NewWithConfig(cfg *anypb.Any) (filters.RequestFilter, error) {
 
 	address := c.GetAuthServer().GetUrl()
 	if address == "" {
-		return nil, fmt.Errorf("invalid auth server url")
+		return nil, errors.New("invalid auth server url")
 	}
 	// todo how to close connect when process exist
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
+
 	authClient := v1alpha12.NewAuthServiceClient(conn)
+
 	return &AuthFilter{
 		config:     c,
 		conn:       conn,
@@ -55,7 +57,7 @@ type AuthFilter struct {
 	authClient v1alpha12.AuthServiceClient
 }
 
-func BearerMarshal(request *http.Request) (token string, err error) {
+func BearerMarshal(request *http.Request) (string, error) {
 	authHeader := request.Header.Get("Authorization")
 	if authHeader == "" {
 		return "", errors.New("missing Authorization header")
@@ -66,11 +68,12 @@ func BearerMarshal(request *http.Request) (token string, err error) {
 		return "", errors.New("invalid Authorization header format")
 	}
 
-	token = strings.TrimPrefix(authHeader, prefix)
+	token := strings.TrimPrefix(authHeader, prefix)
 	if token == "" {
 		return "", errors.New("missing API Key in Authorization header")
 	}
-	return
+
+	return token, nil
 }
 
 // CanAccessModel 判断是否可以访问指定的模型
@@ -107,25 +110,27 @@ func CanAccessModel(allowModels []string, requestModel string) bool {
 	return false
 }
 
-func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHttpRequest *http.Request) filters.RequestFilterResult {
+func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
 	if err := SetEnabledAuthFilterToCtx(ctx, true); err != nil {
 		return filters.NewFailed(err)
 	}
 
 	// parse apikey
-	apiKey, err := BearerMarshal(sourceHttpRequest)
+	apiKey, err := BearerMarshal(sourceHTTPRequest)
 	if err != nil {
 		// todo added generic error handling, non-Hardcode openai error
 		return filters.NewFailed(openai.NewErrorIncorrectAPIKey())
 	}
-	request.SetApiKey(apiKey)
+
+	request.SetAPIKey(apiKey)
 
 	// check apikey
 	slog.Debug("auth filter: rpc APIKeyAuth")
 	response, err := a.authClient.APIKeyAuth(ctx, &v1alpha12.APIKeyAuthRequest{
 		ApiKey: apiKey,
 	})
+
 	if err != nil {
 		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
@@ -134,20 +139,20 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		return filters.NewFailed(err)
 	}
 
-	request.SetUser(response.UserId)
-	sourceHttpRequest.WithContext(ctx)
+	request.SetUser(response.GetUserId())
 
-	if !response.IsValid {
-		slog.Debug("auth filter: user apikey invalid", "user", response.UserId)
+	if !response.GetIsValid() {
+		slog.Debug("auth filter: user apikey invalid", "user", response.GetUserId())
 		return filters.NewFailed(openai.NewErrorIncorrectAPIKey())
 	}
 
 	accessModel := request.GetModel()
-	if accessModel != "" && !CanAccessModel(response.AllowModels, accessModel) {
-		slog.Debug("auth filter: user can not access model", "user", response.UserId, "model", accessModel)
+	if accessModel != "" && !CanAccessModel(response.GetAllowModels(), accessModel) {
+		slog.Debug("auth filter: user can not access model", "user", response.GetUserId(), "model", accessModel)
 		return filters.NewFailed(openai.NewErrorModelNotFoundOrNotAccessible(accessModel))
 	}
-	slog.Debug("auth filter: user authorization succeeds", "user", response.UserId, "allow models", response.AllowModels)
+
+	slog.Debug("auth filter: user authorization succeeds", "user", response.GetUserId(), "allow models", response.GetAllowModels())
 
 	return filters.NewOK()
 }

@@ -18,10 +18,10 @@ type LLMRequest interface {
 
 	SetModel(modelName string) error
 
-	SetApiKey(key string)
+	SetAPIKey(key string)
 	SetUser(user string)
 	GetUser() string
-	GetApiKey() string
+	GetAPIKey() string
 }
 
 type LLMResponse interface {
@@ -66,7 +66,7 @@ type BaseLLMRequest struct {
 	Model string `json:"model,omitempty"`
 
 	// auth info
-	ApiKey string `json:"api_key,omitempty"`
+	APIKey string `json:"api_key,omitempty"`
 	User   string `json:"user,omitempty"`
 }
 
@@ -90,35 +90,41 @@ func (r *BaseLLMRequest) SetUser(user string) {
 	if r == nil {
 		return
 	}
+
 	r.User = user
 }
 
-func (r *BaseLLMRequest) SetApiKey(key string) {
+func (r *BaseLLMRequest) SetAPIKey(key string) {
 	if r == nil {
 		return
 	}
-	r.ApiKey = key
+
+	r.APIKey = key
 }
 
 func (r *BaseLLMRequest) GetUser() string {
 	if r == nil {
 		return ""
 	}
+
 	return r.User
 }
 
-func (r *BaseLLMRequest) GetApiKey() string {
+func (r *BaseLLMRequest) GetAPIKey() string {
 	if r == nil {
 		return ""
 	}
-	return r.ApiKey
+
+	return r.APIKey
 }
 
 func (r *BaseLLMRequest) SetModel(model string) error {
 	if r == nil {
 		return nil
 	}
+
 	r.Model = model
+
 	return nil
 }
 
@@ -126,5 +132,6 @@ func (r *BaseLLMRequest) GetModel() string {
 	if r == nil {
 		return ""
 	}
+
 	return r.Model
 }

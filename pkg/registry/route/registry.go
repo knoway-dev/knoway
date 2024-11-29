@@ -47,6 +47,7 @@ func RegisterRouteWithConfig(cfg *v1alpha1.Route) error {
 	routes = lo.Values(routeRegistry)
 
 	slog.Info("register route", "name", cfg.GetName())
+
 	return nil
 }
 

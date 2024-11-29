@@ -2,6 +2,7 @@ package openai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -11,7 +12,7 @@ import (
 )
 
 func TestSetModel(t *testing.T) {
-	httpRequest, err := http.NewRequest(http.MethodPost, "http://example.com", bytes.NewBuffer([]byte(`
+	httpRequest, err := http.NewRequestWithContext(context.Background(), http.MethodPost, "http://example.com", bytes.NewBufferString(`
 {
     "model": "some",
     "messages": [
@@ -21,7 +22,7 @@ func TestSetModel(t *testing.T) {
         }
     ]
 }
-`)))
+`))
 	require.NoError(t, err)
 
 	request, err := NewChatCompletionRequest(httpRequest)

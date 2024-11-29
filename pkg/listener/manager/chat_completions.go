@@ -33,8 +33,8 @@ func NewOpenAIChatCompletionsListenerWithConfigs(cfg proto.Message) (listener.Li
 		cfg: c,
 	}
 
-	for _, fc := range c.Filters {
-		f, err := config.NewRequestFilterWithConfig(fc.Name, fc.Config)
+	for _, fc := range c.GetFilters() {
+		f, err := config.NewRequestFilterWithConfig(fc.GetName(), fc.GetConfig())
 		if err != nil {
 			return nil, err
 		}
@@ -159,7 +159,7 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 	if resp.GetError() != nil {
 		return nil, resp.GetError()
 	}
-	if !resp.IsStream() { //nolint:wsl
+	if !resp.IsStream() {
 		return resp, nil
 	}
 

@@ -40,6 +40,7 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var apiKeyServer string
+
 	flag.StringVar(&apiKeyServer, "api-key-server", "", "The address the api key server address, example: 10.33.2.23:30943 . "+
 		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. "+
@@ -54,7 +55,7 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.Parse()
 
-	app := bootkit.New(bootkit.StartTimeout(time.Second * 10))
+	app := bootkit.New(bootkit.StartTimeout(time.Second * 10)) //nolint:mnd
 
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,

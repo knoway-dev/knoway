@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	pb "knoway.dev/api/service/v1alpha1" // 替换为生成的包路径
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
 )
 
@@ -40,7 +42,7 @@ type AuthServiceServer struct {
 }
 
 func (s *AuthServiceServer) APIKeyAuth(ctx context.Context, req *pb.APIKeyAuthRequest) (*pb.APIKeyAuthResponse, error) {
-	if keyData, exists := apiKeys[req.ApiKey]; exists {
+	if keyData, exists := apiKeys[req.GetApiKey()]; exists {
 		return &pb.APIKeyAuthResponse{
 			IsValid:     true,
 			AllowModels: keyData.AllowModels,
@@ -63,7 +65,7 @@ func startTestServer() (*grpc.Server, *bufconn.Listener) {
 	pb.RegisterAuthServiceServer(server, &AuthServiceServer{})
 
 	go func() {
-		if err := server.Serve(listener); err != nil && err != grpc.ErrServerStopped {
+		if err := server.Serve(listener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
 			log.Fatalf("Server exited with error: %v", err)
 		}
 	}()
@@ -83,7 +85,12 @@ func TestAPIKeyAuth(t *testing.T) {
 	defer server.Stop()
 
 	// 创建 gRPC 客户端连接
-	conn, err := grpc.DialContext(context.Background(), "bufnet", grpc.WithContextDialer(dialer(listener)), grpc.WithInsecure())
+	conn, err := grpc.DialContext(
+		context.Background(),
+		"bufnet",
+		grpc.WithContextDialer(dialer(listener)),
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	)
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -103,14 +110,12 @@ func TestAPIKeyAuth(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := client.APIKeyAuth(context.Background(), &pb.APIKeyAuthRequest{ApiKey: tt.apiKey})
 			require.NoError(t, err)
-			assert.Equal(t, tt.wantValid, resp.IsValid)
+			assert.Equal(t, tt.wantValid, resp.GetIsValid())
 		})
 	}
 }
 
 func TestCanAccessModel(t *testing.T) {
-	type args struct {
-	}
 	tests := []struct {
 		name         string
 		allowModels  []string
@@ -160,6 +165,7 @@ func TestCanAccessModel(t *testing.T) {
 			want:         true,
 		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equalf(t, tt.want, CanAccessModel(tt.allowModels, tt.requestModel), "CanAccessModel(%v, %v)", tt.allowModels, tt.requestModel)

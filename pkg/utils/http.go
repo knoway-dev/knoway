@@ -18,7 +18,7 @@ func WriteJSONForHTTP(status int, resp any, writer http.ResponseWriter) {
 
 	SafeFlush(writer)
 
-	bs, _ := json.Marshal(resp)
+	bs, _ := json.Marshal(resp) //nolint:errchkjson
 	_, _ = writer.Write(bs)
 }
 

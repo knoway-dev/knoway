@@ -22,11 +22,11 @@ func ClustersToOpenAIModels(clusters []*v1alpha4.Cluster) []goopenai.Model {
 func ClusterToOpenAIModel(cluster *v1alpha4.Cluster) goopenai.Model {
 	// from https://platform.openai.com/docs/api-reference/models/object
 	return goopenai.Model{
-		CreatedAt: cluster.Created,
-		ID:        cluster.Name,
+		CreatedAt: cluster.GetCreated(),
+		ID:        cluster.GetName(),
 		// The object type, which is always "model".
 		Object:  "model",
-		OwnedBy: cluster.Provider,
+		OwnedBy: cluster.GetProvider(),
 		// todo ??
 		Permission: nil,
 		Root:       "",

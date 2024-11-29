@@ -7,28 +7,52 @@ words:
   - apikey
   - apimachinery
   - bootkit
+  - bufconn
+  - bufnet
   - Causef
   - clientgoscheme
   - clusterfilters
+  - containedctx
+  - contextcheck
   - copyloopvar
+  - cyclop
+  - depguard
   - dupl
   - durationcheck
+  - Equalf
+  - err113
   - errcheck
+  - errchkjson
   - errname
   - evanphx
+  - execinquery
   - exhaustive
+  - exhaustruct
+  - exportloopref
   - forcetypeassert
+  - funlen
+  - gci
   - genclient
   - ginkgolinter
+  - gochecknoglobals
+  - gochecknoinits
+  - gocognit
   - goconst
+  - gocritic
   - gocyclo
+  - godot
+  - godox
   - gofmt
+  - gofumpt
   - goimports
+  - gomnd
   - goopenai
+  - gosec
   - gosimple
   - govet
   - healthz
   - ineffassign
+  - ireturn
   - jsonpatch
   - knoway
   - knowaydevv1alpha1
@@ -36,15 +60,21 @@ words:
   - listenerfilters
   - lll
   - llmbackends
+  - maintidx
   - metav1
   - metricsserver
   - misspell
   - nakedret
+  - nestif
   - nilfunc
+  - nilnil
+  - nlreturn
   - nolint
   - nolintlint
   - nosniff
   - nosprintfhostport
+  - paralleltest
+  - perfsprint
   - prealloc
   - predeclared
   - printcolumn
@@ -57,7 +87,11 @@ words:
   - sashabaranov
   - staticcheck
   - stretchr
+  - stylecheck
   - subresource
+  - tagalign
+  - tagliatelle
+  - testpackage
   - typecheck
   - unconvert
   - unmarshalled
@@ -66,7 +100,9 @@ words:
   - unused
   - usestdlibvars
   - utilruntime
+  - varnamelen
   - whitespace
+  - wrapcheck
   - wsl
 ignoreWords: []
 import: []

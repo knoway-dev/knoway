@@ -40,26 +40,32 @@ func NewFailed(err error) RequestFilterResult {
 	return RequestFilterResult{Type: ListenerFilterResultTypeFailed, Error: err}
 }
 
-type OnCompletionRequestFilter interface {
+type RequestFilter interface {
 	isRequestFilter()
+}
+
+var _ RequestFilter = IsRequestFilter{}
+
+type IsRequestFilter struct{}
+
+func (IsRequestFilter) isRequestFilter() {}
+
+type OnCompletionRequestFilter interface {
+	RequestFilter
 
 	OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) RequestFilterResult
 }
 
 type OnCompletionResponseFilter interface {
-	isRequestFilter()
+	RequestFilter
 
 	OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) RequestFilterResult
 }
 
 type OnCompletionStreamResponseFilter interface {
-	isRequestFilter()
+	RequestFilter
 
 	OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, endStream bool) RequestFilterResult
-}
-
-type RequestFilter interface {
-	isRequestFilter()
 }
 
 type RequestFilters []RequestFilter
@@ -75,7 +81,3 @@ func (r RequestFilters) OnCompletionResponseFilters() []OnCompletionResponseFilt
 func (r RequestFilters) OnCompletionStreamResponseFilters() []OnCompletionStreamResponseFilter {
 	return utils.TypeAssertFrom[RequestFilter, OnCompletionStreamResponseFilter](r)
 }
-
-type IsRequestFilter struct{}
-
-func (IsRequestFilter) isRequestFilter() {}

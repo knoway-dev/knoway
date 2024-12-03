@@ -20,26 +20,34 @@ import (
 	"knoway.dev/pkg/utils"
 )
 
-type ClusterFilterRequestPreflight interface {
+type ClusterFilter interface {
 	isClusterFilter()
+}
+
+type IsClusterFilter struct{}
+
+func (IsClusterFilter) isClusterFilter() {}
+
+type ClusterFilterRequestPreflight interface {
+	ClusterFilter
 
 	RequestPreflight(ctx context.Context, request object.LLMRequest) error
 }
 
 type ClusterFilterRequestModifier interface {
-	isClusterFilter()
+	ClusterFilter
 
 	RequestModifier(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error)
 }
 
 type ClusterFilterEndpointSelector interface {
-	isClusterFilter()
+	ClusterFilter
 
 	SelectEndpoint(ctx context.Context, request object.LLMRequest, endpoints []string) string
 }
 
 type ClusterFilterRequestMarshaller interface {
-	isClusterFilter()
+	ClusterFilter
 
 	// MarshalRequestBody is an optional method that allows the filter to modify the request body before
 	// it is sent to the upstream cluster. If pre is not nil, it contains the body of the previous filter
@@ -48,7 +56,7 @@ type ClusterFilterRequestMarshaller interface {
 }
 
 type ClusterFilterResponseUnmarshaller interface {
-	isClusterFilter()
+	ClusterFilter
 
 	// UnmarshalResponseBody is an optional method that allows the filter to modify the response body
 	// before it is sent to the client. If pre is not nil, it contains the body of the previous filter in
@@ -57,19 +65,15 @@ type ClusterFilterResponseUnmarshaller interface {
 }
 
 type ClusterFilterResponseModifier interface {
-	isClusterFilter()
+	ClusterFilter
 
 	ResponseModifier(ctx context.Context, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error)
 }
 
 type ClusterFilterResponseComplete interface {
-	isClusterFilter()
+	ClusterFilter
 
 	ResponseComplete(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error
-}
-
-type ClusterFilter interface {
-	isClusterFilter()
 }
 
 type ClusterFilters []ClusterFilter
@@ -101,7 +105,3 @@ func (c ClusterFilters) OnResponseModifiers() []ClusterFilterResponseModifier {
 func (c ClusterFilters) OnResponseCompleters() []ClusterFilterResponseComplete {
 	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseComplete](c)
 }
-
-type IsClusterFilter struct{}
-
-func (IsClusterFilter) isClusterFilter() {}

@@ -1,4 +1,4 @@
-// This package defines a set of dedicated interfaces of filters that can be applied to a cluster or take effects within the
+// Package filters defines a set of dedicated interfaces of filters that can be applied to a cluster or take effects within the
 // scope of cluster operations. The filters are applied in a chain of responsibility pattern, where each filter is responsible
 // for a specific operation. The filters are divided into two categories: request filters and response filters.
 //

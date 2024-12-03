@@ -72,3 +72,6 @@ issues:
     - path: _test\.go
       linters:
         - perfsprint
+  exclude-dirs:
+    - apis
+    - api

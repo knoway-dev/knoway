@@ -1,23 +1,25 @@
 package gw
 
 import (
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
-	v1alpha2 "knoway.dev/api/filters/v1alpha1"
-	cluster2 "knoway.dev/pkg/registry/cluster"
+	clusters "knoway.dev/api/clusters/v1alpha1"
+	filters "knoway.dev/api/filters/v1alpha1"
+	"knoway.dev/pkg/bootkit"
+	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/route"
 )
 
-var StaticClustersConfig = map[string]*v1alpha4.Cluster{
+var StaticClustersConfig = map[string]*clusters.Cluster{
 	"openai/gpt-3.5-turbo": {
 		Name:              "openai/gpt-3.5-turbo",
 		Provider:          "openai",
-		LoadBalancePolicy: v1alpha4.LoadBalancePolicy_ROUND_ROBIN,
-		Upstream: &v1alpha4.Upstream{
+		LoadBalancePolicy: clusters.LoadBalancePolicy_ROUND_ROBIN,
+		Upstream: &clusters.Upstream{
 			Url:    "https://openrouter.ai/api/v1/chat/completions",
-			Method: v1alpha4.Upstream_POST,
-			Headers: []*v1alpha4.Upstream_Header{
+			Method: clusters.Upstream_POST,
+			Headers: []*clusters.Upstream_Header{
 				{
 					Key:   "Authorization",
 					Value: "Bearer sk-or-v1-",
@@ -25,50 +27,29 @@ var StaticClustersConfig = map[string]*v1alpha4.Cluster{
 			},
 		},
 		TlsConfig: nil,
-		Filters: []*v1alpha4.ClusterFilter{
+		Filters: []*clusters.ClusterFilter{
 			{
-				Name: "openai-request-unmarshaller",
+				Name: "openai-request-handler",
 				Config: func() *anypb.Any {
-					c, err := anypb.New(&v1alpha2.OpenAIRequestMarshallerConfig{})
-					if err != nil {
-						panic(err)
-					}
-					return c
+					return lo.Must(anypb.New(&filters.OpenAIRequestHandlerConfig{}))
 				}(),
 			},
 			{
-				Name: "model-name-mapping",
+				Name: "openai-response-handler",
 				Config: func() *anypb.Any {
-					c, err := anypb.New(&v1alpha2.OpenAIModelNameRewriteConfig{
-						ModelName: "gpt-3.5-turbo",
-					})
-					if err != nil {
-						panic(err)
-					}
-					return c
-				}(),
-			},
-			{
-				Name: "openai-response-unmarshaller",
-				Config: func() *anypb.Any {
-					c, err := anypb.New(&v1alpha2.OpenAIResponseUnmarshallerConfig{})
-					if err != nil {
-						panic(err)
-					}
-					return c
+					return lo.Must(anypb.New(&filters.OpenAIResponseHandlerConfig{}))
 				}(),
 			},
 		},
 	},
 }
 
-func StaticRegisterClusters(clusterDetails map[string]*v1alpha4.Cluster) error {
-	for _, cluster := range clusterDetails {
-		if err := cluster2.UpsertAndRegisterCluster(cluster); err != nil {
+func StaticRegisterClusters(clusterDetails map[string]*clusters.Cluster, lifecycle bootkit.LifeCycle) error {
+	for _, c := range clusterDetails {
+		if err := cluster.UpsertAndRegisterCluster(c, lifecycle); err != nil {
 			return err
 		}
-
-		if err := route.RegisterRouteWithConfig(route.InitDirectModelRoute(cluster.GetName())); err != nil {
+		if err := route.RegisterRouteWithConfig(route.InitDirectModelRoute(c.GetName())); err != nil {
 			return err
 		}
 	}

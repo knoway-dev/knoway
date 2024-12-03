@@ -17,8 +17,9 @@ import (
 )
 
 type GatewayConfig struct {
-	AuthServerAddress    string
-	GatewayListenAddress string
+	AuthServerAddress       string
+	UsageStatsServerAddress string
+	GatewayListenAddress    string
 }
 
 func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCycle) error {
@@ -45,14 +46,31 @@ func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCy
 		})
 	}
 
+	if cfg.UsageStatsServerAddress != "" {
+		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
+			Config: func() *anypb.Any {
+				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
+					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
+						Url: cfg.UsageStatsServerAddress,
+					},
+				})
+				if err != nil {
+					return nil
+				}
+
+				return c
+			}(),
+		})
+	}
+
 	addr := cfg.GatewayListenAddress
 	if addr == "" {
 		addr = ":8080" // default address
 	}
 
 	server, err := listener.NewMux().
-		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig)).
-		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig)).
+		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig, lifecycle)).
+		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig, lifecycle)).
 		BuildServer(&http.Server{Addr: addr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err

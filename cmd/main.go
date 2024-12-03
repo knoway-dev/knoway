@@ -40,6 +40,7 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var apiKeyServer string
+	var usageStatsServer string
 
 	flag.StringVar(&apiKeyServer, "api-key-server", "", "The address the api key server address, example: 10.33.2.23:30943 . "+
 		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
@@ -61,13 +62,13 @@ func main() {
 		Level: slog.LevelDebug,
 	})))
 
-	// 开发配置
+	// development static server
 	devStaticServer := false
+
 	if devStaticServer {
-		err := gw.StaticRegisterClusters(gw.StaticClustersConfig)
-		if err != nil {
-			slog.Error("Failed to register static clusters", "error", err)
-		}
+		app.Add(func(_ context.Context, lifeCycle bootkit.LifeCycle) error {
+			return gw.StaticRegisterClusters(gw.StaticClustersConfig, lifeCycle)
+		})
 	} else {
 		// Start the server and handle errors gracefully
 		app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
@@ -83,7 +84,8 @@ func main() {
 
 	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
 		return gw.StartGateway(ctx, gw.GatewayConfig{
-			AuthServerAddress: apiKeyServer,
+			AuthServerAddress:       apiKeyServer,
+			UsageStatsServerAddress: usageStatsServer,
 		}, lifeCycle)
 	})
 

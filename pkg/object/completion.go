@@ -30,9 +30,11 @@ type LLMResponse interface {
 	IsStream() bool
 	GetRequestID() string
 	GetModel() string
-	GetUsage() *Usage
+	GetUsage() LLMUsage
 	GetOutgoingResponse() *http.Response
 	GetError() error
+
+	SetModel(modelName string) error
 }
 
 type LLMStreamResponse interface {
@@ -47,13 +49,18 @@ type LLMChunkResponse interface {
 
 	IsEmpty() bool
 	IsDone() bool
+	IsUsage() bool
 	GetResponse() LLMStreamResponse
+	GetModel() string
 	ToServerSentEvent() (*sse.Event, error)
+
+	SetModel(modelName string) error
 }
 
-type Usage struct {
-	CompletionTokens int `json:"completion_tokens,omitempty"`
-	PromptTokens     int `json:"prompt_tokens,omitempty"`
+type LLMUsage interface {
+	GetTotalTokens() uint64
+	GetCompletionTokens() uint64
+	GetPromptTokens() uint64
 }
 
 type RequestHeader struct {

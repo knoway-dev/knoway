@@ -12,6 +12,7 @@ import (
 	"google.golang.org/protobuf/proto"
 
 	"knoway.dev/api/listeners/v1alpha1"
+	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/object"
@@ -23,7 +24,7 @@ import (
 	"knoway.dev/pkg/utils"
 )
 
-func NewOpenAIChatCompletionsListenerWithConfigs(cfg proto.Message) (listener.Listener, error) {
+func NewOpenAIChatCompletionsListenerWithConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle) (listener.Listener, error) {
 	c, ok := cfg.(*v1alpha1.ChatCompletionListener)
 	if !ok {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
@@ -34,7 +35,7 @@ func NewOpenAIChatCompletionsListenerWithConfigs(cfg proto.Message) (listener.Li
 	}
 
 	for _, fc := range c.GetFilters() {
-		f, err := config.NewRequestFilterWithConfig(fc.GetName(), fc.GetConfig())
+		f, err := config.NewRequestFilterWithConfig(fc.GetName(), fc.GetConfig(), lifecycle)
 		if err != nil {
 			return nil, err
 		}
@@ -47,7 +48,7 @@ func NewOpenAIChatCompletionsListenerWithConfigs(cfg proto.Message) (listener.Li
 
 type OpenAIChatCompletionsListener struct {
 	cfg               *v1alpha1.ChatCompletionListener
-	filters           []filters.RequestFilter
+	filters           filters.RequestFilters
 	listener.Listener // TODO: implement the interface
 }
 
@@ -120,7 +121,7 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 		return nil, err
 	}
 
-	for _, f := range l.filters {
+	for _, f := range l.filters.OnCompletionRequestFilters() {
 		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error
@@ -157,15 +158,33 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 	}
 
 	if resp.GetError() != nil {
+		// REVIEW: better way to compose the in and out actions?
+		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
+		if err != nil {
+			return nil, openai.NewErrorInternalError().WithCause(err)
+		}
+
 		return nil, resp.GetError()
 	}
 	if !resp.IsStream() {
+		// REVIEW: better way to compose the in and out actions?
+		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
+		if err != nil {
+			return nil, openai.NewErrorInternalError().WithCause(err)
+		}
+
 		return resp, nil
 	}
 
 	err = l.handleChatCompletionsChunks(resp, writer)
 	if err != nil {
 		return nil, err
+	}
+
+	// REVIEW: better way to compose the in and out actions?
+	err = c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
+	if err != nil {
+		return nil, openai.NewErrorInternalError().WithCause(err)
 	}
 
 	return nil, openai.SkipResponse

@@ -12,17 +12,19 @@ message UsageReportRequest {
     // upstream_model_name The name of the model that the gateway send the
     // request to, such as "kebe-mnist".
     string upstream_model_name = 3;
+
     message Usage {
-        int32 input_tokens  = 1;
-        int32 output_tokens = 2;
+        uint64 input_tokens  = 1;
+        uint64 output_tokens = 2;
     }
     Usage usage = 4;
+
     enum Mode {
         MODE_UNSPECIFIED = 0;
-        // The PER_REQUEST mode means that each time a request is received,
+        // The MODE_PER_REQUEST mode means that each time a request is received,
         // the usage of the request will be included.
         // If the server fails to process, statistical data may be lost.
-        PER_REQUEST = 1;
+        MODE_PER_REQUEST = 1;
     }
     Mode mode = 5;
 }

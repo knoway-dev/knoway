@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option go_package = "knoway.dev/api/filters/v1alpha1";
-
 package knoway.filters.v1alpha1;
+
+option go_package = "knoway.dev/api/filters/v1alpha1";
 
 message APIKeyAuthConfig {
     message AuthServer {
@@ -18,9 +18,5 @@ message UsageStatsConfig {
     StatsServer stats_server = 3;
 }
 
-message OpenAIRequestMarshallerConfig {}
-message OpenAIResponseUnmarshallerConfig {}
-
-message OpenAIModelNameRewriteConfig {
-    string model_name = 1;
-}
+message OpenAIRequestHandlerConfig {}
+message OpenAIResponseHandlerConfig {}

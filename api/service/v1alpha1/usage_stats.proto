@@ -21,7 +21,7 @@ message UsageReportRequest {
 
     enum Mode {
         MODE_UNSPECIFIED = 0;
-        // The PER_REQUEST mode means that each time a request is received,
+        // The MODE_PER_REQUEST mode means that each time a request is received,
         // the usage of the request will be included.
         // If the server fails to process, statistical data may be lost.
         MODE_PER_REQUEST = 1;

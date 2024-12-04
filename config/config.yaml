@@ -7,6 +7,6 @@ controller:
 gateway:
   listener_addr: ":8080"
   auth_server:
-    url: 10.33.2.23:31960
+    url: ''
   stats_server:
-    url: 10.33.2.23:31960
+    url: ''

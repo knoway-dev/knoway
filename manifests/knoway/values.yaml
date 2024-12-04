@@ -16,7 +16,7 @@ global:
   high_available: false
   debug: false
   config:
-    auth_server_url: 10.33.2.23:31960
+    auth_server_url: ''
     stats_server_url: ''
 
 gateway:

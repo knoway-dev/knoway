@@ -40,7 +40,6 @@ func main() {
 	flag.StringVar(&configPath, "config", "config/config.yaml", "Path to the configuration file")
 	flag.Parse()
 
-	// 加载配置
 	cfg, err := config.LoadConfig(configPath)
 	if err != nil {
 		slog.Error("Failed to load configuration", "error", err)

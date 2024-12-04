@@ -37,7 +37,10 @@ Some of the LLMs specific optimizations and features include:
 $ export VERSION=v0.0.0-xxxx
 $ helm repo add knoway https://release-ci.daocloud.io/chartrepo/knoway
 $ helm repo update
-$ helm upgrade --install --create-namespace -n knoway-system knoway knoway/knoway --version=${VERSION} --set global.imageRegistry=release-ci.daocloud.io
+$ helm upgrade --install --create-namespace -n knoway-system knoway knoway/knoway --version=${VERSION} \
+    --set global.imageRegistry=release-ci.daocloud.io \
+    --set global.config.auth_server_url="10.33.2.23:31960" \
+    --set global.config.stats_server_url="10.33.2.23:31960"
 ```
 
 ### To Uninstall

@@ -25,6 +25,7 @@ words:
   - errcheck
   - errchkjson
   - errname
+  - errorlint
   - evanphx
   - execinquery
   - exhaustive
@@ -78,6 +79,8 @@ words:
   - nolintlint
   - nosniff
   - nosprintfhostport
+  - Ollama
+  - openrouter
   - paralleltest
   - perfsprint
   - prealloc

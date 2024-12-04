@@ -1,11 +1,15 @@
 package openai
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/samber/lo"
+	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/utils"
 )
 
 type Error struct {
@@ -14,6 +18,8 @@ type Error struct {
 	Param   *string `json:"param"`
 	Type    string  `json:"type"`
 }
+
+var _ object.LLMError = (*ErrorResponse)(nil)
 
 type ErrorResponse struct { //nolint:errname
 	Status       int    `json:"-"`
@@ -50,6 +56,67 @@ func (e *ErrorResponse) WithCausef(format string, args ...interface{}) *ErrorRes
 	e.WithCause(fmt.Errorf(format, args...)) //nolint:errcheck
 
 	return e
+}
+
+func (e *ErrorResponse) GetCode() string {
+	return lo.FromPtrOr(e.ErrorBody.Code, "")
+}
+
+func (e *ErrorResponse) GetMessage() string {
+	return e.ErrorBody.Message
+}
+
+func (e *ErrorResponse) GetStatus() int {
+	return e.Status
+}
+
+func (e *ErrorResponse) MarshalJSON() ([]byte, error) {
+	return json.Marshal(map[string]any{
+		"error": e.ErrorBody,
+	})
+}
+
+func (e *ErrorResponse) UnmarshalJSON(data []byte) error {
+	e.ErrorBody = new(Error)
+
+	var err error
+	var parsed map[string]any
+
+	err = json.Unmarshal(data, &parsed)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal error: %w", err)
+	}
+
+	codeStr, err := utils.GetByJSONPathWithoutConvert(parsed, "{ .error.code }")
+	if err != nil {
+		return fmt.Errorf("failed to get code: %w", err)
+	}
+	if codeStr != "null" && codeStr != "<nil>" {
+		e.ErrorBody.Code = lo.ToPtr(codeStr)
+	}
+
+	paramStr, err := utils.GetByJSONPathWithoutConvert(parsed, "{ .error.param }")
+	if err != nil {
+		return fmt.Errorf("failed to get param: %w", err)
+	}
+	if paramStr != "null" && paramStr != "<nil>" {
+		e.ErrorBody.Param = lo.ToPtr(paramStr)
+	}
+
+	e.ErrorBody.Type, err = utils.GetByJSONPathWithoutConvert(parsed, "{ .error.type }")
+	if err != nil {
+		return fmt.Errorf("failed to get type: %w", err)
+	}
+
+	e.ErrorBody.Message, err = utils.GetByJSONPathWithoutConvert(parsed, "{ .error.message }")
+	if err != nil {
+		return fmt.Errorf("failed to get message: %w", err)
+	}
+	if e.ErrorBody.Message == "" {
+		e.ErrorBody.Message = fmt.Sprintf("unknown error (empty message received from upstream): code: %s, type: %s, param: %s", lo.FromPtrOr(e.ErrorBody.Code, ""), e.ErrorBody.Type, lo.FromPtrOr(e.ErrorBody.Param, ""))
+	}
+
+	return nil
 }
 
 func NewErrorResponse(status int, err Error) *ErrorResponse {
@@ -219,7 +286,7 @@ Example:
 	}
 */
 func NewErrorQuotaExceeded() *ErrorResponse {
-	return NewErrorResponse(http.StatusTooManyRequests, Error{
+	return NewErrorResponse(http.StatusPaymentRequired, Error{
 		Message: "" +
 			"You exceeded your current quota, please check your plan and billing details. " +
 			"For more information on this error, read the docs: " +
@@ -255,4 +322,39 @@ func NewErrorInternalError() *ErrorResponse {
 		Message: "internal error",
 		Type:    "internal_error",
 	})
+}
+
+func NewErrorFromLLMError(err error) *ErrorResponse {
+	llmError := object.AsLLMError(err)
+	if llmError == nil {
+		return NewErrorInternalError().WithCause(err)
+	}
+
+	var openaiErrorResp *ErrorResponse
+	if errors.As(err, &openaiErrorResp) {
+		return openaiErrorResp
+	}
+
+	m := map[string]func() *ErrorResponse{
+		string(object.LLMErrorCodeModelNotFoundOrNotAccessible): func() *ErrorResponse {
+			newError := NewErrorModelNotFoundOrNotAccessible("")
+			newError.ErrorBody.Message = llmError.GetMessage()
+
+			return newError
+		},
+		string(object.LLMErrorCodeInsufficientQuota): NewErrorQuotaExceeded,
+		string(object.LLMErrorCodeMissingAPIKey):     NewErrorMissingAPIKey,
+		string(object.LLMErrorCodeIncorrectAPIKey):   NewErrorIncorrectAPIKey,
+		string(object.LLMErrorCodeMissingModel):      NewErrorMissingModel,
+	}
+
+	errorConstructor, ok := m[llmError.GetCode()]
+	if !ok {
+		return NewErrorResponse(llmError.GetStatus(), Error{
+			Code:    lo.ToPtr(llmError.GetCode()),
+			Message: llmError.GetMessage(),
+		})
+	}
+
+	return errorConstructor()
 }

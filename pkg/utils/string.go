@@ -28,6 +28,12 @@ func FromString[T any](str string) (T, error) { //nolint:gocyclo
 
 		return empty, nil
 	}
+	if str == "null" {
+		return empty, nil
+	}
+	if str == "<nil>" {
+		return empty, nil
+	}
 
 	switch any(empty).(type) {
 	case string:
@@ -202,4 +208,10 @@ func FromStringOrEmpty[T any](str string) T {
 	}
 
 	return val
+}
+
+func IsNumber(str string) bool {
+	_, err := strconv.ParseFloat(str, 64)
+
+	return err == nil
 }

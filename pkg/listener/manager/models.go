@@ -22,7 +22,6 @@ import (
 	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/config"
-	"knoway.dev/pkg/types/openai"
 )
 
 func NewOpenAIModelsListenerWithConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle) (listener.Listener, error) {
@@ -88,7 +87,7 @@ func (l *OpenAIModelsListener) listModels(writer http.ResponseWriter, request *h
 }
 
 func (l *OpenAIModelsListener) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/models", WrapRequest(openai.WrapHandlerForOpenAIError(l.listModels)))
+	mux.HandleFunc("/v1/models", WrapRequest(WrapHandlerForOpenAIError(l.listModels)))
 
 	return nil
 }

@@ -20,7 +20,6 @@ import (
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
-	"knoway.dev/pkg/types/openai"
 )
 
 func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {
@@ -75,7 +74,7 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	apiKey, err := BearerMarshal(sourceHTTPRequest)
 	if err != nil {
 		// todo added generic error handling, non-Hardcode openai error
-		return filters.NewFailed(openai.NewErrorIncorrectAPIKey())
+		return filters.NewFailed(object.NewErrorIncorrectAPIKey())
 	}
 
 	request.SetAPIKey(apiKey)
@@ -98,13 +97,13 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 
 	if !response.GetIsValid() {
 		slog.Debug("auth filter: user apikey invalid", "user", response.GetUserId())
-		return filters.NewFailed(openai.NewErrorIncorrectAPIKey())
+		return filters.NewFailed(object.NewErrorIncorrectAPIKey())
 	}
 
 	accessModel := request.GetModel()
 	if accessModel != "" && !CanAccessModel(response.GetAllowModels(), accessModel) {
 		slog.Debug("auth filter: user can not access model", "user", response.GetUserId(), "model", accessModel)
-		return filters.NewFailed(openai.NewErrorModelNotFoundOrNotAccessible(accessModel))
+		return filters.NewFailed(object.NewErrorModelNotFoundOrNotAccessible(accessModel))
 	}
 
 	slog.Debug("auth filter: user authorization succeeds", "user", response.GetUserId(), "allow models", response.GetAllowModels())

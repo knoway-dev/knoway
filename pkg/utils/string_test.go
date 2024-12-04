@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -128,6 +129,11 @@ func TestFromString(t *testing.T) {
 		builderVal, err := FromString[*strings.Builder]("")
 		require.NoError(t, err)
 		assert.NotNil(t, builderVal)
+
+		anyVal, err := FromString[any]("")
+		require.NoError(t, err)
+		assert.Equal(t, "<nil>", fmt.Sprintf("%T", anyVal))
+		assert.Nil(t, anyVal)
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
@@ -313,6 +319,18 @@ func TestFromString(t *testing.T) {
 		builderVal, err := FromString[*strings.Builder]("abcd")
 		require.NoError(t, err)
 		assert.Equal(t, "abcd", builderVal.String())
+
+		arrayVal, err := FromString[[]int]("[1,2,3,4]")
+		require.NoError(t, err)
+		assert.Equal(t, []int{1, 2, 3, 4}, arrayVal)
+
+		mapVal, err := FromString[map[string]int](`{"a":1,"b":2,"c":3,"d":4}`)
+		require.NoError(t, err)
+		assert.Equal(t, map[string]int{"a": 1, "b": 2, "c": 3, "d": 4}, mapVal)
+
+		structVal, err := FromString[struct{ A int }](`{"A":1}`)
+		require.NoError(t, err)
+		assert.Equal(t, struct{ A int }{A: 1}, structVal)
 	})
 }
 
@@ -355,7 +373,27 @@ func TestFromStringOrEmpty(t *testing.T) {
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
-
+		assert.Zero(t, FromStringOrEmpty[int]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[int8]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[int16]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[int32]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[int64]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[uint]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[uint8]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[uint16]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[uint32]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[uint64]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[float32]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[float64]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[complex64]("invalid"))
+		assert.Zero(t, FromStringOrEmpty[complex128]("invalid"))
+		assert.False(t, FromStringOrEmpty[bool]("invalid"))
+		assert.Empty(t, FromStringOrEmpty[map[string]any]("invalid"))
+		assert.Empty(t, FromStringOrEmpty[map[string]any]("[]"))
+		assert.Empty(t, FromStringOrEmpty[[]string]("invalid"))
+		assert.Empty(t, FromStringOrEmpty[[]string]("{}"))
+		assert.Empty(t, FromStringOrEmpty[struct{}]("invalid"))
+		assert.Empty(t, FromStringOrEmpty[struct{}]("[]"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {

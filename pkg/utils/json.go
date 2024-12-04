@@ -8,25 +8,34 @@ import (
 	"k8s.io/client-go/util/jsonpath"
 )
 
-func GetByJSONPath[T any](input any, template string) T {
-	var empty T
-
+func GetByJSONPathWithoutConvert(input any, template string) (string, error) {
 	j := jsonpath.New("document")
 	j.AllowMissingKeys(true)
 
 	err := j.Parse(template)
 	if err != nil {
-		return empty
+		return "", err
 	}
 
 	buffer := new(bytes.Buffer)
 
 	err = j.Execute(buffer, input)
 	if err != nil {
+		return "", err
+	}
+
+	return buffer.String(), nil
+}
+
+func GetByJSONPath[T any](input any, template string) T {
+	var empty T
+
+	result, err := GetByJSONPathWithoutConvert(input, template)
+	if err != nil {
 		return empty
 	}
 
-	return FromStringOrEmpty[T](buffer.String())
+	return FromStringOrEmpty[T](result)
 }
 
 func ReadAsJSONWithClose(readCloser io.ReadCloser) (*bytes.Buffer, map[string]any, error) {

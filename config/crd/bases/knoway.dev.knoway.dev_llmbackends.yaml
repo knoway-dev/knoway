@@ -131,10 +131,9 @@ spec:
                         type: string
                       method:
                         type: string
-                      workloadSelector:
-                        additionalProperties:
-                          type: string
-                        type: object
+                      port:
+                        format: int32
+                        type: integer
                     type: object
                   timeout:
                     format: int32
@@ -149,11 +148,19 @@ spec:
                 items:
                   description: Condition defines the state of a specific condition
                   properties:
+                    lastUpdated:
+                      description: LastUpdated describe the Unix Timestamp of current
+                        condition
+                      format: int64
+                      type: string
                     message:
+                      description: Message describe this condition.
                       type: string
                     ready:
+                      description: Ready describe condition is ok
                       type: boolean
                     type:
+                      description: Type of the condition
                       type: string
                   type: object
                 type: array

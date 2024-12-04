@@ -65,10 +65,10 @@ type LLMBackendSpec struct {
 }
 
 type Server struct {
-	Address          string            `json:"address,omitempty"`
-	API              string            `json:"api,omitempty"`
-	Method           string            `json:"method,omitempty"`
-	WorkloadSelector map[string]string `json:"workloadSelector,omitempty"`
+	Address string `json:"address,omitempty"`
+	Port    int32  `json:"port,omitempty"`
+	API     string `json:"api,omitempty"`
+	Method  string `json:"method,omitempty"`
 }
 
 // BackendUpstream defines the upstream server configuration.
@@ -202,7 +202,14 @@ const (
 
 // Condition defines the state of a specific condition
 type Condition struct {
-	Type    string `json:"type,omitempty"`    // Type of the condition
-	Message string `json:"message,omitempty"` // Human-readable message indicating details about the condition
-	Ready   bool   `json:"ready,omitempty"`   // Indicates if the backend is ready
+	// Type of the condition
+	Type string `json:"type,omitempty"`
+	// Message describe this condition.
+	Message string `json:"message,omitempty"`
+	// Ready describe condition is ok
+	Ready bool `json:"ready,omitempty"`
+	// LastUpdated describe the Unix Timestamp of current condition
+	// +kubebuilder:validation:Format=int64
+	// +kubebuilder:validation:Type=string
+	LastUpdated int64 `protobuf:"varint,3,opt,name=lastUpdated,proto3" json:"lastUpdated,omitempty"`
 }

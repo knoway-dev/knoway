@@ -40,7 +40,7 @@ var (
 	SkipResponse = errors.New("skip writing response") //nolint:errname,stylecheck
 )
 
-func toHTTPHandlerFuncWithOpenAIErrorHandling(fn listener.HandlerFunc) http.HandlerFunc {
+func withErrorHandler(fn listener.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		resp, err := fn(w, r)
 		if err == nil {

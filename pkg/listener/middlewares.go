@@ -11,7 +11,7 @@ import (
 	"knoway.dev/pkg/properties"
 )
 
-func Properties() Middleware {
+func WithProperties() Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			return next(writer, request.WithContext(properties.NewPropertiesContext(request.Context())))
@@ -86,7 +86,7 @@ func (l *CancellableRequestMap) CancelAllAfterWithContext(ctx context.Context, t
 	})
 }
 
-func Cancellable(cancellable *CancellableRequestMap) Middleware {
+func CancellableInterceptor(cancellable *CancellableRequestMap) Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			ctx, cancel := context.WithCancel(request.Context())
@@ -98,7 +98,7 @@ func Cancellable(cancellable *CancellableRequestMap) Middleware {
 	}
 }
 
-func RejectAfterDrained(d Drainable) Middleware {
+func RejectAfterDrainedInterceptor(d Drainable) Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			if d.HasDrained() {

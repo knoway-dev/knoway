@@ -10,19 +10,12 @@ spec:
   provider: openai
   modelName: openai/gpt-3.5-turbo
   upstream:
-    server:
-      address: "https://openrouter.ai"
-      api: "/api/v1/chat/completions"
-      method: "post"
+    baseURL: "https://openrouter.ai/api/v1/chat/completions"
     headers:
       - key: "Authorization"
         value: "Bearer sk-or-v1-xxxxxxxxxx"
     timeout: 300 # ms
   filters:
-    - usageStats:
-        address: "0.0.0.0:9090"
-    - modelRewrite:
-        modelName: "gpt-3.5-turbo"
     - custom:
         pluginName: "examplePlugin"
         pluginVersion: "1.0.0"

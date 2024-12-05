@@ -247,23 +247,7 @@ func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.Reader,
 		opt(opts)
 	}
 
-	// TODO: endpoint
-	// TODO: stream
-	// TODO: request
-	var method string
-
-	switch upstream.GetMethod() {
-	case v1alpha1.Upstream_GET:
-		method = http.MethodGet
-	case v1alpha1.Upstream_POST:
-		method = http.MethodPost
-	case v1alpha1.Upstream_METHOD_UNSPECIFIED:
-		return nil, nil, fmt.Errorf("unsupported method %s", upstream.GetMethod())
-	default:
-		return nil, nil, fmt.Errorf("unsupported method %s", upstream.GetMethod())
-	}
-
-	req, err := http.NewRequest(method, upstream.GetUrl(), body)
+	req, err := http.NewRequest(http.MethodPost, upstream.GetUrl(), body)
 	if err != nil {
 		return nil, nil, err
 	}

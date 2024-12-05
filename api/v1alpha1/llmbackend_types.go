@@ -64,27 +64,14 @@ type LLMBackendSpec struct {
 	Filters []LLMBackendFilter `json:"filters,omitempty"`
 }
 
-type Server struct {
-	Address          string            `json:"address,omitempty"`
-	API              string            `json:"api,omitempty"`
-	Method           string            `json:"method,omitempty"`
-	WorkloadSelector map[string]string `json:"workloadSelector,omitempty"`
-}
-
 // BackendUpstream defines the upstream server configuration.
 type BackendUpstream struct {
-	// Server: Upstream service configuration
-	//	server:
-	//      api: /api/v1/chat/completions
-	//		method: post
-	//		workloadSelector:
-	//			modelApp: cus-model
+	// BaseURL define upstream endpoint url
+	// Example:
+	// 		https://openrouter.ai/api/v1/chat/completions
 	//
-	// 	server:
-	//      api: /api/v1/chat/completions
-	//		method: post
-	// 		address: https://openrouter.ai
-	Server Server `json:"server,omitempty"`
+	//  	http://phi3-mini.default.svc.cluster.local:8000/api/v1/chat/completions
+	BaseURL string `json:"baseURL,omitempty"`
 
 	// Headers defines the common headers for the model, such as the authentication header for the API key.
 	// Example:
@@ -185,7 +172,7 @@ type LLMBackendStatus struct {
 	Status StatusEnum `json:"status,omitempty"`
 
 	// Conditions represent the current conditions of the backend
-	Conditions []Condition `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// Endpoints holds the upstream addresses of the current model (pod IP addresses)
 	Endpoints []string `json:"endpoints,omitempty"`
@@ -199,10 +186,3 @@ const (
 	Healthy StatusEnum = "Healthy"
 	Failed  StatusEnum = "Failed"
 )
-
-// Condition defines the state of a specific condition
-type Condition struct {
-	Type    string `json:"type,omitempty"`    // Type of the condition
-	Message string `json:"message,omitempty"` // Human-readable message indicating details about the condition
-	Ready   bool   `json:"ready,omitempty"`   // Indicates if the backend is ready
-}

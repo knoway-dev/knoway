@@ -1,6 +1,6 @@
 apiVersion: v2
 name: gateway
-description: knoway gateway
+description: A Helm chart to deploy Knoway AI Gateway into Kubernetes
 
 # A chart can be either an 'application' or a 'library' chart.
 #

@@ -91,6 +91,10 @@ spec:
               upstream:
                 description: Upstream contains information about the upstream configuration
                 properties:
+                  baseURL:
+                    description: "BaseURL define upstream endpoint url\nExample:\n\t\thttps://openrouter.ai/api/v1/chat/completions\n\n
+                      \thttp://phi3-mini.default.svc.cluster.local:8000/api/v1/chat/completions"
+                    type: string
                   headers:
                     description: "Headers defines the common headers for the model,
                       such as the authentication header for the API key.\nExample:\n\nheaders：\n\t-
@@ -119,22 +123,6 @@ spec:
                           type: object
                       type: object
                     type: array
-                  server:
-                    description: "Server: Upstream service configuration\n\tserver:\n
-                      \    api: /api/v1/chat/completions\n\t\tmethod: post\n\t\tworkloadSelector:\n\t\t\tmodelApp:
-                      cus-model\n\n\tserver:\n     api: /api/v1/chat/completions\n\t\tmethod:
-                      post\n\t\taddress: https://openrouter.ai"
-                    properties:
-                      address:
-                        type: string
-                      api:
-                        type: string
-                      method:
-                        type: string
-                      port:
-                        format: int32
-                        type: integer
-                    type: object
                   timeout:
                     format: int32
                     type: integer

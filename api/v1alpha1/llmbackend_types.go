@@ -64,27 +64,14 @@ type LLMBackendSpec struct {
 	Filters []LLMBackendFilter `json:"filters,omitempty"`
 }
 
-type Server struct {
-	Address string `json:"address,omitempty"`
-	Port    int32  `json:"port,omitempty"`
-	API     string `json:"api,omitempty"`
-	Method  string `json:"method,omitempty"`
-}
-
 // BackendUpstream defines the upstream server configuration.
 type BackendUpstream struct {
-	// Server: Upstream service configuration
-	//	server:
-	//      api: /api/v1/chat/completions
-	//		method: post
-	//		workloadSelector:
-	//			modelApp: cus-model
+	// BaseURL define upstream endpoint url
+	// Example:
+	// 		https://openrouter.ai/api/v1/chat/completions
 	//
-	// 	server:
-	//      api: /api/v1/chat/completions
-	//		method: post
-	// 		address: https://openrouter.ai
-	Server Server `json:"server,omitempty"`
+	//  	http://phi3-mini.default.svc.cluster.local:8000/api/v1/chat/completions
+	BaseURL string `json:"baseURL,omitempty"`
 
 	// Headers defines the common headers for the model, such as the authentication header for the API key.
 	// Example:

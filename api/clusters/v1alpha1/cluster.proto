@@ -27,12 +27,6 @@ message TLSConfig {
 
 message Upstream {
     string url = 1;
-    enum Method {
-        METHOD_UNSPECIFIED = 0;
-        GET                = 1;
-        POST               = 2;
-    }
-    Method method = 2;
     message Header {
         string key   = 1;
         string value = 2;

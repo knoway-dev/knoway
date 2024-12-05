@@ -17,8 +17,7 @@ var StaticClustersConfig = map[string]*clusters.Cluster{
 		Provider:          "openai",
 		LoadBalancePolicy: clusters.LoadBalancePolicy_ROUND_ROBIN,
 		Upstream: &clusters.Upstream{
-			Url:    "https://openrouter.ai/api/v1/chat/completions",
-			Method: clusters.Upstream_POST,
+			Url: "https://openrouter.ai/api/v1/chat/completions",
 			Headers: []*clusters.Upstream_Header{
 				{
 					Key:   "Authorization",

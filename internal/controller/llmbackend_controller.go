@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -157,11 +158,13 @@ func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBacken
 		return fmt.Errorf("modelName cannot be empty")
 	}
 
-	if llmBackend.Spec.Upstream.Server.Address == "" {
-		return fmt.Errorf("upstream.server.host cannot be empty")
+	if llmBackend.Spec.Upstream.BaseURL == "" {
+		return fmt.Errorf("upstream.baseURL cannot be empty")
 	}
-	if llmBackend.Spec.Upstream.Server.API == "" {
-		return fmt.Errorf("upstream.server.api cannot be empty")
+
+	_, err := url.Parse(llmBackend.Spec.Upstream.BaseURL)
+	if err != nil {
+		return fmt.Errorf("upstream.baseURL parse error: %v", err)
 	}
 
 	// validator cluster filter by new
@@ -340,27 +343,6 @@ func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBack
 	return nil
 }
 
-func stringToUpstreamMethod(method string) v1alpha1.Upstream_Method {
-	upperMethod := strings.ToUpper(method)
-	if value, ok := v1alpha1.Upstream_Method_value[upperMethod]; ok {
-		return v1alpha1.Upstream_Method(value)
-	}
-
-	return v1alpha1.Upstream_METHOD_UNSPECIFIED
-}
-
-func getURL(server knowaydevv1alpha1.Server) string {
-	if server.API != "" && !strings.HasPrefix(server.API, "/") {
-		server.API = "/" + server.API
-	}
-
-	if server.Port != 0 {
-		return fmt.Sprintf("%s:%d%s", server.Address, server.Port, server.API)
-	}
-
-	return fmt.Sprintf("%s:%s", server.Address, server.API)
-}
-
 func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) (*v1alpha1.Cluster, error) {
 	if backend == nil {
 		return nil, nil
@@ -414,8 +396,6 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) (*v1alpha1.Cl
 		}
 	}
 
-	server := backend.Spec.Upstream.Server
-
 	return &v1alpha1.Cluster{
 		Name:     mName,
 		Provider: backend.Spec.Provider,
@@ -425,8 +405,8 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) (*v1alpha1.Cl
 		LoadBalancePolicy: v1alpha1.LoadBalancePolicy_ROUND_ROBIN,
 
 		Upstream: &v1alpha1.Upstream{
-			Url:     getURL(server),
-			Method:  stringToUpstreamMethod(server.Method),
+			// todo override request param
+			Url:     backend.Spec.Upstream.BaseURL,
 			Headers: hs,
 			Timeout: backend.Spec.Upstream.Timeout,
 		},

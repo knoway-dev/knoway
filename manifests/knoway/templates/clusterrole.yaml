@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ .Release.name }}
+rules:
+  - apiGroups:
+      - "knoway.dev.knoway.dev"
+    resources:
+      - "*"
+    verbs:
+      - "*"
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+      - configmaps
+      - services
+      - pods
+      - namespaces
+    verbs:
+      - get
+      - list
+      - watch
+      - create
+      - update
+      - patch

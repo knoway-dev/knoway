@@ -1,4 +1,4 @@
-package gw
+package gateway
 
 import (
 	"context"
@@ -6,6 +6,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"knoway.dev/config"
 
 	"google.golang.org/protobuf/types/known/anypb"
 
@@ -16,25 +18,23 @@ import (
 	"knoway.dev/pkg/listener/manager"
 )
 
-type GatewayConfig struct {
-	AuthServerAddress       string
-	UsageStatsServerAddress string
-	GatewayListenAddress    string
-}
+func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg config.GatewayConfig) error {
+	if listenerAddr == "" {
+		listenerAddr = ":8080"
+	}
 
-func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCycle) error {
 	baseListenConfig := &v1alpha1.ChatCompletionListener{
 		Name:    "openai",
 		Filters: []*v1alpha1.ListenerFilter{},
 	}
 
-	if cfg.AuthServerAddress != "" {
+	if cfg.AuthServer.Url != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Name: "api-key-auth",
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
 					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url: cfg.AuthServerAddress,
+						Url: cfg.AuthServer.Url,
 					},
 				})
 				if err != nil {
@@ -46,12 +46,12 @@ func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCy
 		})
 	}
 
-	if cfg.UsageStatsServerAddress != "" {
+	if cfg.StatsServer.Url != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
 					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url: cfg.UsageStatsServerAddress,
+						Url: cfg.StatsServer.Url,
 					},
 				})
 				if err != nil {
@@ -61,22 +61,17 @@ func StartGateway(_ context.Context, cfg GatewayConfig, lifecycle bootkit.LifeCy
 				return c
 			}(),
 		})
-	}
-
-	addr := cfg.GatewayListenAddress
-	if addr == "" {
-		addr = ":8080" // default address
 	}
 
 	server, err := listener.NewMux().
 		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig, lifecycle)).
 		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig, lifecycle)).
-		BuildServer(&http.Server{Addr: addr, ReadTimeout: time.Minute})
+		BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err
 	}
 
-	ln, err := net.Listen("tcp", addr)
+	ln, err := net.Listen("tcp", listenerAddr)
 	if err != nil {
 		return err
 	}

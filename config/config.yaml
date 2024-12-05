@@ -1,0 +1,10 @@
+debug: true
+controller:
+  secure_metrics: false
+  enable_http2: false
+
+gateway:
+  auth_server:
+    url: ''
+  stats_server:
+    url: ''

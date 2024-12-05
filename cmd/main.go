@@ -23,7 +23,9 @@ import (
 	"os"
 	"time"
 
-	"knoway.dev/cmd/gw"
+	"knoway.dev/cmd/gateway"
+	"knoway.dev/config"
+
 	"knoway.dev/cmd/server"
 	"knoway.dev/pkg/bootkit"
 
@@ -35,31 +37,32 @@ import (
 
 func main() {
 	var metricsAddr string
-	var enableLeaderElection bool
 	var probeAddr string
-	var secureMetrics bool
-	var enableHTTP2 bool
-	var apiKeyServer string
-	var usageStatsServer string
+	var listenerAddr string
+	var configPath string
 
-	flag.StringVar(&apiKeyServer, "api-key-server", "", "The address the api key server address, example: 10.33.2.23:30943 . "+
-		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
+	flag.StringVar(&listenerAddr, "gateway-listener-address", ":8080", "The address the gateway listener binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. "+
 		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.BoolVar(&secureMetrics, "metrics-secure", false,
-		"If set the metrics endpoint is served securely")
-	flag.BoolVar(&enableHTTP2, "enable-http2", false,
-		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.StringVar(&configPath, "config", "config/config.yaml", "Path to the configuration file")
 	flag.Parse()
+
+	cfg, err := config.LoadConfig(configPath)
+	if err != nil {
+		slog.Error("Failed to load configuration", "error", err)
+		return
+	}
 
 	app := bootkit.New(bootkit.StartTimeout(time.Second * 10)) //nolint:mnd
 
+	logLevel := slog.LevelInfo
+	if cfg.Debug {
+		logLevel = slog.LevelDebug
+
+	}
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: logLevel,
 	})))
 
 	// development static server
@@ -67,26 +70,22 @@ func main() {
 
 	if devStaticServer {
 		app.Add(func(_ context.Context, lifeCycle bootkit.LifeCycle) error {
-			return gw.StaticRegisterClusters(gw.StaticClustersConfig, lifeCycle)
+			return gateway.StaticRegisterClusters(gateway.StaticClustersConfig, lifeCycle)
 		})
 	} else {
 		// Start the server and handle errors gracefully
 		app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
-			return server.StartController(ctx, lifeCycle, server.Options{
-				EnableHTTP2:          enableHTTP2,
-				EnableLeaderElection: enableLeaderElection,
-				SecureMetrics:        secureMetrics,
-				MetricsAddr:          metricsAddr,
-				ProbeAddr:            probeAddr,
-			})
+			return server.StartController(ctx, lifeCycle,
+				metricsAddr,
+				probeAddr,
+				cfg.Controller)
 		})
 	}
 
 	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
-		return gw.StartGateway(ctx, gw.GatewayConfig{
-			AuthServerAddress:       apiKeyServer,
-			UsageStatsServerAddress: usageStatsServer,
-		}, lifeCycle)
+		return gateway.StartGateway(ctx, lifeCycle,
+			listenerAddr,
+			cfg.Gateway)
 	})
 
 	app.Start()

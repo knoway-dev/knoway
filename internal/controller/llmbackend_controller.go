@@ -81,7 +81,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	//todo Maintain status states, such as model health checks, and configure validate
+	// todo Maintain status states, such as model health checks, and configure validate
 	return ctrl.Result{}, nil
 }
 

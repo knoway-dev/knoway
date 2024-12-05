@@ -18,11 +18,11 @@ spec:
     - jsonPath: .spec.provider
       name: Provider
       type: string
-    - jsonPath: .spec.modelName
-      name: Model
+    - jsonPath: .spec.name
+      name: Name
       type: string
-    - jsonPath: .spec.upstream.baseUrl
-      name: Upstream
+    - jsonPath: .spec.upstream.baseURL
+      name: URL
       type: string
     - jsonPath: .status.status
       name: Status
@@ -79,7 +79,7 @@ spec:
                       type: object
                   type: object
                 type: array
-              modelName:
+              name:
                 description: ModelName specifies the name of the model
                 type: string
               provider:
@@ -92,38 +92,122 @@ spec:
                     description: "BaseUrl define upstream endpoint url\nExample:\n\t\thttps://openrouter.ai/api/v1/chat/completions\n\n
                       \thttp://phi3-mini.default.svc.cluster.local:8000/api/v1/chat/completions"
                     type: string
+                  defaultParams:
+                    properties:
+                      custom:
+                        description: Qwen model parameters
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      llama:
+                        description: LLama model parameters
+                        properties:
+                          max_length:
+                            type: integer
+                          model:
+                            type: string
+                          temperature:
+                            type: string
+                        type: object
+                      openai:
+                        description: OpenAI model parameters
+                        properties:
+                          max_tokens:
+                            type: integer
+                          model:
+                            type: string
+                          temperature:
+                            type: string
+                        type: object
+                      qwen:
+                        description: Qwen model parameters
+                        properties:
+                          model:
+                            type: string
+                          temperature:
+                            type: string
+                          top_k:
+                            type: integer
+                        type: object
+                    type: object
                   headers:
                     description: "Headers defines the common headers for the model,
                       such as the authentication header for the API key.\nExample:\n\nheaders：\n\t-
-                      key: apikey\n\t  valueFrom:\n\t\tprefix: sk-or-v1-\n\t\trefType:
-                      Secret\n\t\trefName: common-gpt4-apikey\n\nheaders：\n\t- key:
-                      apikey\n\t  value: \"sk-or-v1-xxxxxxxxxx\""
+                      key: apikey\n\t  value: \"sk-or-v1-xxxxxxxxxx\""
                     items:
                       properties:
                         key:
                           type: string
                         value:
                           type: string
-                        valueFrom:
-                          properties:
-                            prefix:
-                              type: string
-                            refName:
-                              description: Name of the source
-                              type: string
-                            refType:
-                              description: Type of the source (ConfigMap or Secret)
-                              enum:
-                              - ConfigMap
-                              - Secret
-                              type: string
-                          type: object
                       type: object
                     type: array
+                  headersFrom:
+                    description: "Headers defines the common headers for the model,
+                      such as the authentication header for the API key.\nExample:\n\nheadersFrom：\n\t-
+                      prefix: sk-or-v1-\n\t  refType: Secret\n\t  refName: common-gpt4-apikey"
+                    items:
+                      description: HeaderFromSource represents the source of a set
+                        of ConfigMaps or Secrets
+                      properties:
+                        prefix:
+                          description: An optional identifier to prepend to each key
+                            in the ref.
+                          type: string
+                        refName:
+                          description: Name of the source
+                          type: string
+                        refType:
+                          description: Type of the source (ConfigMap or Secret)
+                          enum:
+                          - ConfigMap
+                          - Secret
+                          type: string
+                      type: object
+                    type: array
+                  overrideParams:
+                    properties:
+                      custom:
+                        description: Qwen model parameters
+                        type: object
+                        x-kubernetes-preserve-unknown-fields: true
+                      llama:
+                        description: LLama model parameters
+                        properties:
+                          max_length:
+                            type: integer
+                          model:
+                            type: string
+                          temperature:
+                            type: string
+                        type: object
+                      openai:
+                        description: OpenAI model parameters
+                        properties:
+                          max_tokens:
+                            type: integer
+                          model:
+                            type: string
+                          temperature:
+                            type: string
+                        type: object
+                      qwen:
+                        description: Qwen model parameters
+                        properties:
+                          model:
+                            type: string
+                          temperature:
+                            type: string
+                          top_k:
+                            type: integer
+                        type: object
+                    type: object
                   timeout:
                     format: int32
                     type: integer
                 type: object
+            required:
+            - name
+            - provider
             type: object
           status:
             description: LLMBackendStatus defines the observed state of LLMBackend

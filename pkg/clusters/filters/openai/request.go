@@ -46,6 +46,16 @@ func (f *requestHandler) RequestModifier(ctx context.Context, request object.LLM
 		return request, err
 	}
 
+	err = request.SetDefaultParams(cluster.GetUpstream().GetDefaultParams())
+	if err != nil {
+		return request, err
+	}
+
+	err = request.SetOverrideParams(cluster.GetUpstream().GetOverrideParams())
+	if err != nil {
+		return request, err
+	}
+
 	return request, nil
 }
 

@@ -61,3 +61,63 @@ func TestSetModel(t *testing.T) {
 		assert.Equal(t, msg["content"], newMessageMap["content"])
 	}
 }
+
+func TestSetDefaultParams(t *testing.T) {
+	body := []byte(`{
+		"model": "gpt-4",
+		"stream": false
+	}`)
+
+	req, err := http.NewRequest("POST", "/api/v1", bytes.NewReader(body))
+	assert.NoError(t, err, "failed to create HTTP request")
+
+	chatReq, err := NewChatCompletionRequest(req)
+	assert.NoError(t, err, "failed to create ChatCompletionsRequest")
+
+	params := map[string]string{
+		"model":       "openai/gpt-4",
+		"stream":      "true",
+		"temperature": "0.7",
+		"max_tokens":  "100",
+	}
+
+	err = chatReq.SetDefaultParams(params)
+	assert.NoError(t, err, "SetDefaultParams failed")
+
+	bodyParsed := chatReq.GetBodyParsed()
+	assert.Equal(t, false, bodyParsed["stream"], "stream")
+	assert.Equal(t, "gpt-4", bodyParsed["model"], "model")
+	assert.Equal(t, 0.7, bodyParsed["temperature"], "temperature")
+	assert.Equal(t, 100.0, bodyParsed["max_tokens"], "max_tokens")
+}
+
+func TestSetOverrideParams(t *testing.T) {
+	body := []byte(`{
+		"model": "gpt-4",
+		"stream": false,
+		"temperature": 0.5,
+		"max_tokens": 200
+	}`)
+
+	req, err := http.NewRequest("POST", "/api/v1", bytes.NewReader(body))
+	assert.NoError(t, err, "failed to create HTTP request")
+
+	chatReq, err := NewChatCompletionRequest(req)
+	assert.NoError(t, err, "failed to create ChatCompletionsRequest")
+
+	params := map[string]string{
+		"model":       "openai/gpt-4",
+		"stream":      "true",
+		"temperature": "0.7",
+		"max_tokens":  "100",
+	}
+
+	err = chatReq.SetOverrideParams(params)
+	assert.NoError(t, err, "SetOverrideParams failed")
+
+	bodyParsed := chatReq.GetBodyParsed()
+	assert.Equal(t, true, bodyParsed["stream"], "stream")
+	assert.Equal(t, "openai/gpt-4", bodyParsed["model"], "model")
+	assert.Equal(t, 0.7, bodyParsed["temperature"], "temperature")
+	assert.Equal(t, 100.0, bodyParsed["max_tokens"], "max_tokens")
+}

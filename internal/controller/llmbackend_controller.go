@@ -18,11 +18,17 @@ package controller
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
+	"reflect"
 	"strings"
 	"time"
+
+	"github.com/samber/lo"
+
+	v1 "k8s.io/api/core/v1"
 
 	"github.com/stoewer/go-strcase"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,8 +79,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		log.Log.Error(err, "reconcile LLMBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-
-	log.Log.Info("reconcile LLMBackend modelName", "modelName", llmBackend.Spec.ModelName)
+	log.Log.Info("reconcile LLMBackend modelName", "modelName", llmBackend.Spec.Name)
 
 	rrs := r.getReconciles()
 	if isDeleted(llmBackend) {
@@ -117,7 +122,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
-	mName := llmBackend.Spec.ModelName
+	mName := llmBackend.Spec.Name
 
 	removeBackendFunc := func() {
 		if mName != "" {
@@ -132,7 +137,7 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 		return nil
 	}
 
-	clusterCfg, err := llmBackendToClusterCfg(llmBackend)
+	clusterCfg, err := r.toRegisterClusterConfig(ctx, llmBackend)
 	if err != nil {
 		return fmt.Errorf("invalid config: %w", err)
 	}
@@ -161,8 +166,8 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 }
 
 func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
-	if llmBackend.Spec.ModelName == "" {
-		return errors.New("modelName cannot be empty")
+	if llmBackend.Spec.Name == "" {
+		return fmt.Errorf("spec.name cannot be empty")
 	}
 	if llmBackend.Spec.Upstream.BaseURL == "" {
 		return errors.New("upstream.baseUrl cannot be empty")
@@ -173,8 +178,20 @@ func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBacken
 		return fmt.Errorf("upstream.baseUrl parse error: %w", err)
 	}
 
+	existingLLMBackendList := &knowaydevv1alpha1.LLMBackendList{}
+	err = r.Client.List(ctx, existingLLMBackendList)
+	if err != nil {
+		return fmt.Errorf("failed to list LLMBackend resources: %w", err)
+	}
+
+	for _, existingLLMBackend := range existingLLMBackendList.Items {
+		if existingLLMBackend.Spec.Name == llmBackend.Spec.Name && existingLLMBackend.Name != llmBackend.Name {
+			return fmt.Errorf("LLMBackend name '%s' must be unique globally", llmBackend.Spec.Name)
+		}
+	}
+
 	// validator cluster filter by new
-	clusterCfg, err := llmBackendToClusterCfg(llmBackend)
+	clusterCfg, err := r.toRegisterClusterConfig(ctx, llmBackend)
 	if err != nil {
 		return fmt.Errorf("failed to convert LLMBackend to cluster config: %w", err)
 	}
@@ -359,20 +376,215 @@ func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBack
 	return nil
 }
 
-func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) (*v1alpha1.Cluster, error) { //nolint:unparam
+func (r *LLMBackendReconciler) toUpstreamHeaders(ctx context.Context, backend *knowaydevv1alpha1.LLMBackend) ([]*v1alpha1.Upstream_Header, error) {
 	if backend == nil {
 		return nil, nil
 	}
-
-	mName := backend.Spec.ModelName
-
 	hs := make([]*v1alpha1.Upstream_Header, 0)
 	for _, h := range backend.Spec.Upstream.Headers {
-		// todo ValueFrom to value
+		if h.Key == "" || h.Value == "" {
+			continue
+		}
+
 		hs = append(hs, &v1alpha1.Upstream_Header{
 			Key:   h.Key,
 			Value: h.Value,
 		})
+	}
+
+	for _, valueFrom := range backend.Spec.Upstream.HeadersFrom {
+		var data map[string]string
+
+		switch valueFrom.RefType {
+		case knowaydevv1alpha1.Secret:
+			secret := &v1.Secret{}
+			err := r.Client.Get(ctx, client.ObjectKey{Namespace: backend.GetNamespace(), Name: valueFrom.RefName}, secret)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get Secret %s: %w", valueFrom.RefName, err)
+			}
+			data = secret.StringData
+		case knowaydevv1alpha1.ConfigMap:
+			configMap := &v1.ConfigMap{}
+			err := r.Client.Get(ctx, client.ObjectKey{Namespace: backend.GetNamespace(), Name: valueFrom.RefName}, configMap)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get ConfigMap %s: %w", valueFrom.RefName, err)
+			}
+			data = configMap.Data
+		default:
+			// noting
+		}
+		for key, value := range data {
+			hs = append(hs, &v1alpha1.Upstream_Header{
+				Key:   valueFrom.Prefix + key,
+				Value: value,
+			})
+		}
+	}
+
+	return hs, nil
+}
+
+func processRawExtension(in *runtime.RawExtension, params map[string]string) error {
+	data, err := in.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("error marshaling RawExtension: %w", err)
+	}
+	out := make(map[string]interface{})
+	if err := json.Unmarshal(data, &out); err != nil {
+		return fmt.Errorf("error unmarshaling RawExtension: %w", err)
+	}
+	for k, v := range out {
+		if err := storeToParams(params, k, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func storeToParams(params map[string]string, key string, value interface{}) error {
+	if params == nil {
+		return fmt.Errorf("params map cannot be nil")
+	}
+	if key == "" {
+		return nil
+	}
+	var jsonData string
+	switch v := value.(type) {
+	case map[string]interface{}, []interface{}:
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("error marshaling value for key %s: %w", key, err)
+		}
+		jsonData = string(bytes)
+	case int, int32, int64:
+		jsonData = fmt.Sprintf("%d", v)
+	case float64, float32:
+		jsonData = fmt.Sprintf("%f", v)
+	case bool:
+		jsonData = fmt.Sprintf("%v", v)
+	case string:
+		jsonData = v
+	default:
+		bytes, err := json.Marshal(v)
+		if err != nil {
+			return fmt.Errorf("error marshaling value for key %s: %w", key, err)
+		}
+		jsonData = string(bytes)
+	}
+	params[key] = jsonData
+	return nil
+}
+
+func processStruct(v interface{}, params map[string]string) error {
+	val := reflect.ValueOf(v)
+
+	// Ensure we have a pointer to a struct
+	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("expected a pointer to struct, got %v", val.Kind())
+	}
+
+	// Get the element and type for iteration
+	elem := val.Elem()
+	typ := elem.Type()
+
+	for i := 0; i < elem.NumField(); i++ {
+		field := elem.Field(i)
+		structField := typ.Field(i)
+
+		// Handle inline struct fields (embedded fields)
+		if structField.Anonymous {
+			if err := processStruct(field.Addr().Interface(), params); err != nil {
+				return err
+			}
+			continue
+		}
+
+		// Extract the JSON tag, skip if there's no tag or it's marked as "-"
+		tag := structField.Tag.Get("json")
+		if tag == "-" {
+			continue
+		}
+
+		// Get the actual JSON key
+		jsonKey := strings.Split(tag, ",")[0]
+
+		// Handle the field value; if it's a pointer, and it may be a nil pointer, skip it
+		if field.Kind() == reflect.Ptr && field.IsNil() {
+			continue
+		} else if field.Kind() == reflect.Ptr {
+			field = field.Elem()
+		} else if field.Kind() == reflect.String && field.IsZero() {
+			continue
+		}
+
+		// Store the field value in params
+		if err := storeToParams(params, jsonKey, field.Interface()); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[string]string) error {
+	if modelParams == nil {
+		return nil
+	}
+	modelTypes := map[string]interface{}{
+		"OpenAI": modelParams.OpenAI,
+		"LLama":  modelParams.LLama,
+		"Qwen":   modelParams.Qwen,
+	}
+
+	for name, model := range modelTypes {
+		if !lo.IsNil(model) {
+			if err := processStruct(model, params); err != nil {
+				return fmt.Errorf("error processing %s params: %w", name, err)
+			}
+		}
+	}
+
+	if modelParams.Custom != nil {
+		if err := processRawExtension(modelParams.Custom, params); err != nil {
+			return fmt.Errorf("error parsing Custom params: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func toParams(backed *knowaydevv1alpha1.LLMBackend) (defaultParams, overrideParams map[string]string, err error) {
+	if backed == nil {
+		return
+	}
+
+	defaultParams, overrideParams = make(map[string]string), make(map[string]string)
+
+	if err = parseModelParams(backed.Spec.Upstream.DefaultParams, defaultParams); err != nil {
+		return nil, nil, fmt.Errorf("error processing DefaultParams: %w", err)
+	}
+
+	if err = parseModelParams(backed.Spec.Upstream.OverrideParams, overrideParams); err != nil {
+		return nil, nil, fmt.Errorf("error processing OverrideParams: %w", err)
+	}
+
+	return defaultParams, overrideParams, nil
+}
+
+func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, backend *knowaydevv1alpha1.LLMBackend) (*v1alpha1.Cluster, error) {
+	if backend == nil {
+		return nil, nil
+	}
+
+	mName := backend.Spec.Name
+	hs, err := r.toUpstreamHeaders(ctx, backend)
+	if err != nil {
+		return nil, err
+	}
+
+	defaultParams, overrideParams, err := toParams(backend)
+	if err != nil {
+		return nil, err
 	}
 
 	// filters
@@ -421,10 +633,11 @@ func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) (*v1alpha1.Cl
 		LoadBalancePolicy: v1alpha1.LoadBalancePolicy_ROUND_ROBIN,
 
 		Upstream: &v1alpha1.Upstream{
-			// todo override request param
-			Url:     backend.Spec.Upstream.BaseURL,
-			Headers: hs,
-			Timeout: backend.Spec.Upstream.Timeout,
+			Url:            backend.Spec.Upstream.BaseURL,
+			Headers:        hs,
+			Timeout:        backend.Spec.Upstream.Timeout,
+			DefaultParams:  defaultParams,
+			OverrideParams: overrideParams,
 		},
 		Filters: filters,
 	}, nil

@@ -25,8 +25,8 @@ import (
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
-//+kubebuilder:printcolumn:name="Model",type=string,JSONPath=`.spec.modelName`
-//+kubebuilder:printcolumn:name="Upstream",type=string,JSONPath=`.spec.upstream.baseUrl`
+//+kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.name`
+//+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.upstream.baseURL`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
 // LLMBackend is the Schema for the llmbackends API
@@ -54,8 +54,10 @@ func init() {
 // LLMBackendSpec defines the desired state of LLMBackend
 type LLMBackendSpec struct {
 	// ModelName specifies the name of the model
-	ModelName string `json:"modelName,omitempty"`
+	// +kubebuilder:validation:Required
+	Name string `json:"name,omitempty"`
 	// Provider indicates the organization providing the model
+	// +kubebuilder:validation:Required
 	Provider string `json:"provider,omitempty"`
 	// Upstream contains information about the upstream configuration
 	Upstream BackendUpstream `json:"upstream,omitempty"`
@@ -77,29 +79,69 @@ type BackendUpstream struct {
 	//
 	// headers：
 	// 	- key: apikey
-	// 	  valueFrom:
-	// 		prefix: sk-or-v1-
-	//		refType: Secret
-	//		refName: common-gpt4-apikey
-	//
-	// headers：
-	// 	- key: apikey
 	// 	  value: "sk-or-v1-xxxxxxxxxx"
-	Headers []HeaderDefine `json:"headers,omitempty"`
+	Headers []Header `json:"headers,omitempty"`
+	// Headers defines the common headers for the model, such as the authentication header for the API key.
+	// Example:
+	//
+	// headersFrom：
+	// 	- prefix: sk-or-v1-
+	//	  refType: Secret
+	//	  refName: common-gpt4-apikey
+	HeadersFrom []HeaderFromSource `json:"headersFrom,omitempty"`
+
+	DefaultParams  *ModelParams `json:"defaultParams,omitempty"`
+	OverrideParams *ModelParams `json:"overrideParams,omitempty"`
 
 	Timeout int32 `json:"timeout,omitempty"`
 }
 
-type HeaderDefine struct {
-	Key string `json:"key,omitempty"`
+type CommonParams struct {
+	Model string `json:"model,omitempty"`
 
-	// +kubebuilder:validation:OneOf
-	Value string `json:"value,omitempty"`
-	// +kubebuilder:validation:OneOf
-	ValueFrom *ValueFrom `json:"valueFrom,omitempty"`
+	Temperature string `json:"temperature,omitempty"`
 }
 
-type ValueFrom struct {
+type ModelParams struct {
+	// OpenAI model parameters
+	OpenAI *OpenAIParam `json:"openai,omitempty"`
+
+	// LLama model parameters
+	LLama *LLamaParam `json:"llama,omitempty"`
+
+	// Qwen model parameters
+	Qwen *QwenParam `json:"qwen,omitempty"`
+
+	// Qwen model parameters
+	Custom *runtime.RawExtension `json:"custom,omitempty"`
+}
+
+type OpenAIParam struct {
+	CommonParams `json:",inline"`
+
+	MaxTokens *int `json:"max_tokens,omitempty"`
+}
+
+type LLamaParam struct {
+	CommonParams `json:",inline"`
+
+	MaxLength *int `json:"max_length,omitempty"`
+}
+
+type QwenParam struct {
+	CommonParams `json:",inline"`
+
+	TopK *int `json:"top_k,omitempty"`
+}
+
+type Header struct {
+	Key   string `json:"key,omitempty"`
+	Value string `json:"value,omitempty"`
+}
+
+// HeaderFromSource represents the source of a set of ConfigMaps or Secrets
+type HeaderFromSource struct {
+	// An optional identifier to prepend to each key in the ref.
 	Prefix string `json:"prefix,omitempty"`
 	// Type of the source (ConfigMap or Secret)
 	RefType ValueFromType `json:"refType,omitempty"`

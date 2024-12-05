@@ -31,8 +31,10 @@ message Upstream {
         string key   = 1;
         string value = 2;
     }
-    repeated Header headers = 3;
-    int32 timeout           = 4;
+    repeated Header headers            = 3;
+    int32 timeout                      = 4;
+    map<string, string> defaultParams  = 5;
+    map<string, string> overrideParams = 6;
 }
 
 message Cluster {

@@ -22,6 +22,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stoewer/go-strcase"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"knoway.dev/pkg/clusters/manager"
 
 	"knoway.dev/pkg/bootkit"
@@ -187,7 +190,7 @@ func (r *LLMBackendReconciler) reconcilePhase(ctx context.Context, llmBackend *k
 	}
 
 	for _, cond := range llmBackend.Status.Conditions {
-		if cond.Ready == false {
+		if cond.Status == metav1.ConditionFalse {
 			llmBackend.Status.Status = knowaydevv1alpha1.Failed
 			return nil
 		}
@@ -200,12 +203,17 @@ func isDeleted(c *knowaydevv1alpha1.LLMBackend) bool {
 }
 
 func setStatusCondition(llmBackend *knowaydevv1alpha1.LLMBackend, typ string, ready bool, message string) {
+	cs := metav1.ConditionFalse
+	if ready {
+		cs = metav1.ConditionTrue
+	}
 	index := -1
-	newCond := knowaydevv1alpha1.Condition{
-		Type:        typ,
-		Message:     message,
-		LastUpdated: time.Now().Unix(),
-		Ready:       ready,
+	newCond := metav1.Condition{
+		Type:               typ,
+		Reason:             typ,
+		Message:            message,
+		LastTransitionTime: metav1.Time{Time: time.Now()},
+		Status:             cs,
 	}
 	for i, cond := range llmBackend.Status.Conditions {
 		if cond.Type == typ {
@@ -217,7 +225,7 @@ func setStatusCondition(llmBackend *knowaydevv1alpha1.LLMBackend, typ string, re
 		llmBackend.Status.Conditions = append(llmBackend.Status.Conditions, newCond)
 	} else {
 		old := llmBackend.Status.Conditions[index]
-		if old.Ready == newCond.Ready && old.Message == newCond.Message {
+		if old.Status == newCond.Status && old.Message == newCond.Message {
 			return
 		}
 		llmBackend.Status.Conditions[index] = newCond
@@ -238,9 +246,9 @@ const (
 const (
 	condConfig          = "config"
 	condValidator       = "validator"
-	condUpstreamHealthy = "upstream-healthy"
+	condUpstreamHealthy = "upstreamHealthy"
 	condRegister        = "register"
-	condFinalDelete     = "final-delete"
+	condFinalDelete     = "finalDelete"
 )
 
 func (r *LLMBackendReconciler) getReconciles() []reconcileHandler {
@@ -275,7 +283,7 @@ func (r *LLMBackendReconciler) getDeleteReconciles() []reconcileHandler {
 			reconciler: r.reconcileConfig,
 		},
 		{
-			typ:        deleteCondPrefix + condRegister,
+			typ:        strcase.LowerCamelCase(deleteCondPrefix + condRegister),
 			reconciler: r.reconcileRegister,
 		},
 		{
@@ -315,7 +323,7 @@ func shouldForceDelete(llmBackend *knowaydevv1alpha1.LLMBackend) bool {
 func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
 	canDelete := true
 	for _, con := range llmBackend.Status.Conditions {
-		if strings.Contains(con.Type, deleteCondPrefix) && !con.Ready {
+		if strings.Contains(con.Type, deleteCondPrefix) && con.Status == metav1.ConditionFalse {
 			canDelete = false
 		}
 	}

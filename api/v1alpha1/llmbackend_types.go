@@ -185,7 +185,7 @@ type LLMBackendStatus struct {
 	Status StatusEnum `json:"status,omitempty"`
 
 	// Conditions represent the current conditions of the backend
-	Conditions []Condition `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 
 	// Endpoints holds the upstream addresses of the current model (pod IP addresses)
 	Endpoints []string `json:"endpoints,omitempty"`
@@ -199,17 +199,3 @@ const (
 	Healthy StatusEnum = "Healthy"
 	Failed  StatusEnum = "Failed"
 )
-
-// Condition defines the state of a specific condition
-type Condition struct {
-	// Type of the condition
-	Type string `json:"type,omitempty"`
-	// Message describe this condition.
-	Message string `json:"message,omitempty"`
-	// Ready describe condition is ok
-	Ready bool `json:"ready,omitempty"`
-	// LastUpdated describe the Unix Timestamp of current condition
-	// +kubebuilder:validation:Format=int64
-	// +kubebuilder:validation:Type=string
-	LastUpdated int64 `protobuf:"varint,3,opt,name=lastUpdated,proto3" json:"lastUpdated,omitempty"`
-}

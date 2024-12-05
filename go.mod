@@ -12,6 +12,7 @@ require (
 	github.com/onsi/gomega v1.32.0
 	github.com/samber/lo v1.47.0
 	github.com/sashabaranov/go-openai v1.35.7
+	github.com/stoewer/go-strcase v1.2.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.33.0

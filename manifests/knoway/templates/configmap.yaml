@@ -1,17 +1,14 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.global.prod }}
+  name: {{ .Release.name }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ .Values.global.prod }}
+    app: {{ .Release.name }}
 data:
   config.yaml: |-
     debug: {{.Values.global.debug }}
-    controller:
-      probe_addr: ":8081"
     gateway:
-      listener_addr: ":8080"
       auth_server:
         url: {{.Values.global.config.auth_server_url }}
       stats_server:

@@ -36,7 +36,15 @@ import (
 )
 
 func main() {
+	var metricsAddr string
+	var probeAddr string
+	var listenerAddr string
 	var configPath string
+
+	flag.StringVar(&listenerAddr, "gateway-listener-address", ":8080", "The address the gateway listener binds to.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. "+
+		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
 	flag.StringVar(&configPath, "config", "config/config.yaml", "Path to the configuration file")
 	flag.Parse()
 
@@ -67,12 +75,17 @@ func main() {
 	} else {
 		// Start the server and handle errors gracefully
 		app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
-			return server.StartController(ctx, lifeCycle, cfg.Controller)
+			return server.StartController(ctx, lifeCycle,
+				metricsAddr,
+				probeAddr,
+				cfg.Controller)
 		})
 	}
 
 	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
-		return gateway.StartGateway(ctx, lifeCycle, cfg.Gateway)
+		return gateway.StartGateway(ctx, lifeCycle,
+			listenerAddr,
+			cfg.Gateway)
 	})
 
 	app.Start()

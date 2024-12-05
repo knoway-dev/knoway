@@ -1,15 +1,15 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: {{ .Values.global.prod }}
+  name: {{ .Release.name }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ .Values.global.prod }}
+    app: {{ .Release.name }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: {{ .Values.global.prod }}
+  name: {{ .Release.name }}
 subjects:
   - kind: ServiceAccount
-    name: {{ .Values.global.prod }}
+    name: {{ .Release.name }}
     namespace: {{ .Release.Namespace }}

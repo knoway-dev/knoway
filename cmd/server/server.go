@@ -34,12 +34,12 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, cfg config.ControllerConfig) error {
-	if cfg.MetricsAddr == "" {
-		cfg.MetricsAddr = "0"
+func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, metricsAddr, probeAddr string, cfg config.ControllerConfig) error {
+	if metricsAddr == "" {
+		metricsAddr = "0"
 	}
-	if cfg.ProbeAddr == "" {
-		cfg.ProbeAddr = ":8081"
+	if probeAddr == "" {
+		probeAddr = ":8081"
 	}
 
 	copts := zap.Options{
@@ -73,12 +73,12 @@ func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, cfg confi
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: metricsserver.Options{
-			BindAddress:   cfg.MetricsAddr,
+			BindAddress:   metricsAddr,
 			SecureServing: cfg.SecureMetrics,
 			TLSOpts:       tlsOpts,
 		},
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: cfg.ProbeAddr,
+		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         cfg.EnableLeaderElection,
 		LeaderElectionID:       "3db676b9.knoway.dev",
 		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily

@@ -18,9 +18,9 @@ import (
 	"knoway.dev/pkg/listener/manager"
 )
 
-func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, cfg config.GatewayConfig) error {
-	if cfg.ListenerAddr == "" {
-		cfg.ListenerAddr = ":8080"
+func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg config.GatewayConfig) error {
+	if listenerAddr == "" {
+		listenerAddr = ":8080"
 	}
 
 	baseListenConfig := &v1alpha1.ChatCompletionListener{
@@ -66,12 +66,12 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, cfg config.Gat
 	server, err := listener.NewMux().
 		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig, lifecycle)).
 		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig, lifecycle)).
-		BuildServer(&http.Server{Addr: cfg.ListenerAddr, ReadTimeout: time.Minute})
+		BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err
 	}
 
-	ln, err := net.Listen("tcp", cfg.ListenerAddr)
+	ln, err := net.Listen("tcp", listenerAddr)
 	if err != nil {
 		return err
 	}

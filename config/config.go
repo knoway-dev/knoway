@@ -8,11 +8,9 @@ import (
 )
 
 type ControllerConfig struct {
-	EnableLeaderElection bool   `yaml:"enable_leader_election" json:"enable_leader_election"`
-	ProbeAddr            string `yaml:"probe_addr" json:"probe_addr"`
-	MetricsAddr          string `yaml:"metrics_addr" json:"metrics_addr"`
-	SecureMetrics        bool   `yaml:"secure_metrics" json:"secure_metrics"`
-	EnableHTTP2          bool   `yaml:"enable_http2" json:"enable_http_2"`
+	EnableLeaderElection bool `yaml:"enable_leader_election" json:"enable_leader_election"`
+	SecureMetrics        bool `yaml:"secure_metrics" json:"secure_metrics"`
+	EnableHTTP2          bool `yaml:"enable_http2" json:"enable_http_2"`
 }
 
 type AuthServer struct {
@@ -24,9 +22,8 @@ type StatsServer struct {
 }
 
 type GatewayConfig struct {
-	ListenerAddr string      `yaml:"listener_addr" json:"listener_addr"`
-	AuthServer   AuthServer  `yaml:"auth_server" json:"auth_server"`
-	StatsServer  StatsServer `yaml:"stats_server" json:"stats_server"`
+	AuthServer  AuthServer  `yaml:"auth_server" json:"auth_server"`
+	StatsServer StatsServer `yaml:"stats_server" json:"stats_server"`
 }
 
 type Config struct {

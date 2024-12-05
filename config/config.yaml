@@ -1,11 +1,9 @@
 debug: true
 controller:
-  probe_addr: ":8081"
   secure_metrics: false
   enable_http2: false
 
 gateway:
-  listener_addr: ":8080"
   auth_server:
     url: ''
   stats_server:

@@ -25,7 +25,7 @@ type UsageReportRequest_Mode int32
 
 const (
 	UsageReportRequest_MODE_UNSPECIFIED UsageReportRequest_Mode = 0
-	// The PER_REQUEST mode means that each time a request is received,
+	// The MODE_PER_REQUEST mode means that each time a request is received,
 	// the usage of the request will be included.
 	// If the server fails to process, statistical data may be lost.
 	UsageReportRequest_MODE_PER_REQUEST UsageReportRequest_Mode = 1

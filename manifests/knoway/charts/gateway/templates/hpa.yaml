@@ -7,8 +7,8 @@ apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
   labels:
-    app: {{ .Values.global.prod }}-gateway
-  name: {{ .Values.global.prod }}-gateway
+    app: {{ .Release.name }}-gateway
+  name: {{ .Release.name }}-gateway
   namespace: {{ .Release.Namespace }}
 spec:
   maxReplicas: 2
@@ -27,5 +27,5 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ .Values.global.prod }}-gateway
+    name: {{ .Release.name }}-gateway
 {{ end }}

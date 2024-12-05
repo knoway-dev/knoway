@@ -1,6 +1,7 @@
 package listener
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"sync"
@@ -8,9 +9,15 @@ import (
 	"github.com/gorilla/mux"
 )
 
+type Drainable interface {
+	Drain(ctx context.Context) error
+	HasDrained() bool
+}
+
 type Listener interface {
+	Drainable
+
 	RegisterRoutes(mux *mux.Router) error
-	Drain() error
 }
 
 type Mux struct {

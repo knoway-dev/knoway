@@ -1,74 +1,20 @@
-package manager
+package chat
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
 
-	"github.com/gorilla/mux"
-	"google.golang.org/protobuf/proto"
-
-	"knoway.dev/api/listeners/v1alpha1"
-	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/filters"
-	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/registry/cluster"
-	"knoway.dev/pkg/registry/config"
-	"knoway.dev/pkg/registry/route"
-	route2 "knoway.dev/pkg/route"
+	registryroute "knoway.dev/pkg/registry/route"
+	"knoway.dev/pkg/route"
 	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
 )
 
-func NewOpenAIChatCompletionsListenerWithConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle) (listener.Listener, error) {
-	c, ok := cfg.(*v1alpha1.ChatCompletionListener)
-	if !ok {
-		return nil, fmt.Errorf("invalid config type %T", cfg)
-	}
-
-	l := &OpenAIChatCompletionsListener{
-		cfg: c,
-	}
-
-	for _, fc := range c.GetFilters() {
-		f, err := config.NewRequestFilterWithConfig(fc.GetName(), fc.GetConfig(), lifecycle)
-		if err != nil {
-			return nil, err
-		}
-
-		l.filters = append(l.filters, f)
-	}
-
-	return l, nil
-}
-
-type OpenAIChatCompletionsListener struct {
-	cfg               *v1alpha1.ChatCompletionListener
-	filters           filters.RequestFilters
-	listener.Listener // TODO: implement the interface
-}
-
-func (l *OpenAIChatCompletionsListener) UnmarshalLLMRequest(
-	ctx context.Context,
-	request *http.Request,
-) (object.LLMRequest, error) {
-	llmRequest, err := openai.NewChatCompletionRequest(request)
-	if err != nil {
-		return nil, err
-	}
-
-	if llmRequest.GetModel() == "" {
-		return nil, openai.NewErrorMissingModel()
-	}
-
-	return llmRequest, nil
-}
-
-func (l *OpenAIChatCompletionsListener) handleChatCompletionsChunks(resp object.LLMResponse, writer http.ResponseWriter) error {
+func pipeChatCompletionsStream(resp object.LLMResponse, writer http.ResponseWriter) error {
 	streamResp, ok := resp.(object.LLMStreamResponse)
 	if !ok {
 		return openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
@@ -115,8 +61,21 @@ func (l *OpenAIChatCompletionsListener) handleChatCompletionsChunks(resp object.
 	return nil
 }
 
-func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
-	llmRequest, err := l.UnmarshalLLMRequest(request.Context(), request)
+func (l *OpenAIChatListener) unmarshalChatCompletionsRequestToLLMRequest(request *http.Request) (object.LLMRequest, error) {
+	llmRequest, err := openai.NewChatCompletionRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if llmRequest.GetModel() == "" {
+		return nil, openai.NewErrorMissingModel()
+	}
+
+	return llmRequest, nil
+}
+
+func (l *OpenAIChatListener) onChatCompletionsRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
+	llmRequest, err := l.unmarshalChatCompletionsRequestToLLMRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -128,11 +87,11 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 		}
 	}
 
-	var r route2.Route
+	var r route.Route
 	var clusterName string
 
 	// TODO: do route
-	route.ForeachRoute(func(item route2.Route) bool {
+	registryroute.ForeachRoute(func(item route.Route) bool {
 		if cn, ok := item.Match(request.Context(), llmRequest); ok {
 			clusterName = cn
 			r = item
@@ -176,7 +135,7 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 		return resp, nil
 	}
 
-	err = l.handleChatCompletionsChunks(resp, writer)
+	err = pipeChatCompletionsStream(resp, writer)
 	if err != nil {
 		return nil, err
 	}
@@ -188,10 +147,4 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 	}
 
 	return nil, SkipResponse
-}
-
-func (l *OpenAIChatCompletionsListener) RegisterRoutes(mux *mux.Router) error {
-	mux.HandleFunc("/v1/chat/completions", WrapRequest(WrapHandlerForOpenAIError(l.onChatCompletionsRequestWithError)))
-
-	return nil
 }

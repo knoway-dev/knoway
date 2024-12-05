@@ -17,7 +17,81 @@ func TestErrorUnmarshalJSON(t *testing.T) {
 			},
 		}
 
-		errorJSON, err := json.Marshal(errorPayload)
+		errorJSON, err := json.Marshal(errorPayload["error"])
+		require.NoError(t, err)
+		require.NotEmpty(t, errorJSON)
+
+		var e Error
+		err = e.UnmarshalJSON(errorJSON)
+		require.NoError(t, err)
+
+		assert.Equal(t, "Invalid credentials", e.Message)
+		assert.Equal(t, "401", *e.Code)
+		assert.Empty(t, e.Param)
+		assert.Empty(t, e.Type)
+	})
+
+	t.Run("OpenAI", func(t *testing.T) {
+		t.Run("Normal", func(t *testing.T) {
+			errorPayload := map[string]any{
+				"error": map[string]any{
+					"message": "Incorrect API key provided: sk-abcd. You can find your API key at https://platform.openai.com/account/api-keys.",
+					"type":    "invalid_request_error",
+					"param":   nil,
+					"code":    "invalid_api_key",
+				},
+			}
+
+			errorJSON, err := json.Marshal(errorPayload["error"])
+			require.NoError(t, err)
+			require.NotEmpty(t, errorJSON)
+
+			var e Error
+			err = e.UnmarshalJSON(errorJSON)
+			require.NoError(t, err)
+
+			assert.Equal(t, "Incorrect API key provided: sk-abcd. You can find your API key at https://platform.openai.com/account/api-keys.", e.Message)
+			assert.Equal(t, "invalid_api_key", *e.Code)
+			assert.Empty(t, e.Param)
+			assert.Equal(t, "invalid_request_error", e.Type)
+		})
+	})
+
+	t.Run("Ollama", func(t *testing.T) {
+		errorPayload := map[string]any{
+			"error": map[string]any{
+				"message": "model is required",
+				"type":    "api_error",
+				"param":   nil,
+				"code":    nil,
+			},
+		}
+
+		errorJSON, err := json.Marshal(errorPayload["error"])
+		require.NoError(t, err)
+		require.NotEmpty(t, errorJSON)
+
+		var e Error
+		err = e.UnmarshalJSON(errorJSON)
+		require.NoError(t, err)
+
+		assert.Equal(t, "model is required", e.Message)
+		assert.Nil(t, e.Code)
+		assert.Empty(t, e.Param)
+		assert.Equal(t, "api_error", e.Type)
+	})
+}
+
+func TestErrorResponseUnmarshalJSON(t *testing.T) {
+	t.Run("OpenRouter", func(t *testing.T) {
+		errorPayload := map[string]any{
+			"error": map[string]any{
+				"message": "Invalid credentials",
+				"code":    401,
+			},
+		}
+
+		errorJSON, err := json.Marshal(errorPayload["error"])
 		require.NoError(t, err)
 		require.NotEmpty(t, errorJSON)
 
@@ -42,7 +116,7 @@ func TestErrorUnmarshalJSON(t *testing.T) {
 				},
 			}
 
-			errorJSON, err := json.Marshal(errorPayload)
+			errorJSON, err := json.Marshal(errorPayload["error"])
 			require.NoError(t, err)
 			require.NotEmpty(t, errorJSON)
 
@@ -67,7 +141,7 @@ func TestErrorUnmarshalJSON(t *testing.T) {
 			},
 		}
 
-		errorJSON, err := json.Marshal(errorPayload)
+		errorJSON, err := json.Marshal(errorPayload["error"])
 		require.NoError(t, err)
 		require.NotEmpty(t, errorJSON)
 

@@ -12,11 +12,57 @@ import (
 	"knoway.dev/pkg/utils"
 )
 
+const (
+	scalarNullJSON  = "null"
+	scalarNilGolang = "<nil>"
+)
+
 type Error struct {
 	Code    *string `json:"code"`
 	Message string  `json:"message"`
 	Param   *string `json:"param"`
 	Type    string  `json:"type"`
+}
+
+func (e *Error) UnmarshalJSON(data []byte) error {
+	var err error
+	var parsed map[string]any
+
+	err = json.Unmarshal(data, &parsed)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal error: %w", err)
+	}
+
+	codeStr, err := utils.GetByJSONPathWithoutConvert(parsed, "{ .code }")
+	if err != nil {
+		return fmt.Errorf("failed to get code: %w", err)
+	}
+	if codeStr != scalarNullJSON && codeStr != scalarNilGolang {
+		e.Code = lo.ToPtr(codeStr)
+	}
+
+	paramStr, err := utils.GetByJSONPathWithoutConvert(parsed, "{ .param }")
+	if err != nil {
+		return fmt.Errorf("failed to get param: %w", err)
+	}
+	if paramStr != scalarNullJSON && paramStr != scalarNilGolang {
+		e.Param = lo.ToPtr(paramStr)
+	}
+
+	e.Type, err = utils.GetByJSONPathWithoutConvert(parsed, "{ .type }")
+	if err != nil {
+		return fmt.Errorf("failed to get type: %w", err)
+	}
+
+	e.Message, err = utils.GetByJSONPathWithoutConvert(parsed, "{ .message }")
+	if err != nil {
+		return fmt.Errorf("failed to get message: %w", err)
+	}
+	if e.Message == "" {
+		e.Message = fmt.Sprintf("unknown error (empty message received from upstream): code: %s, type: %s, param: %s", lo.FromPtrOr(e.Code, ""), e.Type, lo.FromPtrOr(e.Param, ""))
+	}
+
+	return nil
 }
 
 var _ object.LLMError = (*ErrorResponse)(nil)
@@ -37,7 +83,7 @@ func (e *ErrorResponse) appendCause(err error) *ErrorResponse {
 		e.ErrorBody = &Error{}
 	}
 	if e.ErrorBody.Message != "" {
-		e.ErrorBody.Message = fmt.Sprintf("%s:%s", e.ErrorBody.Message, err.Error())
+		e.ErrorBody.Message = fmt.Sprintf("%s: %s", e.ErrorBody.Message, err.Error())
 	} else {
 		e.ErrorBody.Message = err.Error()
 	}
@@ -77,44 +123,14 @@ func (e *ErrorResponse) MarshalJSON() ([]byte, error) {
 }
 
 func (e *ErrorResponse) UnmarshalJSON(data []byte) error {
-	e.ErrorBody = new(Error)
+	var errorBody Error
 
-	var err error
-	var parsed map[string]any
-
-	err = json.Unmarshal(data, &parsed)
+	err := json.Unmarshal(data, &errorBody)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal error: %w", err)
+		return fmt.Errorf("failed to unmarshal error body: %w", err)
 	}
 
-	codeStr, err := utils.GetByJSONPathWithoutConvert(parsed, "{ .error.code }")
-	if err != nil {
-		return fmt.Errorf("failed to get code: %w", err)
-	}
-	if codeStr != "null" && codeStr != "<nil>" {
-		e.ErrorBody.Code = lo.ToPtr(codeStr)
-	}
-
-	paramStr, err := utils.GetByJSONPathWithoutConvert(parsed, "{ .error.param }")
-	if err != nil {
-		return fmt.Errorf("failed to get param: %w", err)
-	}
-	if paramStr != "null" && paramStr != "<nil>" {
-		e.ErrorBody.Param = lo.ToPtr(paramStr)
-	}
-
-	e.ErrorBody.Type, err = utils.GetByJSONPathWithoutConvert(parsed, "{ .error.type }")
-	if err != nil {
-		return fmt.Errorf("failed to get type: %w", err)
-	}
-
-	e.ErrorBody.Message, err = utils.GetByJSONPathWithoutConvert(parsed, "{ .error.message }")
-	if err != nil {
-		return fmt.Errorf("failed to get message: %w", err)
-	}
-	if e.ErrorBody.Message == "" {
-		e.ErrorBody.Message = fmt.Sprintf("unknown error (empty message received from upstream): code: %s, type: %s, param: %s", lo.FromPtrOr(e.ErrorBody.Code, ""), e.ErrorBody.Type, lo.FromPtrOr(e.ErrorBody.Param, ""))
-	}
+	e.ErrorBody = &errorBody
 
 	return nil
 }
@@ -324,6 +340,13 @@ func NewErrorInternalError() *ErrorResponse {
 	})
 }
 
+func NewErrorServiceUnavailable() *ErrorResponse {
+	return NewErrorResponse(http.StatusServiceUnavailable, Error{
+		Message: "service unavailable",
+		Type:    "internal_error",
+	})
+}
+
 func NewErrorFromLLMError(err error) *ErrorResponse {
 	llmError := object.AsLLMError(err)
 	if llmError == nil {
@@ -342,10 +365,12 @@ func NewErrorFromLLMError(err error) *ErrorResponse {
 
 			return newError
 		},
-		string(object.LLMErrorCodeInsufficientQuota): NewErrorQuotaExceeded,
-		string(object.LLMErrorCodeMissingAPIKey):     NewErrorMissingAPIKey,
-		string(object.LLMErrorCodeIncorrectAPIKey):   NewErrorIncorrectAPIKey,
-		string(object.LLMErrorCodeMissingModel):      NewErrorMissingModel,
+		string(object.LLMErrorCodeInsufficientQuota):  NewErrorQuotaExceeded,
+		string(object.LLMErrorCodeMissingAPIKey):      NewErrorMissingAPIKey,
+		string(object.LLMErrorCodeIncorrectAPIKey):    NewErrorIncorrectAPIKey,
+		string(object.LLMErrorCodeMissingModel):       NewErrorMissingModel,
+		string(object.LLMErrorCodeServiceUnavailable): NewErrorServiceUnavailable,
+		string(object.LLMErrorCodeInternalError):      NewErrorInternalError,
 	}
 
 	errorConstructor, ok := m[llmError.GetCode()]

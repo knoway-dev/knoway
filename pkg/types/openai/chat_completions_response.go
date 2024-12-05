@@ -75,7 +75,6 @@ func NewChatCompletionResponse(request object.LLMRequest, response *http.Respons
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
-
 	if resp.Error != nil {
 		resp.Error.Status = response.StatusCode
 	}
@@ -102,23 +101,19 @@ func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
 	usageMap := utils.GetByJSONPath[map[string]any](body, "{ .usage }")
 	respErrMap := utils.GetByJSONPath[map[string]any](body, "{ .error }")
 
-	usage, err := utils.FromMap[Usage](usageMap)
+	r.Usage, err = utils.FromMap[Usage](usageMap)
 	if err != nil {
 		return fmt.Errorf("failed to unmarshal usage: %w", err)
 	}
 
-	r.Usage = usage
-
 	if len(respErrMap) > 0 {
-		respErr, err := utils.FromMap[Error](respErrMap)
+		respErr, err := utils.FromMap[ErrorResponse](respErrMap)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal error: %w", err)
 		}
 
-		r.Error = &ErrorResponse{
-			FromUpstream: true,
-			ErrorBody:    respErr,
-		}
+		respErr.FromUpstream = true
+		r.Error = respErr
 	}
 
 	return nil
@@ -142,11 +137,13 @@ func (r *ChatCompletionsResponse) GetModel() string {
 }
 
 func (r *ChatCompletionsResponse) SetModel(model string) error {
-	var err error
+	if r.Error == nil {
+		var err error
 
-	r.responseBody, r.bodyParsed, err = modifyBytesBodyAndParsed(r.responseBody, NewReplace("/model", model))
-	if err != nil {
-		return err
+		r.responseBody, r.bodyParsed, err = modifyBytesBodyAndParsed(r.responseBody, NewReplace("/model", model))
+		if err != nil {
+			return err
+		}
 	}
 
 	r.Model = model

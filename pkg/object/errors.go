@@ -16,6 +16,8 @@ const (
 	LLMErrorCodeMissingAPIKey                LLMErrorCode = "missing_api_key"
 	LLMErrorCodeIncorrectAPIKey              LLMErrorCode = "incorrect_api_key"
 	LLMErrorCodeMissingModel                 LLMErrorCode = "missing_model"
+	LLMErrorCodeServiceUnavailable           LLMErrorCode = "service_unavailable"
+	LLMErrorCodeInternalError                LLMErrorCode = "internal_error"
 )
 
 var _ LLMError = (*BaseLLMError)(nil)
@@ -135,6 +137,26 @@ func NewErrorMissingModel() *BaseLLMError {
 		ErrorBody: &BaseError{
 			Code:    lo.ToPtr(LLMErrorCodeMissingModel),
 			Message: "Missing required parameter: '" + "model" + "'.",
+		},
+	}
+}
+
+func NewErrorInternalError() *BaseLLMError {
+	return &BaseLLMError{
+		Status: http.StatusInternalServerError,
+		ErrorBody: &BaseError{
+			Code:    lo.ToPtr(LLMErrorCodeInternalError),
+			Message: "internal error",
+		},
+	}
+}
+
+func NewErrorServiceUnavailable() *BaseLLMError {
+	return &BaseLLMError{
+		Status: http.StatusServiceUnavailable,
+		ErrorBody: &BaseError{
+			Code:    lo.ToPtr(LLMErrorCodeServiceUnavailable),
+			Message: "service unavailable",
 		},
 	}
 }

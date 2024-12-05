@@ -15,7 +15,7 @@ import (
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/listener"
-	"knoway.dev/pkg/listener/manager"
+	"knoway.dev/pkg/listener/manager/chat"
 )
 
 func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg config.GatewayConfig) error {
@@ -64,8 +64,7 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 	}
 
 	server, err := listener.NewMux().
-		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig, lifecycle)).
-		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig, lifecycle)).
+		Register(chat.NewOpenAIChatListenerConfigs(baseListenConfig, lifecycle)).
 		BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err

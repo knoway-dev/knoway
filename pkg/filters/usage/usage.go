@@ -65,19 +65,19 @@ type UsageFilter struct {
 	usageClient service.UsageStatsServiceClient
 }
 
-func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) filters.RequestFilterResult {
+func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error {
 	usage := response.GetUsage()
 	if lo.IsNil(usage) {
-		return filters.NewOK()
+		slog.Warn("no usage in response", "model", request.GetModel())
+		return nil
 	}
 
 	var apiKeyID string
-
 	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
 	if !ok {
 		slog.Warn("no auth info in context")
 
-		return filters.NewOK()
+		return nil
 	} else {
 		apiKeyID = authInfo.GetApiKeyId()
 	}
@@ -94,16 +94,30 @@ func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.L
 	})
 	if err != nil {
 		slog.Warn("failed to report usage", "error", err)
-		return filters.NewOK()
+		return nil
 	}
 	slog.Info("report usage", "model", request.GetModel(), "input_tokens", usage.GetPromptTokens(), "output_tokens", usage.GetCompletionTokens())
 
-	return filters.NewOK()
+	return nil
 }
 
-func (f *UsageFilter) OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, endStream bool) filters.RequestFilterResult {
-	if endStream {
+func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) filters.RequestFilterResult {
+	err := f.usageReport(ctx, request, response)
+	if err == nil {
 		return filters.NewOK()
 	}
-	return f.OnCompletionResponse(ctx, request, response)
+
+	return filters.NewFailed(err)
+}
+
+func (f *UsageFilter) OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, responseChunk object.LLMChunkResponse) filters.RequestFilterResult {
+	if responseChunk.IsUsage() {
+		err := f.usageReport(ctx, request, response)
+		if err == nil {
+			return filters.NewOK()
+		}
+
+		return filters.NewFailed(err)
+	}
+	return filters.NewOK()
 }

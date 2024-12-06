@@ -65,7 +65,7 @@ type OnCompletionResponseFilter interface {
 type OnCompletionStreamResponseFilter interface {
 	RequestFilter
 
-	OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, endStream bool) RequestFilterResult
+	OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, responseChunk object.LLMChunkResponse) RequestFilterResult
 }
 
 type RequestFilters []RequestFilter

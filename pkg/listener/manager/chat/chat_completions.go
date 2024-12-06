@@ -26,13 +26,13 @@ func (l *OpenAIChatListener) pipeChatCompletionsStream(ctx context.Context, requ
 	marshalToWriter := func(chunk object.LLMChunkResponse) error {
 		event, err := chunk.ToServerSentEvent()
 		if err != nil {
-			slog.Error("chunk error", "error", err)
+			slog.Error("failed to convert chunk body to server sent event payload", "error", err)
 			return openai.NewErrorInternalError().WithCause(err)
 		}
 
 		err = event.MarshalTo(writer)
 		if err != nil {
-			slog.Error("chunk error", "error", err)
+			slog.Error("failed to write SSE event into http.ResponseWriter", "error", err)
 			return err
 		}
 		return nil
@@ -43,9 +43,9 @@ func (l *OpenAIChatListener) pipeChatCompletionsStream(ctx context.Context, requ
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				for _, f := range l.filters.OnCompletionStreamResponseFilters() {
-					fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, true)
+					fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, chunk)
 					if fResult.IsFailed() {
-						slog.Error("response handler", "error", fResult.Error)
+						slog.Error("error occurred during invoking of OnCompletionStreamResponse filters", "error", fResult.Error)
 					}
 				}
 				if err = marshalToWriter(chunk); err != nil {
@@ -62,9 +62,9 @@ func (l *OpenAIChatListener) pipeChatCompletionsStream(ctx context.Context, requ
 		}
 
 		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
-			fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, false)
+			fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, chunk)
 			if fResult.IsFailed() {
-				slog.Error("response handler", "error", fResult.Error)
+				slog.Error("error occurred during invoking of OnCompletionStreamResponse filters", "error", fResult.Error)
 			}
 		}
 		if err = marshalToWriter(chunk); err != nil {
@@ -139,7 +139,7 @@ func (l *OpenAIChatListener) onChatCompletionsRequestWithError(writer http.Respo
 		for _, f := range l.filters.OnCompletionResponseFilters() {
 			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
 			if fResult.IsFailed() {
-				slog.Error("response handler", "error", fResult.Error)
+				slog.Error("error occurred during invoking of OnCompletionResponse filters", "error", fResult.Error)
 			}
 		}
 

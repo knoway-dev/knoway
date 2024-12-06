@@ -54,14 +54,16 @@ func (l *CancellableRequestMap) CancelAll() {
 }
 
 func (l *CancellableRequestMap) CancelAllAfter(timeout time.Duration) {
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
 	var wg sync.WaitGroup
 
 	wg.Add(1)
 	time.AfterFunc(timeout, func() {
 		defer wg.Done()
+
+		// Lock in callback function to prevent
+		// lock acquisition order violation
+		l.mutex.Lock()
+		defer l.mutex.Unlock()
 
 		for _, cancel := range l.requestCancelMap {
 			cancel()

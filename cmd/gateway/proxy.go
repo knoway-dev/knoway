@@ -28,13 +28,13 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 		Filters: []*v1alpha1.ListenerFilter{},
 	}
 
-	if cfg.AuthServer.Url != "" {
+	if cfg.AuthServer.URL != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Name: "api-key-auth",
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
 					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url: cfg.AuthServer.Url,
+						Url: cfg.AuthServer.URL,
 					},
 				})
 				if err != nil {
@@ -46,12 +46,12 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 		})
 	}
 
-	if cfg.StatsServer.Url != "" {
+	if cfg.StatsServer.URL != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
 					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url: cfg.StatsServer.Url,
+						Url: cfg.StatsServer.URL,
 					},
 				})
 				if err != nil {

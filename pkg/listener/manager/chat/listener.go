@@ -10,12 +10,14 @@ import (
 
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/bootkit"
+	"knoway.dev/pkg/constants"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/registry/config"
 )
 
 var _ listener.Listener = (*OpenAIChatListener)(nil)
+var _ listener.Drainable = (*OpenAIChatListener)(nil)
 
 type OpenAIChatListener struct {
 	cfg         *v1alpha1.ChatCompletionListener
@@ -79,7 +81,7 @@ func (l *OpenAIChatListener) Drain(ctx context.Context) error {
 	l.drained = true
 	l.mutex.Unlock()
 
-	l.cancellable.CancelAllWithContext(ctx)
+	l.cancellable.CancelAllAfterWithContext(ctx, constants.DefaultDrainWaitTime)
 
 	return nil
 }

@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.name }}
+  name: {{ .Release.Name }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ .Release.name }}
+    app: {{ .Release.Name }}
 data:
   config.yaml: |-
     debug: {{.Values.global.debug }}

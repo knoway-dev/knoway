@@ -1,17 +1,15 @@
-package manager
+package chat
 
 import (
 	"errors"
 	"log/slog"
 	"net/http"
 
-	"knoway.dev/pkg/properties"
+	goopenai "github.com/sashabaranov/go-openai"
+	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
-
-	goopenai "github.com/sashabaranov/go-openai"
-
-	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 )
 
 func ClustersToOpenAIModels(clusters []*v1alpha4.Cluster) []goopenai.Model {
@@ -38,24 +36,16 @@ func ClusterToOpenAIModel(cluster *v1alpha4.Cluster) goopenai.Model {
 	}
 }
 
-func WrapRequest(fn func(writer http.ResponseWriter, request *http.Request)) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		fn(writer, request.WithContext(properties.NewPropertiesContext(request.Context())))
-	}
-}
-
 var (
 	SkipResponse = errors.New("skip writing response") //nolint:errname,stylecheck
 )
 
-// WrapHandlerForOpenAIError
-// todo added generic error handling, non-Hardcode openai error
-func WrapHandlerForOpenAIError(fn func(writer http.ResponseWriter, request *http.Request) (any, error)) http.HandlerFunc {
-	return func(writer http.ResponseWriter, request *http.Request) {
-		resp, err := fn(writer, request)
+func withErrorHandler(fn listener.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		resp, err := fn(w, r)
 		if err == nil {
 			if resp != nil {
-				utils.WriteJSONForHTTP(http.StatusOK, resp, writer)
+				utils.WriteJSONForHTTP(http.StatusOK, resp, w)
 			}
 
 			return
@@ -76,6 +66,6 @@ func WrapHandlerForOpenAIError(fn func(writer http.ResponseWriter, request *http
 			slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause)
 		}
 
-		utils.WriteJSONForHTTP(openAIError.Status, openAIError, writer)
+		utils.WriteJSONForHTTP(openAIError.Status, openAIError, w)
 	}
 }

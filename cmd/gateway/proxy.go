@@ -15,7 +15,7 @@ import (
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/listener"
-	"knoway.dev/pkg/listener/manager"
+	"knoway.dev/pkg/listener/manager/chat"
 )
 
 func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg config.GatewayConfig) error {
@@ -28,13 +28,13 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 		Filters: []*v1alpha1.ListenerFilter{},
 	}
 
-	if cfg.AuthServer.Url != "" {
+	if cfg.AuthServer.URL != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Name: "api-key-auth",
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
 					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url: cfg.AuthServer.Url,
+						Url: cfg.AuthServer.URL,
 					},
 				})
 				if err != nil {
@@ -46,12 +46,12 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 		})
 	}
 
-	if cfg.StatsServer.Url != "" {
+	if cfg.StatsServer.URL != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
 					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url: cfg.StatsServer.Url,
+						Url: cfg.StatsServer.URL,
 					},
 				})
 				if err != nil {
@@ -64,8 +64,7 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 	}
 
 	server, err := listener.NewMux().
-		Register(manager.NewOpenAIChatCompletionsListenerWithConfigs(baseListenConfig, lifecycle)).
-		Register(manager.NewOpenAIModelsListenerWithConfigs(baseListenConfig, lifecycle)).
+		Register(chat.NewOpenAIChatListenerConfigs(baseListenConfig, lifecycle)).
 		BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err

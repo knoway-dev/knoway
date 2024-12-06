@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type ControllerConfig struct {
@@ -14,11 +14,11 @@ type ControllerConfig struct {
 }
 
 type AuthServer struct {
-	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	URL string `yaml:"url" json:"url,omitempty" protobuf:"bytes,1,opt,name=url,proto3"`
 }
 
 type StatsServer struct {
-	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+	URL string `yaml:"url" json:"url,omitempty" protobuf:"bytes,2,opt,name=url,proto3"`
 }
 
 type GatewayConfig struct {
@@ -41,6 +41,7 @@ func LoadConfig(path string) (*Config, error) {
 	defer file.Close()
 
 	var cfg Config
+
 	decoder := yaml.NewDecoder(file)
 	if err := decoder.Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("failed to decode config file: %w", err)

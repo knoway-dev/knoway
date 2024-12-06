@@ -96,7 +96,7 @@ func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.L
 		slog.Warn("failed to report usage", "error", err)
 		return filters.NewOK()
 	}
-	slog.Info("report usage", "model", request.GetModel(), "InputTokens", usage.GetPromptTokens(), "OutputTokens", usage.GetCompletionTokens())
+	slog.Info("report usage", "model", request.GetModel(), "input_tokens", usage.GetPromptTokens(), "output_tokens", usage.GetCompletionTokens())
 
 	return filters.NewOK()
 }

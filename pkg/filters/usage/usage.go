@@ -7,6 +7,8 @@ import (
 	"log"
 	"log/slog"
 
+	"github.com/samber/lo"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -65,9 +67,7 @@ type UsageFilter struct {
 
 func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) filters.RequestFilterResult {
 	usage := response.GetUsage()
-	if usage == nil {
-		slog.Warn("no usage in response")
-
+	if lo.IsNil(usage) {
 		return filters.NewOK()
 	}
 
@@ -96,43 +96,14 @@ func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.L
 		slog.Warn("failed to report usage", "error", err)
 		return filters.NewOK()
 	}
+	slog.Info("report usage", "model", request.GetModel(), "InputTokens", usage.GetPromptTokens(), "OutputTokens", usage.GetCompletionTokens())
 
 	return filters.NewOK()
 }
 
 func (f *UsageFilter) OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, endStream bool) filters.RequestFilterResult {
-	usage := response.GetUsage()
-	if usage == nil {
-		slog.Warn("no usage in response")
-
+	if endStream {
 		return filters.NewOK()
 	}
-
-	var apiKeyID string
-
-	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
-	if !ok {
-		slog.Warn("no auth info in context")
-
-		return filters.NewOK()
-	} else {
-		apiKeyID = authInfo.GetApiKeyId()
-	}
-
-	_, err := f.usageClient.UsageReport(context.TODO(), &service.UsageReportRequest{
-		ApiKeyId:          apiKeyID,
-		UserModelName:     request.GetModel(),
-		UpstreamModelName: response.GetModel(),
-		Usage: &service.UsageReportRequest_Usage{
-			InputTokens:  usage.GetPromptTokens(),
-			OutputTokens: usage.GetCompletionTokens(),
-		},
-		Mode: service.UsageReportRequest_MODE_PER_REQUEST,
-	})
-	if err != nil {
-		slog.Warn("failed to report usage", "error", err)
-		return filters.NewOK()
-	}
-
-	return filters.NewOK()
+	return f.OnCompletionResponse(ctx, request, response)
 }

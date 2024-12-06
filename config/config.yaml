@@ -5,6 +5,6 @@ controller:
 
 gateway:
   auth_server:
-    url: ''
+    url: 10.33.2.23:31960
   stats_server:
-    url: ''
+    url: 10.33.2.23:31960

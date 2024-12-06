@@ -68,7 +68,7 @@ func (l *OpenAIChatCompletionsListener) UnmarshalLLMRequest(
 	return llmRequest, nil
 }
 
-func (l *OpenAIChatCompletionsListener) handleChatCompletionsChunks(resp object.LLMResponse, writer http.ResponseWriter) error {
+func (l *OpenAIChatCompletionsListener) handleChatCompletionsChunks(ctx context.Context, request object.LLMRequest, resp object.LLMResponse, writer http.ResponseWriter) error {
 	streamResp, ok := resp.(object.LLMStreamResponse)
 	if !ok {
 		return openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
@@ -76,20 +76,34 @@ func (l *OpenAIChatCompletionsListener) handleChatCompletionsChunks(resp object.
 
 	utils.WriteEventStreamHeadersForHTTP(writer)
 
+	marshalToWriter := func(chunk object.LLMChunkResponse) error {
+		event, err := chunk.ToServerSentEvent()
+		if err != nil {
+			slog.Error("chunk error", "error", err)
+			return openai.NewErrorInternalError().WithCause(err)
+		}
+
+		err = event.MarshalTo(writer)
+		if err != nil {
+			slog.Error("chunk error", "error", err)
+			return err
+		}
+		return nil
+	}
+
 	for {
 		chunk, err := streamResp.NextChunk()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				event, err := chunk.ToServerSentEvent()
-				if err != nil {
-					return openai.NewErrorInternalError().WithCause(err)
+				for _, f := range l.filters.OnCompletionStreamResponseFilters() {
+					fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, true)
+					if fResult.IsFailed() {
+						slog.Error("response handler", "error", fResult.Error)
+					}
 				}
-
-				err = event.MarshalTo(writer)
-				if err != nil {
-					slog.Error("failed to marshal event", "error", err)
+				if err = marshalToWriter(chunk); err != nil {
+					return nil
 				}
-
 				break
 			}
 
@@ -100,15 +114,14 @@ func (l *OpenAIChatCompletionsListener) handleChatCompletionsChunks(resp object.
 			continue
 		}
 
-		// TODO: request filter
-		event, err := chunk.ToServerSentEvent()
-		if err != nil {
-			return openai.NewErrorInternalError().WithCause(err)
+		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
+			fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, false)
+			if fResult.IsFailed() {
+				slog.Error("response handler", "error", fResult.Error)
+			}
 		}
-
-		err = event.MarshalTo(writer)
-		if err != nil {
-			slog.Error("failed to marshal event", "error", err)
+		if err = marshalToWriter(chunk); err != nil {
+			return err
 		}
 	}
 
@@ -157,26 +170,27 @@ func (l *OpenAIChatCompletionsListener) onChatCompletionsRequestWithError(writer
 		return nil, openai.NewErrorInternalError().WithCause(err)
 	}
 
-	if resp.GetError() != nil {
+	if resp.GetError() != nil || !resp.IsStream() {
 		// REVIEW: better way to compose the in and out actions?
 		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
 		if err != nil {
 			return nil, openai.NewErrorInternalError().WithCause(err)
 		}
 
-		return nil, resp.GetError()
-	}
-	if !resp.IsStream() {
-		// REVIEW: better way to compose the in and out actions?
-		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
-		if err != nil {
-			return nil, openai.NewErrorInternalError().WithCause(err)
+		for _, f := range l.filters.OnCompletionResponseFilters() {
+			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
+			if fResult.IsFailed() {
+				slog.Error("response handler", "error", fResult.Error)
+			}
 		}
 
+		if resp.GetError() != nil {
+			return nil, resp.GetError()
+		}
 		return resp, nil
 	}
 
-	err = l.handleChatCompletionsChunks(resp, writer)
+	err = l.handleChatCompletionsChunks(request.Context(), llmRequest, resp, writer)
 	if err != nil {
 		return nil, err
 	}

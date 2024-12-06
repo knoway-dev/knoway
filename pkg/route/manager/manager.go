@@ -28,7 +28,6 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 		return "", false
 	}
 
-	// TODO: implement
 	for _, match := range matches {
 		modelNameMatch := match.GetModel()
 		if modelNameMatch == nil {

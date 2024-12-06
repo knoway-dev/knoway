@@ -171,8 +171,6 @@ type ChatCompletionStreamResponse struct {
 	Usage *Usage         `json:"usage,omitempty"`
 	Error *ErrorResponse `json:"error,omitempty"`
 
-	// TODO: add more fields
-
 	reader           *bufio.Reader
 	request          object.LLMRequest
 	outgoingResponse *http.Response

@@ -8,6 +8,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/samber/lo"
 )
 
 const (
@@ -118,7 +120,7 @@ func callStopHooks(ctx context.Context, hooks []lifeCycler) error {
 	wg := sync.WaitGroup{}
 	errChan := make(chan error)
 
-	for _, hook := range hooks {
+	for _, hook := range lo.Reverse(hooks) {
 		wg.Add(1)
 
 		go func() {

@@ -7,7 +7,10 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"path/filepath"
 	"strings"
+
+	"github.com/samber/lo"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -101,7 +104,11 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	}
 
 	accessModel := request.GetModel()
-	if accessModel != "" && !CanAccessModel(response.GetAllowModels(), accessModel) {
+	if accessModel == "" {
+		slog.Debug("auth filter: user model not found", "user", response.GetUserId())
+		return filters.NewFailed(object.NewErrorMissingModel())
+	}
+	if !CanAccessModel(response.GetAllowModels(), accessModel) {
 		slog.Debug("auth filter: user can not access model", "user", response.GetUserId(), "model", accessModel)
 		return filters.NewFailed(object.NewErrorModelNotFoundOrNotAccessible(accessModel))
 	}
@@ -139,32 +146,12 @@ The rules defined in allowModels follows the spec of the following:
 
 - if u-kebe/* is provided, means that all models under the u-kebe namespace can be accessed, if we define u- means all individual users, then u-kebe/* means that all models under the kebe user can be accessed.
 
-- if *\/* is provided, means that all models can be accessed.
+- if ** is provided, means that all models can be accessed.
 */
 func CanAccessModel(allowModels []string, requestModel string) bool {
-	for _, rule := range allowModels {
-		// allow all models
-		if rule == "*/*" {
-			return true
-		}
-
-		// allow specific model
-		if rule == requestModel {
-			return true
-		}
-
-		// allow all public models
-		if rule == "*" && !strings.Contains(requestModel, "/") {
-			return true
-		}
-
-		// allow all models under a specific namespace, e.g. ns/*
-		if strings.HasSuffix(rule, "/*") {
-			if strings.HasPrefix(requestModel, strings.TrimSuffix(rule, "/*")+"/") {
-				return true
-			}
-		}
-	}
-
-	return false
+	return lo.SomeBy(allowModels, func(rule string) bool {
+		// use glob matching to match the rule
+		matched, _ := filepath.Match(rule, requestModel)
+		return matched
+	})
 }

@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	goopenai "github.com/sashabaranov/go-openai"
+
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/types/openai"

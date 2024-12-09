@@ -130,7 +130,7 @@ func TestCanAccessModel(t *testing.T) {
 		},
 		{
 			name:         "t2",
-			allowModels:  []string{"*/*"},
+			allowModels:  []string{"**"},
 			requestModel: "gpt-1",
 			want:         true,
 		},

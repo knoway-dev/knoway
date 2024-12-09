@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/lo"
 	goopenai "github.com/sashabaranov/go-openai"
+
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/filters/auth"
 	"knoway.dev/pkg/object"

@@ -8,7 +8,7 @@ metadata:
   name: llmbackend-editor-role
 rules:
 - apiGroups:
-  - knoway.dev.knoway.dev
+  - llm.knoway.dev
   resources:
   - llmbackends
   verbs:
@@ -20,7 +20,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - knoway.dev.knoway.dev
+  - llm.knoway.dev
   resources:
   - llmbackends/status
   verbs:

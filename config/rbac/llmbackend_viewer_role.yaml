@@ -8,7 +8,7 @@ metadata:
   name: llmbackend-viewer-role
 rules:
 - apiGroups:
-  - knoway.dev.knoway.dev
+  - llm.knoway.dev
   resources:
   - llmbackends
   verbs:
@@ -16,7 +16,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - knoway.dev.knoway.dev
+  - llm.knoway.dev
   resources:
   - llmbackends/status
   verbs:

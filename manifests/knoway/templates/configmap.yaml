@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}
+  name: {{ .Values.fullNameOverride | default .Release.Name }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ .Release.Name }}
+    app: {{ .Values.fullNameOverride | default .Release.Name }}
 data:
   config.yaml: |-
-    debug: {{.Values.global.debug }}
+    debug: {{.Values.debug }}
     gateway:
       auth_server:
-        url: {{.Values.global.config.auth_server_url }}
+        url: {{.Values.config.auth_server_url }}
       stats_server:
-        url: {{.Values.global.config.stats_server_url }}
+        url: {{.Values.config.stats_server_url }}

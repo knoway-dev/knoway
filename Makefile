@@ -10,8 +10,8 @@ HELM_REPO ?= https://release-ci.daocloud.io/chartrepo/knoway
 
 PROD_NAME = knoway
 
-MINOR_VERSION ?= v0.1
-VERSION ?= $(MINOR_VERSION)-dev-$(shell git rev-parse --short=8 HEAD)
+MINOR_VERSION ?= 0.1
+VERSION ?= $(MINOR_VERSION).0-dev.$(shell git rev-parse --short=8 HEAD)
 
 REGISTRY_USER_NAME ?=
 REGISTRY_PASSWORD ?=
@@ -181,7 +181,7 @@ endef
 helm:
 	@rm -rf dist/$(PROD_NAME) && mkdir -p dist/$(PROD_NAME)
 	@cp -rf manifests/knoway/. dist/$(PROD_NAME)
-	$(SEDI) 's/version: .*/version: $(VERSION) # auto generated from build version/g' dist/$(PROD_NAME)/charts/gateway/Chart.yaml
+	$(SEDI) 's/version: .*/version: $(VERSION) # auto generated from build version/g' dist/$(PROD_NAME)/Chart.yaml
 	@if [ $(OFFLINE) = 1 ]; then \
         $(SEDI) 's/release.daocloud.io/release-ci.daocloud.io/g' dist/$(PROD_NAME)/values.yaml; \
     fi

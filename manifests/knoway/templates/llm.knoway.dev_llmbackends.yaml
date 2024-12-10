@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.16.5
-  name: llmbackends.knoway.dev.knoway.dev
+  name: llmbackends.llm.knoway.dev
 spec:
-  group: knoway.dev.knoway.dev
+  group: llm.knoway.dev
   names:
     kind: LLMBackend
     listKind: LLMBackendList

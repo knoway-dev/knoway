@@ -53,9 +53,9 @@ type LLMBackendReconciler struct {
 	LifeCycle bootkit.LifeCycle
 }
 
-// +kubebuilder:rbac:groups=knoway.dev.knoway.dev,resources=llmbackends,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=knoway.dev.knoway.dev,resources=llmbackends/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=knoway.dev.knoway.dev,resources=llmbackends/finalizers,verbs=update
+// +kubebuilder:rbac:groups=llm.knoway.dev,resources=llmbackends,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=llm.knoway.dev,resources=llmbackends/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=llm.knoway.dev,resources=llmbackends/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

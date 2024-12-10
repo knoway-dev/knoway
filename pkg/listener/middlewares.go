@@ -20,6 +20,18 @@ func WithProperties() Middleware {
 	}
 }
 
+func WithOptions() Middleware {
+	return func(next HandlerFunc) HandlerFunc {
+		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
+			if request.Method == http.MethodOptions {
+				writer.WriteHeader(http.StatusNoContent)
+				return nil, nil
+			}
+			return next(writer, request)
+		}
+	}
+}
+
 type CancellableRequestMap struct {
 	mutex            sync.Mutex
 	requestCancelMap map[*http.Request]context.CancelFunc

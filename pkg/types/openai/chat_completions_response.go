@@ -34,14 +34,23 @@ type Usage struct {
 }
 
 func (u *Usage) GetTotalTokens() uint64 {
+	if u == nil {
+		return 0
+	}
 	return u.TotalTokens
 }
 
 func (u *Usage) GetCompletionTokens() uint64 {
+	if u == nil {
+		return 0
+	}
 	return u.CompletionTokens
 }
 
 func (u *Usage) GetPromptTokens() uint64 {
+	if u == nil {
+		return 0
+	}
 	return u.PromptTokens
 }
 
@@ -86,6 +95,10 @@ func NewChatCompletionResponse(request object.LLMRequest, response *http.Respons
 }
 
 func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
+	if r == nil {
+		return nil
+	}
+
 	r.responseBody = bs
 
 	var body map[string]any
@@ -120,6 +133,9 @@ func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
 }
 
 func (r *ChatCompletionsResponse) MarshalJSON() ([]byte, error) {
+	if r == nil {
+		return nil, nil
+	}
 	return json.Marshal(r.responseBody)
 }
 
@@ -133,10 +149,17 @@ func (r *ChatCompletionsResponse) GetRequestID() string {
 }
 
 func (r *ChatCompletionsResponse) GetModel() string {
+	if r == nil {
+		return ""
+	}
 	return r.Model
 }
 
 func (r *ChatCompletionsResponse) SetModel(model string) error {
+	if r == nil {
+		return nil
+	}
+
 	if r.Error == nil {
 		var err error
 
@@ -152,14 +175,25 @@ func (r *ChatCompletionsResponse) SetModel(model string) error {
 }
 
 func (r *ChatCompletionsResponse) GetUsage() object.LLMUsage {
+	if r == nil {
+		return nil
+	}
 	return r.Usage
 }
 
 func (r *ChatCompletionsResponse) GetOutgoingResponse() *http.Response {
+	if r == nil {
+		return nil
+	}
+
 	return r.outgoingResponse
 }
 
 func (r *ChatCompletionsResponse) GetError() error {
+	if r == nil {
+		return nil
+	}
+
 	if r.Error != nil {
 		return r.Error
 	}

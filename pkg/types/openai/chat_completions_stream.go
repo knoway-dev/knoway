@@ -171,8 +171,6 @@ type ChatCompletionStreamResponse struct {
 	Usage *Usage         `json:"usage,omitempty"`
 	Error *ErrorResponse `json:"error,omitempty"`
 
-	// TODO: add more fields
-
 	reader           *bufio.Reader
 	request          object.LLMRequest
 	outgoingResponse *http.Response
@@ -241,6 +239,7 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		}
 
 		r.Usage = chunk.Usage
+		return chunk, nil
 	}
 
 	return NewChatCompletionStreamChunk(r, noPrefixLine, r.GetModel())

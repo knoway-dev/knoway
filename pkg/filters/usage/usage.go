@@ -7,6 +7,8 @@ import (
 	"log"
 	"log/slog"
 
+	"github.com/samber/lo"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -63,21 +65,19 @@ type UsageFilter struct {
 	usageClient service.UsageStatsServiceClient
 }
 
-func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) filters.RequestFilterResult {
+func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error {
 	usage := response.GetUsage()
-	if usage == nil {
-		slog.Warn("no usage in response")
-
-		return filters.NewOK()
+	if lo.IsNil(usage) {
+		slog.Warn("no usage in response", "model", request.GetModel())
+		return nil
 	}
 
 	var apiKeyID string
-
 	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
 	if !ok {
 		slog.Warn("no auth info in context")
 
-		return filters.NewOK()
+		return nil
 	} else {
 		apiKeyID = authInfo.GetApiKeyId()
 	}
@@ -94,45 +94,30 @@ func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.L
 	})
 	if err != nil {
 		slog.Warn("failed to report usage", "error", err)
-		return filters.NewOK()
+		return nil
 	}
+	slog.Info("report usage", "model", request.GetModel(), "input_tokens", usage.GetPromptTokens(), "output_tokens", usage.GetCompletionTokens())
 
-	return filters.NewOK()
+	return nil
 }
 
-func (f *UsageFilter) OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, endStream bool) filters.RequestFilterResult {
-	usage := response.GetUsage()
-	if usage == nil {
-		slog.Warn("no usage in response")
-
+func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) filters.RequestFilterResult {
+	err := f.usageReport(ctx, request, response)
+	if err == nil {
 		return filters.NewOK()
 	}
 
-	var apiKeyID string
+	return filters.NewFailed(err)
+}
 
-	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
-	if !ok {
-		slog.Warn("no auth info in context")
+func (f *UsageFilter) OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, responseChunk object.LLMChunkResponse) filters.RequestFilterResult {
+	if responseChunk.IsUsage() {
+		err := f.usageReport(ctx, request, response)
+		if err == nil {
+			return filters.NewOK()
+		}
 
-		return filters.NewOK()
-	} else {
-		apiKeyID = authInfo.GetApiKeyId()
+		return filters.NewFailed(err)
 	}
-
-	_, err := f.usageClient.UsageReport(context.TODO(), &service.UsageReportRequest{
-		ApiKeyId:          apiKeyID,
-		UserModelName:     request.GetModel(),
-		UpstreamModelName: response.GetModel(),
-		Usage: &service.UsageReportRequest_Usage{
-			InputTokens:  usage.GetPromptTokens(),
-			OutputTokens: usage.GetCompletionTokens(),
-		},
-		Mode: service.UsageReportRequest_MODE_PER_REQUEST,
-	})
-	if err != nil {
-		slog.Warn("failed to report usage", "error", err)
-		return filters.NewOK()
-	}
-
 	return filters.NewOK()
 }

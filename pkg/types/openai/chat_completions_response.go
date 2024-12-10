@@ -37,6 +37,7 @@ func (u *Usage) GetTotalTokens() uint64 {
 	if u == nil {
 		return 0
 	}
+
 	return u.TotalTokens
 }
 
@@ -44,6 +45,7 @@ func (u *Usage) GetCompletionTokens() uint64 {
 	if u == nil {
 		return 0
 	}
+
 	return u.CompletionTokens
 }
 
@@ -51,6 +53,7 @@ func (u *Usage) GetPromptTokens() uint64 {
 	if u == nil {
 		return 0
 	}
+
 	return u.PromptTokens
 }
 
@@ -136,6 +139,7 @@ func (r *ChatCompletionsResponse) MarshalJSON() ([]byte, error) {
 	if r == nil {
 		return nil, nil
 	}
+
 	return json.Marshal(r.responseBody)
 }
 
@@ -152,6 +156,7 @@ func (r *ChatCompletionsResponse) GetModel() string {
 	if r == nil {
 		return ""
 	}
+
 	return r.Model
 }
 
@@ -178,6 +183,7 @@ func (r *ChatCompletionsResponse) GetUsage() object.LLMUsage {
 	if r == nil {
 		return nil
 	}
+
 	return r.Usage
 }
 

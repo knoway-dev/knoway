@@ -65,19 +65,20 @@ type UsageFilter struct {
 	usageClient service.UsageStatsServiceClient
 }
 
-func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error {
+func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest, response object.LLMResponse) {
 	usage := response.GetUsage()
 	if lo.IsNil(usage) {
 		slog.Warn("no usage in response", "model", request.GetModel())
-		return nil
+		return
 	}
 
 	var apiKeyID string
+
 	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
 	if !ok {
 		slog.Warn("no auth info in context")
 
-		return nil
+		return
 	} else {
 		apiKeyID = authInfo.GetApiKeyId()
 	}
@@ -94,30 +95,24 @@ func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest
 	})
 	if err != nil {
 		slog.Warn("failed to report usage", "error", err)
-		return nil
+		return
 	}
-	slog.Info("report usage", "model", request.GetModel(), "input_tokens", usage.GetPromptTokens(), "output_tokens", usage.GetCompletionTokens())
 
-	return nil
+	slog.Info("report usage", "model", request.GetModel(), "input_tokens", usage.GetPromptTokens(), "output_tokens", usage.GetCompletionTokens())
 }
 
 func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) filters.RequestFilterResult {
-	err := f.usageReport(ctx, request, response)
-	if err == nil {
-		return filters.NewOK()
-	}
+	f.usageReport(ctx, request, response)
 
-	return filters.NewFailed(err)
+	return filters.NewOK()
 }
 
 func (f *UsageFilter) OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, responseChunk object.LLMChunkResponse) filters.RequestFilterResult {
-	if responseChunk.IsUsage() {
-		err := f.usageReport(ctx, request, response)
-		if err == nil {
-			return filters.NewOK()
-		}
-
-		return filters.NewFailed(err)
+	if !responseChunk.IsUsage() {
+		return filters.NewOK()
 	}
+
+	f.usageReport(ctx, request, response)
+
 	return filters.NewOK()
 }

@@ -2,6 +2,7 @@ package bootkit
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -168,10 +169,20 @@ func (b *BootKit) Start() {
 	callStartHook(ctx, startWg, errChan, b.lifeCycle.hooks)
 
 	go func() {
-		sigs := make(chan os.Signal, 1)
+		sigs := make(chan os.Signal, 2) //nolint:mnd
 		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-		<-sigs
-		b.selfCancel()
+		cancelled := false
+
+		for range sigs {
+			// Double signal will force exit
+			if cancelled {
+				fmt.Fprintln(os.Stderr, "received signal, force terminated")
+				os.Exit(1)
+			}
+
+			b.selfCancel()
+			cancelled = true
+		}
 	}()
 
 	defer b.mayStop()

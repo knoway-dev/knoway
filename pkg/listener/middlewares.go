@@ -27,6 +27,7 @@ func WithOptions() Middleware {
 				writer.WriteHeader(http.StatusNoContent)
 				return nil, nil
 			}
+
 			return next(writer, request)
 		}
 	}

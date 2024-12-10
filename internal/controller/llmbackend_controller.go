@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"strings"
@@ -72,34 +73,39 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		log.Log.Error(err, "reconcile LLMBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
 	log.Log.Info("reconcile LLMBackend modelName", "modelName", llmBackend.Spec.ModelName)
 
 	rrs := r.getReconciles()
 	if isDeleted(llmBackend) {
 		rrs = r.getDeleteReconciles()
 	}
+
 	llmBackend.Status.Conditions = nil
+
 	for _, rr := range rrs {
 		typ := rr.typ
+
 		err := rr.reconciler(ctx, llmBackend)
 		if err != nil {
 			if isDeleted(llmBackend) && shouldForceDelete(llmBackend) {
 				continue
 			}
-			log.Log.Error(err, "llmBackend reconcile error", "name", llmBackend.Name, "type", typ)
 
+			log.Log.Error(err, "llmBackend reconcile error", "name", llmBackend.Name, "type", typ)
 			setStatusCondition(llmBackend, typ, false, err.Error())
+
 			break
 		} else {
 			setStatusCondition(llmBackend, typ, true, "")
 		}
 	}
 
-	_ = r.reconcilePhase(ctx, llmBackend)
+	r.reconcilePhase(ctx, llmBackend)
 
 	var after time.Duration
 	if llmBackend.Status.Status == knowaydevv1alpha1.Failed {
-		after = 30 * time.Second
+		after = 30 * time.Second //nolint:mnd
 	}
 
 	if err := r.Status().Update(ctx, llmBackend); err != nil {
@@ -128,8 +134,9 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 
 	clusterCfg, err := llmBackendToClusterCfg(llmBackend)
 	if err != nil {
-		return fmt.Errorf("invalid config: %s", err)
+		return fmt.Errorf("invalid config: %w", err)
 	}
+
 	routeCfg := route.InitDirectModelRoute(mName)
 
 	mulErrs := &multierror.Error{}
@@ -137,12 +144,12 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 		err = cluster.UpsertAndRegisterCluster(clusterCfg, r.LifeCycle)
 		if err != nil {
 			log.Log.Error(err, "Failed to upsert llmBackend", "cluster", clusterCfg)
-			multierror.Append(mulErrs, fmt.Errorf("failed to upsert llmBackend %s: %v", llmBackend.GetName(), err))
+			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert llmBackend %s: %w", llmBackend.GetName(), err))
 		}
 
 		if err = route.RegisterRouteWithConfig(routeCfg); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", mName)
-			multierror.Append(mulErrs, fmt.Errorf("failed to upsert llmBackend %s route: %v", llmBackend.GetName(), err))
+			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert llmBackend %s route: %w", llmBackend.GetName(), err))
 		}
 	}
 
@@ -155,16 +162,15 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 
 func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
 	if llmBackend.Spec.ModelName == "" {
-		return fmt.Errorf("modelName cannot be empty")
+		return errors.New("modelName cannot be empty")
 	}
-
 	if llmBackend.Spec.Upstream.BaseURL == "" {
-		return fmt.Errorf("upstream.baseURL cannot be empty")
+		return errors.New("upstream.baseUrl cannot be empty")
 	}
 
 	_, err := url.Parse(llmBackend.Spec.Upstream.BaseURL)
 	if err != nil {
-		return fmt.Errorf("upstream.baseURL parse error: %v", err)
+		return fmt.Errorf("upstream.baseUrl parse error: %w", err)
 	}
 
 	// validator cluster filter by new
@@ -172,6 +178,7 @@ func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBacken
 	if err != nil {
 		return fmt.Errorf("failed to convert LLMBackend to cluster config: %w", err)
 	}
+
 	_, err = manager.NewWithConfigs(clusterCfg, nil)
 	if err != nil {
 		return fmt.Errorf("invalid cluster configuration: %w", err)
@@ -185,20 +192,19 @@ func (r *LLMBackendReconciler) reconcileUpstreamHealthy(ctx context.Context, llm
 	return nil
 }
 
-func (r *LLMBackendReconciler) reconcilePhase(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
+func (r *LLMBackendReconciler) reconcilePhase(_ context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) {
 	llmBackend.Status.Status = knowaydevv1alpha1.Unknown
 	if isDeleted(llmBackend) {
 		llmBackend.Status.Status = knowaydevv1alpha1.Healthy
-		return nil
+		return
 	}
 
 	for _, cond := range llmBackend.Status.Conditions {
 		if cond.Status == metav1.ConditionFalse {
 			llmBackend.Status.Status = knowaydevv1alpha1.Failed
-			return nil
+			return
 		}
 	}
-	return nil
 }
 
 func isDeleted(c *knowaydevv1alpha1.LLMBackend) bool {
@@ -210,6 +216,7 @@ func setStatusCondition(llmBackend *knowaydevv1alpha1.LLMBackend, typ string, re
 	if ready {
 		cs = metav1.ConditionTrue
 	}
+
 	index := -1
 	newCond := metav1.Condition{
 		Type:               typ,
@@ -218,6 +225,7 @@ func setStatusCondition(llmBackend *knowaydevv1alpha1.LLMBackend, typ string, re
 		LastTransitionTime: metav1.Time{Time: time.Now()},
 		Status:             cs,
 	}
+
 	for i, cond := range llmBackend.Status.Conditions {
 		if cond.Type == typ {
 			index = i
@@ -276,6 +284,7 @@ func (r *LLMBackendReconciler) getReconciles() []reconcileHandler {
 	if reconcilesHook != nil {
 		return reconcilesHook(rhs)
 	}
+
 	return rhs
 }
 
@@ -297,6 +306,7 @@ func (r *LLMBackendReconciler) getDeleteReconciles() []reconcileHandler {
 	if reconcilesHook != nil {
 		return reconcilesHook(rhs)
 	}
+
 	return rhs
 }
 
@@ -311,6 +321,7 @@ func (r *LLMBackendReconciler) reconcileConfig(ctx context.Context, llmBackend *
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -320,11 +331,13 @@ func shouldForceDelete(llmBackend *knowaydevv1alpha1.LLMBackend) bool {
 	if llmBackend.DeletionTimestamp == nil {
 		return false
 	}
+
 	return llmBackend.DeletionTimestamp.Add(graceDeletePeriod).Before(time.Now())
 }
 
 func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
 	canDelete := true
+
 	for _, con := range llmBackend.Status.Conditions {
 		if strings.Contains(con.Type, deleteCondPrefix) && con.Status == metav1.ConditionFalse {
 			canDelete = false
@@ -332,18 +345,21 @@ func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBack
 	}
 
 	if !canDelete && !shouldForceDelete(llmBackend) {
-		return fmt.Errorf("have delete condition not ready")
+		return errors.New("have delete condition not ready")
 	}
+
 	llmBackend.Finalizers = nil
 	if err := r.Update(ctx, llmBackend); err != nil {
 		log.Log.Error(err, "update llmBackend finalizer error")
 		return err
 	}
+
 	log.Log.Info("remove llmBackend finalizer", "name", llmBackend.GetName())
+
 	return nil
 }
 
-func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) (*v1alpha1.Cluster, error) {
+func llmBackendToClusterCfg(backend *knowaydevv1alpha1.LLMBackend) (*v1alpha1.Cluster, error) { //nolint:unparam
 	if backend == nil {
 		return nil, nil
 	}

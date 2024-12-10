@@ -26,8 +26,7 @@ import (
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
 //+kubebuilder:printcolumn:name="Model",type=string,JSONPath=`.spec.modelName`
-//+kubebuilder:printcolumn:name="Upstream",type=string,JSONPath=`.spec.upstream.server.address`
-//+kubebuilder:printcolumn:name="API",type=string,JSONPath=`.spec.upstream.server.api`
+//+kubebuilder:printcolumn:name="Upstream",type=string,JSONPath=`.spec.upstream.baseUrl`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
 // LLMBackend is the Schema for the llmbackends API
@@ -66,12 +65,12 @@ type LLMBackendSpec struct {
 
 // BackendUpstream defines the upstream server configuration.
 type BackendUpstream struct {
-	// BaseURL define upstream endpoint url
+	// BaseUrl define upstream endpoint url
 	// Example:
 	// 		https://openrouter.ai/api/v1/chat/completions
 	//
 	//  	http://phi3-mini.default.svc.cluster.local:8000/api/v1/chat/completions
-	BaseURL string `json:"baseURL,omitempty"`
+	BaseURL string `json:"baseUrl,omitempty"`
 
 	// Headers defines the common headers for the model, such as the authentication header for the API key.
 	// Example:

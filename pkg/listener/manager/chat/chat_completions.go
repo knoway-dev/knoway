@@ -35,6 +35,7 @@ func (l *OpenAIChatListener) pipeChatCompletionsStream(ctx context.Context, requ
 			slog.Error("failed to write SSE event into http.ResponseWriter", "error", err)
 			return err
 		}
+
 		return nil
 	}
 
@@ -49,8 +50,9 @@ func (l *OpenAIChatListener) pipeChatCompletionsStream(ctx context.Context, requ
 					}
 				}
 				if err = marshalToWriter(chunk); err != nil {
-					return nil
+					return nil //nolint:nilerr
 				}
+
 				break
 			}
 
@@ -146,6 +148,7 @@ func (l *OpenAIChatListener) onChatCompletionsRequestWithError(writer http.Respo
 		if resp.GetError() != nil {
 			return nil, resp.GetError()
 		}
+
 		return resp, nil
 	}
 

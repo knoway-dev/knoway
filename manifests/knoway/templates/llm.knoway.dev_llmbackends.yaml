@@ -21,11 +21,8 @@ spec:
     - jsonPath: .spec.modelName
       name: Model
       type: string
-    - jsonPath: .spec.upstream.server.address
+    - jsonPath: .spec.upstream.baseUrl
       name: Upstream
-      type: string
-    - jsonPath: .spec.upstream.server.api
-      name: API
       type: string
     - jsonPath: .status.status
       name: Status
@@ -91,8 +88,8 @@ spec:
               upstream:
                 description: Upstream contains information about the upstream configuration
                 properties:
-                  baseURL:
-                    description: "BaseURL define upstream endpoint url\nExample:\n\t\thttps://openrouter.ai/api/v1/chat/completions\n\n
+                  baseUrl:
+                    description: "BaseUrl define upstream endpoint url\nExample:\n\t\thttps://openrouter.ai/api/v1/chat/completions\n\n
                       \thttp://phi3-mini.default.svc.cluster.local:8000/api/v1/chat/completions"
                     type: string
                   headers:

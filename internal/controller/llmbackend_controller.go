@@ -108,9 +108,17 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		after = 30 * time.Second //nolint:mnd
 	}
 
-	if err := r.Status().Update(ctx, llmBackend); err != nil {
-		log.Log.Error(err, "update llmBackend status error", "name", llmBackend.GetName())
+	newBackend := &knowaydevv1alpha1.LLMBackend{}
+	if err := r.Get(ctx, req.NamespacedName, newBackend); err != nil {
+		log.Log.Error(err, "reconcile LLMBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+	if !reflect.DeepEqual(llmBackend.Status, newBackend.Status) {
+		newBackend.Status = llmBackend.Status
+		if err := r.Status().Update(ctx, newBackend); err != nil {
+			log.Log.Error(err, "update llmBackend status error", "name", llmBackend.GetName())
+			return ctrl.Result{}, client.IgnoreNotFound(err)
+		}
 	}
 
 	return ctrl.Result{RequeueAfter: after}, nil
@@ -205,7 +213,7 @@ func (r *LLMBackendReconciler) reconcileUpstreamHealthy(ctx context.Context, llm
 }
 
 func (r *LLMBackendReconciler) reconcilePhase(_ context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) {
-	llmBackend.Status.Status = knowaydevv1alpha1.Unknown
+	llmBackend.Status.Status = knowaydevv1alpha1.Healthy
 	if isDeleted(llmBackend) {
 		llmBackend.Status.Status = knowaydevv1alpha1.Healthy
 		return

@@ -26,7 +26,7 @@ import (
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
 //+kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.name`
-//+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.upstream.baseURL`
+//+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.upstream.baseUrl`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
 // LLMBackend is the Schema for the llmbackends API

@@ -154,7 +154,7 @@ func TestCanAccessModel(t *testing.T) {
 			want:         false,
 		},
 		{
-			name:         "only public ",
+			name:         "only public",
 			allowModels:  []string{"*"},
 			requestModel: "nicole/gpt-1",
 			want:         false,
@@ -185,6 +185,37 @@ func TestCanAccessModel(t *testing.T) {
 			deniedModels: []string{"*", "public/*"},
 			requestModel: "public/openai",
 			want:         false,
+		},
+		{
+			name:         "denied priority with nested layers",
+			allowModels:  []string{"*", "public/*", "u-kebe/llama"},
+			deniedModels: []string{"*", "public/*"},
+			requestModel: "public/openai/gpt-1",
+			want:         false,
+		},
+		{
+			name:         "nested layers",
+			allowModels:  []string{"public/**"},
+			requestModel: "public/openrouter/qwen/qwen-2-7b-instruct",
+			want:         true,
+		},
+		{
+			name:         "nested layers not accessible",
+			allowModels:  []string{"other-ns/**"},
+			requestModel: "public/openrouter/qwen/qwen-2-7b-instruct",
+			want:         false,
+		},
+		{
+			name:         "with colon",
+			allowModels:  []string{"public/*"},
+			requestModel: "public/qwen-2-7b-instruct:32b",
+			want:         true,
+		},
+		{
+			name:         "nested layers with allow with colon",
+			allowModels:  []string{"public/**"},
+			requestModel: "public/openrouter/qwen/qwen-2-7b-instruct:32b",
+			want:         true,
 		},
 	}
 

@@ -61,6 +61,7 @@ words:
   - ineffassign
   - ireturn
   - jsonpatch
+  - kebe
   - knoway
   - knowaydevv1alpha1
   - kubebuilder
@@ -94,6 +95,7 @@ words:
   - Preflights
   - printcolumn
   - protoutils
+  - qwen
   - readyz
   - reassign
   - registryfilters

@@ -419,6 +419,7 @@ func (r *LLMBackendReconciler) toUpstreamHeaders(ctx context.Context, backend *k
 	return hs, nil
 }
 
+// TODO: unit test
 func processStruct(v interface{}, params map[string]*structpb.Value) error {
 	val := reflect.ValueOf(v)
 

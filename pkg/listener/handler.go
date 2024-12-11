@@ -17,3 +17,9 @@ func WithMiddlewares(middlewares ...Middleware) Middleware {
 		return next
 	}
 }
+
+func HTTPHandlerFunc(fn HandlerFunc) http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		_, _ = fn(writer, request)
+	}
+}

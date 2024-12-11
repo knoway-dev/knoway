@@ -7,9 +7,9 @@ import (
 )
 
 const (
-	enabledAuthFilterKey = "enabledAuthFilter"
-	authInfoKey          = "authInfo"
-	apiKeyKey            = "apiKey"
+	enabledAuthFilterKey = "filters.auth.enabled"
+	authInfoKey          = "auth.info"
+	apiKeyKey            = "auth.apiKey" //nolint:gosec
 )
 
 func SetAuthInfoToCtx(ctx context.Context, info *services.APIKeyAuthResponse) error {

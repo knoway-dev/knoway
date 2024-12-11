@@ -9,12 +9,51 @@ import (
 	"time"
 
 	"github.com/nekomeowww/fo"
+	"github.com/samber/lo"
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
 )
+
+func WithLog() Middleware {
+	return func(next HandlerFunc) HandlerFunc {
+		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
+			start := time.Now()
+			resp, err := next(writer, request)
+			elapsed := time.Since(start)
+
+			attrs := []any{
+				slog.Int("status", fo.May1(properties.GetStatusCodeFromCtx(request.Context()))),
+				slog.String("remote_ip", utils.RealIPFromRequest(request)),
+				slog.String("host", request.Host),
+				slog.String("uri", request.RequestURI),
+				slog.String("method", request.Method),
+				slog.String("path", request.URL.Path),
+				slog.String("protocol", request.Proto),
+				slog.String("referer", request.Referer()),
+				slog.String("user_agent", request.UserAgent()),
+				slog.Int64("latency", int64(elapsed)),
+				slog.Duration("latency_human", elapsed),
+				slog.Any("headers", lo.OmitByKeys(request.Header, []string{"Authorization"})),
+				slog.Any("query", request.URL.Query()),
+				slog.Any("cookies", lo.Map(request.Cookies(), func(item *http.Cookie, index int) string {
+					return item.String()
+				})),
+			}
+
+			errorMessage := fo.May1(properties.GetErrorMessageFromCtx(request.Context()))
+			if errorMessage != "" {
+				attrs = append(attrs, slog.String("error", errorMessage))
+			}
+
+			slog.Info("request handled", attrs...)
+
+			return resp, err
+		}
+	}
+}
 
 func WithProperties() Middleware {
 	return func(next HandlerFunc) HandlerFunc {
@@ -135,7 +174,7 @@ func (l *CancellableRequestMap) CancelAllAfterWithContext(ctx context.Context, t
 	})
 }
 
-func CancellableInterceptor(cancellable *CancellableRequestMap) Middleware {
+func WithCancellableInterceptor(cancellable *CancellableRequestMap) Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			ctx, cancel := context.WithCancel(request.Context())
@@ -147,7 +186,7 @@ func CancellableInterceptor(cancellable *CancellableRequestMap) Middleware {
 	}
 }
 
-func RejectAfterDrainedInterceptor(d Drainable) Middleware {
+func WithRejectAfterDrainedInterceptor(d Drainable) Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			if d.HasDrained() {
@@ -155,6 +194,17 @@ func RejectAfterDrainedInterceptor(d Drainable) Middleware {
 			}
 
 			return next(writer, request)
+		}
+	}
+}
+
+func WithResponseHandler(fn func(resp any, err error, writer http.ResponseWriter, request *http.Request)) Middleware {
+	return func(next HandlerFunc) HandlerFunc {
+		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
+			resp, err := next(writer, request)
+			fn(resp, err, writer, request)
+
+			return nil, nil
 		}
 	}
 }

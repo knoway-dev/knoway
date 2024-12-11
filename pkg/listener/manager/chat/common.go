@@ -11,7 +11,6 @@ import (
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/clusters"
-	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/registry/cluster"
 	registryroute "knoway.dev/pkg/registry/route"
@@ -47,36 +46,6 @@ func ClusterToOpenAIModel(cluster *v1alpha4.Cluster) goopenai.Model {
 var (
 	SkipResponse = errors.New("skip writing response") //nolint:errname,stylecheck
 )
-
-func withErrorHandler(fn listener.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		resp, err := fn(w, r)
-		if err == nil {
-			if resp != nil {
-				utils.WriteJSONForHTTP(http.StatusOK, resp, w)
-			}
-
-			return
-		}
-		if errors.Is(err, SkipResponse) {
-			return
-		}
-
-		openAIError := openai.NewErrorFromLLMError(err)
-		if openAIError.FromUpstream {
-			slog.Error("upstream returned an error",
-				"status", openAIError.Status,
-				"code", openAIError.ErrorBody.Code,
-				"message", openAIError.ErrorBody.Message,
-				"type", openAIError.ErrorBody.Type,
-			)
-		} else if openAIError.Status >= http.StatusInternalServerError {
-			slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause)
-		}
-
-		utils.WriteJSONForHTTP(openAIError.Status, openAIError, w)
-	}
-}
 
 func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request object.LLMRequest, resp object.LLMResponse, writer http.ResponseWriter) error {
 	streamResp, ok := resp.(object.LLMStreamResponse)

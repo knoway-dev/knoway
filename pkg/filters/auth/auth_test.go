@@ -119,6 +119,7 @@ func TestCanAccessModel(t *testing.T) {
 	tests := []struct {
 		name         string
 		allowModels  []string
+		deniedModels []string
 		requestModel string
 		want         bool
 	}{
@@ -164,11 +165,32 @@ func TestCanAccessModel(t *testing.T) {
 			requestModel: "gpt-1",
 			want:         true,
 		},
+		{
+			name:         "denied priority",
+			allowModels:  []string{"*"},
+			deniedModels: []string{"gpt-1"},
+			requestModel: "gpt-1",
+			want:         false,
+		},
+		{
+			name:         "denied priority",
+			allowModels:  []string{"*", "public/*", "u-kebe/llama"},
+			deniedModels: []string{"*", "public/*"},
+			requestModel: "u-kebe/llama",
+			want:         true,
+		},
+		{
+			name:         "denied priority",
+			allowModels:  []string{"*", "public/*", "u-kebe/llama"},
+			deniedModels: []string{"*", "public/*"},
+			requestModel: "public/openai",
+			want:         false,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, CanAccessModel(tt.allowModels, tt.requestModel), "CanAccessModel(%v, %v)", tt.allowModels, tt.requestModel)
+			assert.Equalf(t, tt.want, CanAccessModel(tt.requestModel, tt.allowModels, tt.deniedModels), "CanAccessModel(%v, %v)", tt.allowModels, tt.requestModel)
 		})
 	}
 }

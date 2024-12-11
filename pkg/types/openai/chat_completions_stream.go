@@ -193,8 +193,8 @@ func NewChatCompletionStreamResponse(request object.LLMRequest, response *http.R
 }
 
 func (r *ChatCompletionStreamResponse) MarshalJSON() ([]byte, error) {
-	// TODO: implement
-	return nil, nil
+	// NOTICE: stream response should not be marshaled
+	return json.Marshal(nil)
 }
 
 func (r *ChatCompletionStreamResponse) IsEOF() bool {

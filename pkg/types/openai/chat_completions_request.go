@@ -15,6 +15,24 @@ type StreamOptions struct {
 	IncludeUsage bool `json:"include_usage"`
 }
 
+type CompletionsRequest struct {
+	// REVIEW: do we need a dedicated struct for completions?
+	// TODO: consider to drop the support of completions or have dedicated struct for completions
+	// or otherwise the prompt filtering and content moderation will be a bit tricky to implement
+	*ChatCompletionsRequest
+}
+
+func NewCompletionsRequest(httpRequest *http.Request) (*CompletionsRequest, error) {
+	req, err := NewChatCompletionRequest(httpRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	return &CompletionsRequest{
+		ChatCompletionsRequest: req,
+	}, nil
+}
+
 type ChatCompletionsRequest struct {
 	Model         string        `json:"model,omitempty"`
 	Stream        bool          `json:"stream,omitempty"`

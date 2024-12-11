@@ -1,7 +1,53 @@
 package chat
 
-import "net/http"
+import (
+	"log/slog"
+	"net/http"
+
+	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/types/openai"
+)
+
+func (l *OpenAIChatListener) unmarshalCompletionsRequestToLLMRequest(request *http.Request) (object.LLMRequest, error) {
+	llmRequest, err := openai.NewCompletionsRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if llmRequest.GetModel() == "" {
+		return nil, openai.NewErrorMissingModel()
+	}
+
+	return llmRequest, nil
+}
 
 func (l *OpenAIChatListener) onCompletionsRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
-	return nil, nil
+	llmRequest, err := l.unmarshalCompletionsRequestToLLMRequest(request)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, f := range l.filters.OnCompletionRequestFilters() {
+		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
+		if fResult.IsFailed() {
+			return nil, fResult.Error
+		}
+	}
+
+	c, ok := l.findCluster(request.Context(), llmRequest)
+	if !ok {
+		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
+	}
+
+	resp, err := l.clusterDoCompletionsRequest(c, writer, request, llmRequest)
+	if !llmRequest.IsStream() {
+		for _, f := range l.filters.OnCompletionResponseFilters() {
+			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
+			if fResult.IsFailed() {
+				slog.Error("error occurred during invoking of OnCompletionResponse filters", "error", fResult.Error)
+			}
+		}
+	}
+
+	return resp, err
 }

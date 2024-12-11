@@ -15,6 +15,7 @@ func modifyBufferBodyAndParsed(buffer *bytes.Buffer, applyOpt *jsonpatch.ApplyOp
 	if applyOpt == nil {
 		applyOpt = jsonpatch.NewApplyOptions()
 	}
+
 	patched, err := patch.ApplyWithOptions(buffer.Bytes(), applyOpt)
 	if err != nil {
 		return nil, nil, err

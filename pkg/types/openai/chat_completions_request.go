@@ -3,7 +3,6 @@ package openai
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
@@ -80,6 +79,10 @@ func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionsReques
 	return req, nil
 }
 
+func (r *ChatCompletionsRequest) MarshalJSON() ([]byte, error) {
+	return r.bodyBuffer.Bytes(), nil
+}
+
 func (r *ChatCompletionsRequest) IsStream() bool {
 	return r.Stream
 }
@@ -108,7 +111,8 @@ func (r *ChatCompletionsRequest) SetDefaultParams(params map[string]*structpb.Va
 		}
 
 		var err error
-		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, nil, NewAdd(fmt.Sprintf("/%s", k), &v))
+
+		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, nil, NewAdd("/"+k, &v))
 		if err != nil {
 			return fmt.Errorf("failed to add key %s: %w", k, err)
 		}
@@ -123,27 +127,12 @@ func (r *ChatCompletionsRequest) SetOverrideParams(params map[string]*structpb.V
 
 	for k, v := range params {
 		var err error
-		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, applyOpt, NewAdd(fmt.Sprintf("/%s", k), &v))
+
+		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, applyOpt, NewAdd("/"+k, &v))
 		if err != nil {
 			return err
 		}
 	}
 
 	return nil
-}
-
-func (r *ChatCompletionsRequest) GetBody() io.Reader {
-	return bytes.NewBuffer(r.bodyBuffer.Bytes())
-}
-
-func (r *ChatCompletionsRequest) GetBodyBuffer() *bytes.Buffer {
-	return r.bodyBuffer
-}
-
-func (r *ChatCompletionsRequest) GetBodyParsed() map[string]any {
-	return r.bodyParsed
-}
-
-func (r *ChatCompletionsRequest) GetIncomingRequest() *http.Request {
-	return r.incomingRequest
 }

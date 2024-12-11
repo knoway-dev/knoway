@@ -1,10 +1,7 @@
 package object
 
 import (
-	"bytes"
 	"encoding/json"
-	"io"
-	"net/http"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
@@ -14,18 +11,10 @@ import (
 type LLMRequest interface {
 	IsStream() bool
 	GetModel() string
-	GetBody() io.Reader
-	GetBodyBuffer() *bytes.Buffer
-	GetIncomingRequest() *http.Request
-
 	SetModel(modelName string) error
+
 	SetOverrideParams(params map[string]*structpb.Value) error
 	SetDefaultParams(params map[string]*structpb.Value) error
-
-	SetAPIKey(key string)
-	SetUser(user string)
-	GetUser() string
-	GetAPIKey() string
 }
 
 type LLMResponse interface {
@@ -33,11 +22,10 @@ type LLMResponse interface {
 
 	IsStream() bool
 	GetRequestID() string
-	GetModel() string
 	GetUsage() LLMUsage
-	GetOutgoingResponse() *http.Response
 	GetError() error
 
+	GetModel() string
 	SetModel(modelName string) error
 }
 
@@ -55,10 +43,11 @@ type LLMChunkResponse interface {
 	IsDone() bool
 	IsUsage() bool
 	GetResponse() LLMStreamResponse
-	GetModel() string
-	ToServerSentEvent() (*sse.Event, error)
 
+	GetModel() string
 	SetModel(modelName string) error
+
+	ToServerSentEvent() (*sse.Event, error)
 }
 
 type LLMUsage interface {
@@ -91,50 +80,6 @@ func (r *BaseLLMRequest) SetOverrideParams(params map[string]*structpb.Value) er
 
 func (r *BaseLLMRequest) IsStream() bool {
 	return false
-}
-
-func (r *BaseLLMRequest) GetBody() io.Reader {
-	return nil
-}
-
-func (r *BaseLLMRequest) GetBodyBuffer() *bytes.Buffer {
-	return nil
-}
-
-func (r *BaseLLMRequest) GetIncomingRequest() *http.Request {
-	return nil
-}
-
-func (r *BaseLLMRequest) SetUser(user string) {
-	if r == nil {
-		return
-	}
-
-	r.User = user
-}
-
-func (r *BaseLLMRequest) SetAPIKey(key string) {
-	if r == nil {
-		return
-	}
-
-	r.APIKey = key
-}
-
-func (r *BaseLLMRequest) GetUser() string {
-	if r == nil {
-		return ""
-	}
-
-	return r.User
-}
-
-func (r *BaseLLMRequest) GetAPIKey() string {
-	if r == nil {
-		return ""
-	}
-
-	return r.APIKey
 }
 
 func (r *BaseLLMRequest) SetModel(model string) error {

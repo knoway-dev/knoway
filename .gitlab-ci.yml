@@ -1,0 +1,238 @@
+default:
+  image: release-ci.daocloud.io/mspider/mspider:v0.0.39
+  tags:
+    - k8s
+  #    - mspider-temp # for temp use
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+  interruptible: true
+  before_script:
+    - echo "before_script"
+    - git version
+    - go version
+    - go env -w GO111MODULE=on
+    - go env -w GOPROXY="http://10.6.100.13:8081/repository/go-proxy/"
+    - go env -w GOSUMDB="sum.golang.org http://10.6.100.13:8081/repository/gosum/"
+    - go env -w GOPRIVATE="gitlab.daocloud.cn,insight.io,mspider.io,kpanda.io,ghippo.io,kangaroo.io"
+    - export GOPROXY="http://10.6.100.13:8081/repository/go-proxy/"
+    - export GOSUMDB="sum.golang.org http://10.6.100.13:8081/repository/gosum/"
+    - export GOPRIVATE="gitlab.daocloud.cn,insight.io,mspider.io,kpanda.io,ghippo.io,kangaroo.io"
+    - docker -v #override the global before_script
+
+variables:
+  REPO_NAME: gitlab.daocloud.cn/ndx/hydra
+
+stages:
+  - prepare
+  - verify
+  - test
+  - post-merge-build
+  - e2e-test
+  - benchmark-test
+  - k8s-compatibility-test
+  - scenario-env-create
+  - scenario-test
+  - deploy
+  - security-scanning
+  - independent_job
+  - final
+
+.merge_trigger_rules: &merge_trigger_rules
+  if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+.commit_main_trigger_rules: &commit_main_trigger_rules
+  if: '$CI_COMMIT_BRANCH == "main" && $SCHEDULE_TYPE != "independent"'
+.fast_skip_rules: &fast_skip_rules
+  if: '$CI_MERGE_REQUEST_LABELS =~ /fast-build-test/'
+  when: never
+.frontend_skip_rules: &frontend_skip_rules
+  if: '$FRONTEND_TRIGGER == "true"'
+  when: never
+.independent_skip_rules: &independent_skip_rules
+  if: '$SCHEDULE_TYPE == "independent"'
+  when: never
+.deploy_ci: &deploy_ci
+  if: '$CI_MERGE_REQUEST_LABELS =~ /deploy/'
+.anti_deploy_ci: &anti_deploy_ci
+  if: '$CI_MERGE_REQUEST_LABELS =~ /deploy/'
+  when: never
+
+Static Check:
+  rules:
+    - *fast_skip_rules
+    - *merge_trigger_rules
+  stage: verify
+  script:
+    - make staticcheck
+
+Gen Check:
+  rules:
+    - *fast_skip_rules
+    - *merge_trigger_rules
+  stage: verify
+  script:
+    - make gen-check
+
+Release CI:
+  rules:
+    - *frontend_skip_rules
+    - *commit_main_trigger_rules
+    - *deploy_ci
+    - if: '$SCHEDULE_TYPE == "e2e-test"'
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /e2e-test/'
+    - if: '$SCHEDULE_TYPE == "benchmark-test"'
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /benchmark-test/'
+    - if: '$SCHEDULE_TYPE == "k8s-compatibility-test"'
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /k8s-compatibility-test/'
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /scenario-test/'
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /security-scan/'
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /fast-build-test/'
+    - if: '$ACTION == "pre-release-for-test"'
+  retry:
+    max: 2
+  stage: post-merge-build
+  tags:
+    - docker
+  script:
+    - env
+    - make release -j2 #REGISTRY_USER_NAME and REGISTRY_PASSWORD config as Gitlab Variables
+
+#Deploy DEV:
+#  rules:
+#    - *frontend_skip_rules
+#    - *commit_main_trigger_rules
+#    - *deploy_ci
+#    - if: '$CI_MERGE_REQUEST_LABELS =~ /fast-build-test/'
+#  retry:
+#    max: 2
+#  stage: deploy
+#  script:
+#    - export KUBE_CONFIG=$DEV_AGENT_KUBECONF
+#    - make deploy-agent
+
+Unit Tests:
+  rules:
+    - *frontend_skip_rules
+    - *fast_skip_rules
+    - *independent_skip_rules
+    - *merge_trigger_rules
+    - *commit_main_trigger_rules
+  stage: test
+  retry:
+    max: 2
+    when:
+      - always
+  script:
+    - make unit-test
+
+Release:
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  retry:
+    max: 2
+  stage: post-merge-build
+  interruptible: false
+  variables:
+    GIT_STRATEGY: clone
+  tags:
+    - docker
+  script:
+    - export HUB="release.daocloud.io"
+    - export HELM_REPO="https://release.daocloud.io/chartrepo/knoway"
+    - export SYSTEM_HELM_REPO=https://release.daocloud.io/chartrepo/system
+    - export ADDON_HELM_REPO=https://release.daocloud.io/chartrepo/addon
+    - export VERSION=$CI_COMMIT_TAG
+    - export REGISTRY_USER_NAME=$RELEASE_HARBOR_USERNAME
+    - export REGISTRY_PASSWORD=$RELEASE_HARBOR_PASSWORD
+    - make release -j2 #REGISTRY_USER_NAME and REGISTRY_PASSWORD config as Gitlab Variables
+
+.dependabot-gitlab:
+  image:
+    name: release-ci.daocloud.io/mspider/dependabot-gitlab:3.9.2-alpha.1-go-1.22.4
+    entrypoint: [ "" ]
+  tags:
+    - docker
+  variables:
+    SECRET_KEY_BASE: key
+    PACKAGE_MANAGER: $CI_JOB_NAME
+    SETTINGS__GITLAB_URL: $CI_SERVER_URL
+    SETTINGS__STANDALONE: "true"
+    SETTINGS__LOG_COLOR: "true"
+    SETTINGS__GITLAB_ACCESS_TOKEN: $GITLAB_TOKEN
+#    GO_LEGACY: '1'
+  script:
+    - cd /home/dependabot/app
+    - bundle exec rake "dependabot:update[ndx/ai/knoway,$PACKAGE_MANAGER,/]"
+  allow_failure: true
+
+gomod:
+  extends: .dependabot-gitlab
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $PACKAGE_MANAGER_SET =~ /\bgomod\b/ && $SCHEDULE_TYPE == "independent"'
+  stage: independent_job
+  before_script:
+    - export GOPROXY="http://10.6.100.13:8081/repository/go-proxy/"
+    - export GOSUMDB="sum.golang.org http://10.6.100.13:8081/repository/gosum/"
+    - export GOPRIVATE="gitlab.daocloud.cn,insight.io,mspider.io,kpanda.io,ghippo.io,hydra.io"
+
+Security Scanning:
+  rules:
+    - *frontend_skip_rules
+    - *commit_main_trigger_rules
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /security-scan/'
+  retry:
+    max: 2
+  tags:
+    - docker
+  stage: security-scanning
+  script:
+    - export VULNEEABILITY_LEVEL="CRITICAL"
+    - make security-scanning
+  interruptible: true
+
+Auto Gen:
+  rules:
+    - if: '($CI_MERGE_REQUEST_LABELS =~ /auto-gen/) && $CI_COMMIT_MESSAGE !~ /Auto run gen code/'
+    - if: '($CI_MERGE_REQUEST_LABELS =~ /go/ && $CI_MERGE_REQUEST_LABELS =~ /update-dependence/) && $CI_COMMIT_MESSAGE !~ /Auto run gen code/'
+  variables:
+    GIT_STRATEGY: clone
+  stage: prepare
+  script:
+    - bash ./scripts/run-make-gen.sh
+
+PR Status Manage:
+  rules:
+    - *fast_skip_rules
+    - *merge_trigger_rules
+  stage: post-merge-build
+  variables:
+    GIT_STRATEGY: clone
+  script:
+    - bash ./scripts/pr-status-manage.sh
+
+Release Version:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $ACTION == "release"'
+  interruptible: false
+  variables:
+    GIT_STRATEGY: clone
+  stage: final
+  tags:
+    - k8s
+  script:
+    - bash ./scripts/release-version.sh
+
+Code Freeze:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web" && $CI_COMMIT_BRANCH == "main" && $ACTION == "code-freeze"'
+  variables:
+    GIT_STRATEGY: clone
+  interruptible: false
+  tags:
+    - k8s
+  script:
+    - bash ./scripts/code-freeze.sh
+

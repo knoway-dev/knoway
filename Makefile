@@ -200,3 +200,30 @@ push-chart: helm
 	helm registry login $(HUB) -u $${REGISTRY_USER_NAME} -p $${REGISTRY_PASSWORD}
 	helm push ./dist/$(PROD_NAME)-$(VERSION).tgz oci://$(HUB)/$(PROD_NAME)
 
+.PHONY: unit-test
+unit-test:
+	bash ./scripts/unit-test.sh
+
+.PHONY: helm-render-check
+helm-render-check:
+	@for c in manifests/*; do \
+		helm template $$c > /dev/null || exit 1; \
+	done
+
+.PHONY: license-lint
+license-lint:
+	scripts/verify-license.sh
+
+.PHONY: staticcheck
+staticcheck: license-lint helm-render-check
+	scripts/verify-staticcheck.sh
+
+.PHONY: gen-check
+gen-check:
+	scripts/gen-check.sh
+
+.PHONY: security-scanning
+security-scanning:
+	bash ./scripts/trivy.sh $(VULNEEABILITY_LEVEL) \
+	$(HUB)/$(PROD_NAME)/$(APP):$(VERSION)
+

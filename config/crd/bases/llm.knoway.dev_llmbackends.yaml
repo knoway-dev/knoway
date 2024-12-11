@@ -21,7 +21,7 @@ spec:
     - jsonPath: .spec.name
       name: Name
       type: string
-    - jsonPath: .spec.upstream.baseURL
+    - jsonPath: .spec.upstream.baseUrl
       name: URL
       type: string
     - jsonPath: .status.status

@@ -14,13 +14,19 @@ message APIKeyAuthResponse {
     // allow_models optional: If it is empty, it means that the apikey can
     // access all models. If it is not empty, it means that the apikey can only
     // access the specified models.
-    // * represents matching any value, which can be */llama or kebe/*.
+    // The matching rules for each value follow the rules of glob.
     repeated string allow_models = 2;
     // api_key_id optional: It will be used in statistics to avoid leakage of
     // sensitive information.
     string api_key_id = 3;
     // user_id optional: the apikey's owner, will be used in route matching.
     string user_id = 4;
+    // deny_models optional: similar to allow_models, but the opposite.
+    // If it is not empty, it means that the apikey
+    // cannot access the specified models.
+    // The matching rules for each value follow the rules of glob.
+    // it has higher priority than allow_models.
+    repeated string deny_models = 5;
 }
 
 service AuthService {

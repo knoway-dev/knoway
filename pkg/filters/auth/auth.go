@@ -108,7 +108,7 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		slog.Debug("auth filter: user model not found", "user", response.GetUserId())
 		return filters.NewFailed(object.NewErrorMissingModel())
 	}
-	if !CanAccessModel(response.GetAllowModels(), accessModel) {
+	if !CanAccessModel(accessModel, response.GetAllowModels(), response.GetDenyModels()) {
 		slog.Debug("auth filter: user can not access model", "user", response.GetUserId(), "model", accessModel)
 		return filters.NewFailed(object.NewErrorModelNotFoundOrNotAccessible(accessModel))
 	}
@@ -148,7 +148,19 @@ The rules defined in allowModels follows the spec of the following:
 
 - if ** is provided, means that all models can be accessed.
 */
-func CanAccessModel(allowModels []string, requestModel string) bool {
+func CanAccessModel(requestModel string, allowModels []string, denyModels []string) bool {
+	if lo.SomeBy(denyModels, func(rule string) bool {
+		// use glob matching to match the rule
+		matched, _ := filepath.Match(rule, requestModel)
+		return matched
+	}) {
+		return false
+	}
+	// if allowModels is empty, means that all models can be accessed.
+	// This follows our definition in the api.
+	if len(allowModels) == 0 {
+		return true
+	}
 	return lo.SomeBy(allowModels, func(rule string) bool {
 		// use glob matching to match the rule
 		matched, _ := filepath.Match(rule, requestModel)

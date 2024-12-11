@@ -13,12 +13,13 @@ func SafeFlush(writer any) {
 }
 
 func WriteJSONForHTTP(status int, resp any, writer http.ResponseWriter) {
+	bs, _ := json.Marshal(resp) //nolint:errchkjson
+
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 	writer.WriteHeader(status)
 
 	SafeFlush(writer)
 
-	bs, _ := json.Marshal(resp) //nolint:errchkjson
 	_, _ = writer.Write(bs)
 }
 

@@ -134,10 +134,6 @@ func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
 }
 
 func (r *ChatCompletionsResponse) MarshalJSON() ([]byte, error) {
-	if r == nil {
-		panic("nil ChatCompletionsResponse")
-	}
-
 	return r.responseBody, nil
 }
 
@@ -151,18 +147,10 @@ func (r *ChatCompletionsResponse) GetRequestID() string {
 }
 
 func (r *ChatCompletionsResponse) GetModel() string {
-	if r == nil {
-		return ""
-	}
-
 	return r.Model
 }
 
 func (r *ChatCompletionsResponse) SetModel(model string) error {
-	if r == nil {
-		return nil
-	}
-
 	if r.Error == nil {
 		var err error
 
@@ -178,26 +166,14 @@ func (r *ChatCompletionsResponse) SetModel(model string) error {
 }
 
 func (r *ChatCompletionsResponse) GetUsage() object.LLMUsage {
-	if r == nil {
-		return nil
-	}
-
 	return r.Usage
 }
 
 func (r *ChatCompletionsResponse) GetOutgoingResponse() *http.Response {
-	if r == nil {
-		return nil
-	}
-
 	return r.outgoingResponse
 }
 
 func (r *ChatCompletionsResponse) GetError() error {
-	if r == nil {
-		return nil
-	}
-
 	if r.Error != nil {
 		return r.Error
 	}

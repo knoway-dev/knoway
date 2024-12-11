@@ -57,6 +57,7 @@ func NewOpenAIChatListenerConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle
 
 func (l *OpenAIChatListener) RegisterRoutes(mux *mux.Router) error {
 	middlewares := listener.WithMiddlewares(
+		listener.WithRecover(),
 		listener.WithOptions(),
 		listener.WithProperties(),
 		listener.CancellableInterceptor(l.cancellable),

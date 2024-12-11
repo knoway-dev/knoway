@@ -2,7 +2,9 @@ package listener
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -10,6 +12,8 @@ import (
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/properties"
+	"knoway.dev/pkg/types/openai"
+	"knoway.dev/pkg/utils"
 )
 
 func WithProperties() Middleware {
@@ -27,6 +31,35 @@ func WithOptions() Middleware {
 				writer.WriteHeader(http.StatusNoContent)
 				return nil, nil
 			}
+
+			return next(writer, request)
+		}
+	}
+}
+
+func WithRecover() Middleware {
+	return func(next HandlerFunc) HandlerFunc {
+		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
+			defer func() {
+				if r := recover(); r != nil {
+					var url string
+					if request != nil && request.URL != nil {
+						url = request.URL.String()
+					}
+
+					stack := string(debug.Stack())
+
+					slog.Error("Recovered from panic",
+						slog.Any("panic", r),
+						slog.String("url", url),
+						slog.String("stack", stack),
+					)
+
+					internalErr := openai.NewErrorInternalError()
+
+					utils.WriteJSONForHTTP(internalErr.Status, internalErr, writer)
+				}
+			}()
 
 			return next(writer, request)
 		}

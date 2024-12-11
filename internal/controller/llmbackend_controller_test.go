@@ -18,16 +18,13 @@ package controller
 
 import (
 	"context"
-	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
@@ -86,60 +83,3 @@ var _ = Describe("LLMBackend Controller", func() {
 		})
 	})
 })
-
-func TestToParams(t *testing.T) {
-	newPrtInt := func(i int) *int {
-		return &i
-	}
-
-	// Define some test cases for different backend configurations
-	tests := []struct {
-		name         string
-		backend      *knowaydevv1alpha1.LLMBackend
-		wantDefault  map[string]string
-		wantOverride map[string]string
-		wantErr      bool
-	}{
-		{
-			name: "Valid OpenAI and SystemParams",
-			backend: &knowaydevv1alpha1.LLMBackend{
-				Spec: knowaydevv1alpha1.LLMBackendSpec{
-					Upstream: knowaydevv1alpha1.BackendUpstream{
-						OverrideParams: &knowaydevv1alpha1.ModelParams{
-							OpenAI: &knowaydevv1alpha1.OpenAIParam{
-								CommonParams: knowaydevv1alpha1.CommonParams{
-									Model: "gpt-4",
-								},
-							},
-						},
-						DefaultParams: &knowaydevv1alpha1.ModelParams{
-							OpenAI: &knowaydevv1alpha1.OpenAIParam{
-								MaxTokens: newPrtInt(50),
-							},
-						},
-					},
-				},
-			},
-			wantOverride: map[string]string{
-				"model": "gpt-4",
-			},
-			wantDefault: map[string]string{
-				"max_tokens": "50",
-			},
-			wantErr: false,
-		},
-	}
-
-	// Run tests
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotD, gotO, err := toParams(tt.backend)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("toParams() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			assert.Equal(t, tt.wantDefault, gotD)
-			assert.Equal(t, tt.wantOverride, gotO)
-		})
-	}
-}

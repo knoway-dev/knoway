@@ -9,9 +9,8 @@ spec:
   #  type: public # public | private | ...
   provider: openai
   name: gpt-3.5-turbo
-  modelName: openai/gpt-3.5-turbo
   upstream:
-    baseURL: "https://openrouter.ai/api/v1/chat/completions"
+    baseUrl: "https://openrouter.ai/api/v1/chat/completions"
     headers:
       - key: "Authorization"
         value: "Bearer sk-or-v1-xxxxxxxxxx"
@@ -19,11 +18,11 @@ spec:
     defaultParams:
       openai:
         temperature: "0.5"
+        max_tokens: 100
     overrideParams:
       openai:
         # upstream model
         model: "openai/gpt-3.5-turbo"
-        max_tokens: 100
   filters:
     - custom:
         pluginName: "examplePlugin"

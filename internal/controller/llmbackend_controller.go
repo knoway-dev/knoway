@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -26,20 +25,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/samber/lo"
-
-	v1 "k8s.io/api/core/v1"
-
-	"github.com/stoewer/go-strcase"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"knoway.dev/pkg/clusters/manager"
-
-	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/registry/route"
-
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/hashicorp/go-multierror"
+	"github.com/samber/lo"
+	"github.com/stoewer/go-strcase"
 	"google.golang.org/protobuf/types/known/anypb"
+	structpb2 "google.golang.org/protobuf/types/known/structpb"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,9 +40,11 @@ import (
 
 	"knoway.dev/api/clusters/v1alpha1"
 	v1alpha12 "knoway.dev/api/filters/v1alpha1"
-	"knoway.dev/pkg/registry/cluster"
-
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
+	"knoway.dev/pkg/bootkit"
+	"knoway.dev/pkg/clusters/manager"
+	"knoway.dev/pkg/registry/cluster"
+	"knoway.dev/pkg/registry/route"
 )
 
 // LLMBackendReconciler reconciles a LLMBackend object
@@ -424,41 +419,7 @@ func (r *LLMBackendReconciler) toUpstreamHeaders(ctx context.Context, backend *k
 	return hs, nil
 }
 
-func storeToParams(params map[string]string, key string, value interface{}) error {
-	if params == nil {
-		return fmt.Errorf("params map cannot be nil")
-	}
-	if key == "" {
-		return nil
-	}
-	var jsonData string
-	switch v := value.(type) {
-	case map[string]interface{}, []interface{}:
-		bytes, err := json.Marshal(v)
-		if err != nil {
-			return fmt.Errorf("error marshaling value for key %s: %w", key, err)
-		}
-		jsonData = string(bytes)
-	case int, int32, int64:
-		jsonData = fmt.Sprintf("%d", v)
-	case float64, float32:
-		jsonData = fmt.Sprintf("%f", v)
-	case bool:
-		jsonData = fmt.Sprintf("%v", v)
-	case string:
-		jsonData = v
-	default:
-		bytes, err := json.Marshal(v)
-		if err != nil {
-			return fmt.Errorf("error marshaling value for key %s: %w", key, err)
-		}
-		jsonData = string(bytes)
-	}
-	params[key] = jsonData
-	return nil
-}
-
-func processStruct(v interface{}, params map[string]string) error {
+func processStruct(v interface{}, params map[string]*structpb.Value) error {
 	val := reflect.ValueOf(v)
 
 	// Ensure we have a pointer to a struct
@@ -500,16 +461,19 @@ func processStruct(v interface{}, params map[string]string) error {
 			continue
 		}
 
-		// Store the field value in params
-		if err := storeToParams(params, jsonKey, field.Interface()); err != nil {
-			return err
+		// Convert field.Interface() to *structpb.Value
+		value, err := structpb2.NewValue(field.Interface())
+		if err != nil {
+			return fmt.Errorf("failed to convert field %s to *structpb.Value: %w", jsonKey, err)
 		}
+
+		params[jsonKey] = value
 	}
 
 	return nil
 }
 
-func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[string]string) error {
+func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[string]*structpb.Value) error {
 	if modelParams == nil {
 		return nil
 	}
@@ -528,12 +492,12 @@ func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[str
 	return nil
 }
 
-func toParams(backed *knowaydevv1alpha1.LLMBackend) (defaultParams, overrideParams map[string]string, err error) {
+func toParams(backed *knowaydevv1alpha1.LLMBackend) (defaultParams, overrideParams map[string]*structpb.Value, err error) {
 	if backed == nil {
 		return
 	}
 
-	defaultParams, overrideParams = make(map[string]string), make(map[string]string)
+	defaultParams, overrideParams = make(map[string]*structpb.Value), make(map[string]*structpb.Value)
 
 	if err = parseModelParams(backed.Spec.Upstream.DefaultParams, defaultParams); err != nil {
 		return nil, nil, fmt.Errorf("error processing DefaultParams: %w", err)

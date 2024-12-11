@@ -96,33 +96,38 @@ type BackendUpstream struct {
 	Timeout int32 `json:"timeout,omitempty"`
 }
 
-type CommonParams struct {
-	Model string `json:"model,omitempty"`
-
-	Temperature string `json:"temperature,omitempty"`
-}
-
 type ModelParams struct {
 	// OpenAI model parameters
 	OpenAI *OpenAIParam `json:"openai,omitempty"`
 }
 
+type CommonParams struct {
+	Model string `json:"model,omitempty"`
+
+	// Temperature is the sampling temperature, between 0 and 2.
+	// Higher values like 0.8 make the output more random, while lower values like 0.2 make it more focused and deterministic.
+	Temperature *string `json:"temperature,omitempty"`
+}
+
 type OpenAIParam struct {
 	CommonParams `json:",inline"`
 
+	// MaxTokens is deprecated. Use MaxCompletionTokens instead.
+	// This value is not compatible with o1 series models.
 	MaxTokens *int `json:"max_tokens,omitempty"`
+	// MaxCompletionTokens limits the maximum number of tokens for completion.
+	MaxCompletionTokens *int `json:"max_completion_tokens,omitempty"`
+	// TopP is the nucleus sampling probability, between 0 and 1.
+	TopP *string `json:"top_p,omitempty"`
+	// Stream specifies whether to enable streaming responses.
+	Stream *bool `json:"stream,omitempty"`
+	// StreamOptions defines additional options for streaming responses.
+	StreamOptions *StreamOptions `json:"stream_options,omitempty"`
 }
 
-type LLamaParam struct {
-	CommonParams `json:",inline"`
-
-	MaxLength *int `json:"max_length,omitempty"`
-}
-
-type QwenParam struct {
-	CommonParams `json:",inline"`
-
-	TopK *int `json:"top_k,omitempty"`
+type StreamOptions struct {
+	// IncludeUsage indicates whether to include usage statistics before the [DONE] message.
+	IncludeUsage *bool `json:"include_usage,omitempty"`
 }
 
 type Header struct {

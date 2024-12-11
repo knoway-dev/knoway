@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"testing"
 
+	"google.golang.org/protobuf/types/known/structpb"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -74,11 +76,11 @@ func TestSetDefaultParams(t *testing.T) {
 	chatReq, err := NewChatCompletionRequest(req)
 	assert.NoError(t, err, "failed to create ChatCompletionsRequest")
 
-	params := map[string]string{
-		"model":       "openai/gpt-4",
-		"stream":      "true",
-		"temperature": "0.7",
-		"max_tokens":  "100",
+	params := map[string]*structpb.Value{
+		"model":       structpb.NewStringValue("openai/gpt-4"),
+		"stream":      structpb.NewBoolValue(true),
+		"temperature": structpb.NewNumberValue(0.7),
+		"max_tokens":  structpb.NewNumberValue(100),
 	}
 
 	err = chatReq.SetDefaultParams(params)
@@ -105,19 +107,28 @@ func TestSetOverrideParams(t *testing.T) {
 	chatReq, err := NewChatCompletionRequest(req)
 	assert.NoError(t, err, "failed to create ChatCompletionsRequest")
 
-	params := map[string]string{
-		"model":       "openai/gpt-4",
-		"stream":      "true",
-		"temperature": "0.7",
-		"max_tokens":  "100",
+	params := map[string]*structpb.Value{
+		"model":       structpb.NewStringValue("openai/gpt-4"),
+		"stream":      structpb.NewBoolValue(true),
+		"temperature": structpb.NewNumberValue(0.7),
+		"max_tokens":  structpb.NewNumberValue(100),
+		"stream_options": structpb.NewStructValue(&structpb.Struct{
+			Fields: map[string]*structpb.Value{
+				"include_usage": structpb.NewBoolValue(true),
+			},
+		}),
 	}
 
 	err = chatReq.SetOverrideParams(params)
 	assert.NoError(t, err, "SetOverrideParams failed")
 
 	bodyParsed := chatReq.GetBodyParsed()
-	assert.Equal(t, true, bodyParsed["stream"], "stream")
 	assert.Equal(t, "openai/gpt-4", bodyParsed["model"], "model")
 	assert.Equal(t, 0.7, bodyParsed["temperature"], "temperature")
 	assert.Equal(t, 100.0, bodyParsed["max_tokens"], "max_tokens")
+
+	assert.Equal(t, true, bodyParsed["stream"], "stream")
+	assert.Equal(t, map[string]interface{}{
+		"include_usage": true,
+	}, bodyParsed["stream_options"], "stream_options")
 }

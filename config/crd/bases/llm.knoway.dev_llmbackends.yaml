@@ -97,11 +97,38 @@ spec:
                       openai:
                         description: OpenAI model parameters
                         properties:
+                          max_completion_tokens:
+                            description: MaxCompletionTokens limits the maximum number
+                              of tokens for completion.
+                            type: integer
                           max_tokens:
+                            description: |-
+                              MaxTokens is deprecated. Use MaxCompletionTokens instead.
+                              This value is not compatible with o1 series models.
                             type: integer
                           model:
                             type: string
+                          stream:
+                            description: Stream specifies whether to enable streaming
+                              responses.
+                            type: boolean
+                          stream_options:
+                            description: StreamOptions defines additional options
+                              for streaming responses.
+                            properties:
+                              include_usage:
+                                description: IncludeUsage indicates whether to include
+                                  usage statistics before the [DONE] message.
+                                type: boolean
+                            type: object
                           temperature:
+                            description: |-
+                              Temperature is the sampling temperature, between 0 and 2.
+                              Higher values like 0.8 make the output more random, while lower values like 0.2 make it more focused and deterministic.
+                            type: string
+                          top_p:
+                            description: TopP is the nucleus sampling probability,
+                              between 0 and 1.
                             type: string
                         type: object
                     type: object
@@ -145,11 +172,38 @@ spec:
                       openai:
                         description: OpenAI model parameters
                         properties:
+                          max_completion_tokens:
+                            description: MaxCompletionTokens limits the maximum number
+                              of tokens for completion.
+                            type: integer
                           max_tokens:
+                            description: |-
+                              MaxTokens is deprecated. Use MaxCompletionTokens instead.
+                              This value is not compatible with o1 series models.
                             type: integer
                           model:
                             type: string
+                          stream:
+                            description: Stream specifies whether to enable streaming
+                              responses.
+                            type: boolean
+                          stream_options:
+                            description: StreamOptions defines additional options
+                              for streaming responses.
+                            properties:
+                              include_usage:
+                                description: IncludeUsage indicates whether to include
+                                  usage statistics before the [DONE] message.
+                                type: boolean
+                            type: object
                           temperature:
+                            description: |-
+                              Temperature is the sampling temperature, between 0 and 2.
+                              Higher values like 0.8 make the output more random, while lower values like 0.2 make it more focused and deterministic.
+                            type: string
+                          top_p:
+                            description: TopP is the nucleus sampling probability,
+                              between 0 and 1.
                             type: string
                         type: object
                     type: object

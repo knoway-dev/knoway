@@ -2,12 +2,12 @@ package openai
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/utils"
@@ -101,51 +101,29 @@ func (r *ChatCompletionsRequest) SetModel(model string) error {
 	return nil
 }
 
-func parseValue(value string) interface{} {
-	var res interface{}
-	err := json.Unmarshal([]byte(value), &res)
-	if err != nil {
-		return value
-	}
-
-	switch v := res.(type) {
-	case float64:
-		if float64(int(v)) == v {
-			return int(v)
-		}
-		return v
-	case int, int32, int64, bool, string:
-		return v
-	default:
-		return res
-	}
-}
-
-func (r *ChatCompletionsRequest) SetDefaultParams(params map[string]string) error {
-	for key, value := range params {
-		if _, exists := r.bodyParsed[key]; exists {
+func (r *ChatCompletionsRequest) SetDefaultParams(params map[string]*structpb.Value) error {
+	for k, v := range params {
+		if _, exists := r.bodyParsed[k]; exists {
 			continue
 		}
 
-		parsedValue := parseValue(value)
 		var err error
-		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, nil, NewAdd(fmt.Sprintf("/%s", key), &parsedValue))
+		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, nil, NewAdd(fmt.Sprintf("/%s", k), &v))
 		if err != nil {
-			return fmt.Errorf("failed to add key %s: %w", key, err)
+			return fmt.Errorf("failed to add key %s: %w", k, err)
 		}
 	}
 
 	return nil
 }
 
-func (r *ChatCompletionsRequest) SetOverrideParams(params map[string]string) error {
+func (r *ChatCompletionsRequest) SetOverrideParams(params map[string]*structpb.Value) error {
 	applyOpt := jsonpatch.NewApplyOptions()
 	applyOpt.EnsurePathExistsOnAdd = true
 
 	for k, v := range params {
-		parsedValue := parseValue(v)
 		var err error
-		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, applyOpt, NewAdd(fmt.Sprintf("/%s", k), &parsedValue))
+		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, applyOpt, NewAdd(fmt.Sprintf("/%s", k), &v))
 		if err != nil {
 			return err
 		}

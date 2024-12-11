@@ -9,6 +9,7 @@ import (
 const (
 	enabledAuthFilterKey = "enabledAuthFilter"
 	authInfoKey          = "authInfo"
+	apiKeyKey            = "apiKey"
 )
 
 func SetAuthInfoToCtx(ctx context.Context, info *services.APIKeyAuthResponse) error {
@@ -26,4 +27,12 @@ func SetEnabledAuthFilterToCtx(ctx context.Context, enabled bool) error {
 func EnabledAuthFilterFromCtx(ctx context.Context) bool {
 	value, ok := GetProperty[bool](ctx, enabledAuthFilterKey)
 	return value && ok
+}
+
+func SetAPIKeyToCtx(ctx context.Context, apiKey string) error {
+	return SetProperty(ctx, apiKeyKey, apiKey)
+}
+
+func GetAPIKeyFromCtx(ctx context.Context) (string, bool) {
+	return GetProperty[string](ctx, apiKeyKey)
 }

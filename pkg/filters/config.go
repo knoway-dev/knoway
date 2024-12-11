@@ -50,6 +50,12 @@ type IsRequestFilter struct{}
 
 func (IsRequestFilter) isRequestFilter() {}
 
+type OnRequestPreflightFilter interface {
+	RequestFilter
+
+	OnRequestPreflight(ctx context.Context, sourceHTTPRequest *http.Request) RequestFilterResult
+}
+
 type OnCompletionRequestFilter interface {
 	RequestFilter
 
@@ -69,6 +75,10 @@ type OnCompletionStreamResponseFilter interface {
 }
 
 type RequestFilters []RequestFilter
+
+func (r RequestFilters) OnRequestPreflightFilters() []OnRequestPreflightFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnRequestPreflightFilter](r)
+}
 
 func (r RequestFilters) OnCompletionRequestFilters() []OnCompletionRequestFilter {
 	return utils.TypeAssertFrom[RequestFilter, OnCompletionRequestFilter](r)

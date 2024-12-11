@@ -10,16 +10,13 @@ import (
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/filters/auth"
-	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/registry/cluster"
 )
 
 func (l *OpenAIChatListener) onListModelsRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
-	llmRequest := &object.BaseLLMRequest{}
-
-	for _, f := range l.filters.OnCompletionRequestFilters() {
-		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
+	for _, f := range l.filters.OnRequestPreflightFilters() {
+		fResult := f.OnRequestPreflight(request.Context(), request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error
 		}

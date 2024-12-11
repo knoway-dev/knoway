@@ -57,6 +57,7 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 }
 
 var _ filters.RequestFilter = (*AuthFilter)(nil)
+var _ filters.OnRequestPreflightFilter = (*AuthFilter)(nil)
 var _ filters.OnCompletionRequestFilter = (*AuthFilter)(nil)
 
 type AuthFilter struct {
@@ -67,7 +68,7 @@ type AuthFilter struct {
 	authClient service.AuthServiceClient
 }
 
-func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
 	if err := properties.SetEnabledAuthFilterToCtx(ctx, true); err != nil {
 		return filters.NewFailed(err)
@@ -76,11 +77,13 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHTTPRequest)
 	if err != nil {
-		// todo added generic error handling, non-Hardcode openai error
 		return filters.NewFailed(object.NewErrorIncorrectAPIKey())
 	}
 
-	request.SetAPIKey(apiKey)
+	err = properties.SetAPIKeyToCtx(ctx, apiKey)
+	if err != nil {
+		return filters.NewFailed(err)
+	}
 
 	// check apikey
 	slog.Debug("auth filter: rpc APIKeyAuth")
@@ -96,24 +99,42 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		return filters.NewFailed(err)
 	}
 
-	request.SetUser(response.GetUserId())
-
 	if !response.GetIsValid() {
 		slog.Debug("auth filter: user apikey invalid", "user", response.GetUserId())
 		return filters.NewFailed(object.NewErrorIncorrectAPIKey())
 	}
 
+	slog.Debug("auth filter: user authorization succeeds", "user", response.GetUserId(), "allow models", response.GetAllowModels())
+
+	return filters.NewOK()
+}
+
+func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+	apiKey, ok := properties.GetAPIKeyFromCtx(ctx)
+	if !ok {
+		return filters.NewFailed(errors.New("missing API Key in context"))
+	}
+
+	request.SetAPIKey(apiKey)
+
+	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
+	if !ok {
+		return filters.NewFailed(errors.New("missing auth info in context"))
+	}
+
+	request.SetUser(authInfo.GetUserId())
+
 	accessModel := request.GetModel()
 	if accessModel == "" {
-		slog.Debug("auth filter: user model not found", "user", response.GetUserId())
+		slog.Debug("auth filter: user model not found", "user", authInfo.GetUserId())
 		return filters.NewFailed(object.NewErrorMissingModel())
 	}
-	if !CanAccessModel(accessModel, response.GetAllowModels(), response.GetDenyModels()) {
-		slog.Debug("auth filter: user can not access model", "user", response.GetUserId(), "model", accessModel)
+	if !CanAccessModel(accessModel, authInfo.GetAllowModels(), authInfo.GetDenyModels()) {
+		slog.Debug("auth filter: user can not access model", "user", authInfo.GetUserId(), "model", accessModel)
 		return filters.NewFailed(object.NewErrorModelNotFoundOrNotAccessible(accessModel))
 	}
 
-	slog.Debug("auth filter: user authorization succeeds", "user", response.GetUserId(), "allow models", response.GetAllowModels())
+	slog.Debug("auth filter: user authorization succeeds", "user", authInfo.GetUserId(), "allow models", authInfo.GetAllowModels())
 
 	return filters.NewOK()
 }

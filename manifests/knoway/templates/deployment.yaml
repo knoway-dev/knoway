@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-gateway
+  name: {{ .Values.fullNameOverride | default .Release.Name }}-gateway
   namespace: {{ .Release.Namespace }}
   labels:
-    app: {{ .Release.Name }}-gateway
+    app: {{ .Values.fullNameOverride | default .Release.Name }}-gateway
 spec:
   replicas: {{ include "replicas" . }}
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-gateway
+      app: {{ .Values.fullNameOverride | default .Release.Name }}-gateway
   strategy:
     rollingUpdate:
       maxSurge: 50%
@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-gateway
+        app: {{ .Values.fullNameOverride | default .Release.Name }}-gateway
     spec:
       {{- include "common.images.pullSecrets" . | indent 6 }}
       dnsPolicy: ClusterFirst
@@ -43,8 +43,8 @@ spec:
               port: 8081
             initialDelaySeconds: 10
             periodSeconds: 15
-      serviceAccountName: {{ .Release.Name }}
+      serviceAccountName: {{ .Values.fullNameOverride | default .Release.Name }}
       volumes:
         - name: config
           configMap:
-            name: {{ .Release.Name }}
+            name: {{ .Values.fullNameOverride | default .Release.Name }}

@@ -13,10 +13,13 @@ global:
   # -- Global Docker registry secret names as an array
   imagePullSecrets: []
   high_available: false
-  debug: false
-  config:
-    auth_server_url: ''
-    stats_server_url: ''
+
+fullNameOverride: ""
+
+debug: false
+config:
+  auth_server_url: ''
+  stats_server_url: ''
 
 gateway:
   image:

@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 
+	structpb "github.com/golang/protobuf/ptypes/struct"
+
 	"knoway.dev/pkg/types/sse"
 )
 
@@ -17,6 +19,8 @@ type LLMRequest interface {
 	GetIncomingRequest() *http.Request
 
 	SetModel(modelName string) error
+	SetOverrideParams(params map[string]*structpb.Value) error
+	SetDefaultParams(params map[string]*structpb.Value) error
 
 	SetAPIKey(key string)
 	SetUser(user string)
@@ -75,6 +79,14 @@ type BaseLLMRequest struct {
 	// auth info
 	APIKey string `json:"api_key,omitempty"`
 	User   string `json:"user,omitempty"`
+}
+
+func (r *BaseLLMRequest) SetDefaultParams(params map[string]*structpb.Value) error {
+	return nil
+}
+
+func (r *BaseLLMRequest) SetOverrideParams(params map[string]*structpb.Value) error {
+	return nil
 }
 
 func (r *BaseLLMRequest) IsStream() bool {

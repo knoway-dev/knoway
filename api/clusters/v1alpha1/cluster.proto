@@ -5,6 +5,7 @@ option go_package = "knoway.dev/api/clusters/v1alpha1";
 package knoway.clusters.v1alpha1;
 
 import "google/protobuf/any.proto";
+import "google/protobuf/struct.proto";
 
 message ClusterFilter {
     string name                = 1;
@@ -31,8 +32,10 @@ message Upstream {
         string key   = 1;
         string value = 2;
     }
-    repeated Header headers = 3;
-    int32 timeout           = 4;
+    repeated Header headers                           = 3;
+    int32 timeout                                     = 4;
+    map<string, google.protobuf.Value> defaultParams  = 5;
+    map<string, google.protobuf.Value> overrideParams = 6;
 }
 
 message Cluster {

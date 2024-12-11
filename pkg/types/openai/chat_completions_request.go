@@ -2,8 +2,12 @@ package openai
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
+
+	jsonpatch "github.com/evanphx/json-patch/v5"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/utils"
@@ -65,7 +69,7 @@ func NewChatCompletionRequest(httpRequest *http.Request) (*ChatCompletionsReques
 	if req.Stream && !req.StreamOptions.IncludeUsage {
 		var err error
 
-		req.bodyBuffer, req.bodyParsed, err = modifyBufferBodyAndParsed(req.bodyBuffer, NewAdd("/stream_options", StreamOptions{IncludeUsage: true}))
+		req.bodyBuffer, req.bodyParsed, err = modifyBufferBodyAndParsed(req.bodyBuffer, nil, NewAdd("/stream_options", StreamOptions{IncludeUsage: true}))
 		if err != nil {
 			return nil, err
 		}
@@ -87,12 +91,43 @@ func (r *ChatCompletionsRequest) GetModel() string {
 func (r *ChatCompletionsRequest) SetModel(model string) error {
 	var err error
 
-	r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, NewReplace("/model", model))
+	r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, nil, NewReplace("/model", model))
 	if err != nil {
 		return err
 	}
 
 	r.Model = model
+
+	return nil
+}
+
+func (r *ChatCompletionsRequest) SetDefaultParams(params map[string]*structpb.Value) error {
+	for k, v := range params {
+		if _, exists := r.bodyParsed[k]; exists {
+			continue
+		}
+
+		var err error
+		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, nil, NewAdd(fmt.Sprintf("/%s", k), &v))
+		if err != nil {
+			return fmt.Errorf("failed to add key %s: %w", k, err)
+		}
+	}
+
+	return nil
+}
+
+func (r *ChatCompletionsRequest) SetOverrideParams(params map[string]*structpb.Value) error {
+	applyOpt := jsonpatch.NewApplyOptions()
+	applyOpt.EnsurePathExistsOnAdd = true
+
+	for k, v := range params {
+		var err error
+		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, applyOpt, NewAdd(fmt.Sprintf("/%s", k), &v))
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

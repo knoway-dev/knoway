@@ -15,11 +15,10 @@ command golangci-lint &>/dev/null || util::install_tools ${GOLANGCI_LINT_PKG} ${
 
 golangci-lint --version
 
-if golangci-lint run -v; then
-    echo 'Congratulations!  All Go source files have passed staticcheck.'
+if golangci-lint run -v --timeout=5m; then
+    echo '✅ Congratulations! All Go source files have passed staticcheck.'
 else
-    echo # print one empty line, separate from warning messages.
-    echo 'Please review the above warnings.'
-    echo 'If the above warnings do not make sense, feel free to file an issue.'
+    echo '❌ Staticcheck failed. Please review the warnings above.'
+    echo '💡 Tip: If these warnings are unclear, you can file an issue for help.'
     exit 1
 fi

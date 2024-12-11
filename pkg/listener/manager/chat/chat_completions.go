@@ -22,6 +22,13 @@ func (l *OpenAIChatListener) unmarshalChatCompletionsRequestToLLMRequest(request
 }
 
 func (l *OpenAIChatListener) onChatCompletionsRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
+	for _, f := range l.filters.OnRequestPreflightFilters() {
+		fResult := f.OnRequestPreflight(request.Context(), request)
+		if fResult.IsFailed() {
+			return nil, fResult.Error
+		}
+	}
+
 	llmRequest, err := l.unmarshalChatCompletionsRequestToLLMRequest(request)
 	if err != nil {
 		return nil, err

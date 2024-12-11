@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
@@ -247,7 +248,12 @@ func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.Reader,
 		opt(opts)
 	}
 
-	req, err := http.NewRequest(http.MethodPost, upstream.GetUrl(), body)
+	url := upstream.GetUrl()
+	url = strings.TrimSuffix(url, "/")
+	// TODO: implement, should switch different endpoint path based on provider or vendor
+	url += "/chat/completions"
+
+	req, err := http.NewRequest(http.MethodPost, url, body)
 	if err != nil {
 		return nil, nil, err
 	}

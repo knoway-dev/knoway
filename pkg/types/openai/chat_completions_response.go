@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"knoway.dev/pkg/object"
@@ -60,6 +62,7 @@ func (u *Usage) GetPromptTokens() uint64 {
 var _ object.LLMResponse = (*ChatCompletionsResponse)(nil)
 
 type ChatCompletionsResponse struct {
+	Status int            `json:"status"`
 	Model  string         `json:"model"`
 	Usage  *Usage         `json:"usage,omitempty"`
 	Error  *ErrorResponse `json:"error,omitempty"`
@@ -81,12 +84,9 @@ func NewChatCompletionResponse(request object.LLMRequest, response *http.Respons
 		return nil, err
 	}
 
-	err = resp.processBytes(buffer.Bytes())
+	err = resp.processBytes(buffer.Bytes(), response)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
-	}
-	if resp.Error != nil {
-		resp.Error.Status = response.StatusCode
 	}
 
 	resp.request = request
@@ -95,12 +95,13 @@ func NewChatCompletionResponse(request object.LLMRequest, response *http.Respons
 	return resp, nil
 }
 
-func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
+func (r *ChatCompletionsResponse) processBytes(bs []byte, response *http.Response) error {
 	if r == nil {
 		return nil
 	}
 
 	r.responseBody = bs
+	r.Status = response.StatusCode
 
 	var body map[string]any
 
@@ -113,7 +114,11 @@ func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
 
 	r.Model = utils.GetByJSONPath[string](body, "{ .model }")
 	usageMap := utils.GetByJSONPath[map[string]any](body, "{ .usage }")
+
+	// For general cases, errors will be returned as a map with "error" property
 	respErrMap := utils.GetByJSONPath[map[string]any](body, "{ .error }")
+	// For OpenRouter, endpoint not found errors will be returned as a string with "error" property
+	errorStringMap := utils.GetByJSONPath[string](body, "{ .error }")
 
 	r.Usage, err = utils.FromMap[Usage](usageMap)
 	if err != nil {
@@ -124,6 +129,41 @@ func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
 		respErr, err := utils.FromMap[ErrorResponse](respErrMap)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal error: %w", err)
+		}
+
+		respErr.Status = response.StatusCode
+		respErr.FromUpstream = true
+		r.Error = respErr
+	} else if errorStringMap != "" {
+		slog.Error("unknown unexpected error response returned",
+			slog.String("body", string(bs)),
+			slog.String("uri", response.Request.RequestURI),
+			slog.String("url", response.Request.URL.String()),
+		)
+
+		respErr := &ErrorResponse{
+			Status: response.StatusCode,
+			ErrorBody: &Error{
+				Message: "upstream error: " + errorStringMap,
+			},
+			Cause: errors.New("unknown error"),
+		}
+
+		respErr.FromUpstream = true
+		r.Error = respErr
+	} else if response.StatusCode >= 400 && response.StatusCode < 600 {
+		slog.Error("unknown unexpected error response with unknown body structure returned",
+			slog.String("body", string(bs)),
+			slog.String("uri", response.Request.RequestURI),
+			slog.String("url", response.Request.URL.String()),
+		)
+
+		respErr := &ErrorResponse{
+			Status: response.StatusCode,
+			ErrorBody: &Error{
+				Message: "upstream unknown error: " + response.Status,
+			},
+			Cause: errors.New("unknown error"),
 		}
 
 		respErr.FromUpstream = true

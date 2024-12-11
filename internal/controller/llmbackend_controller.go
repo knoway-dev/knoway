@@ -424,23 +424,6 @@ func (r *LLMBackendReconciler) toUpstreamHeaders(ctx context.Context, backend *k
 	return hs, nil
 }
 
-func processRawExtension(in *runtime.RawExtension, params map[string]string) error {
-	data, err := in.MarshalJSON()
-	if err != nil {
-		return fmt.Errorf("error marshaling RawExtension: %w", err)
-	}
-	out := make(map[string]interface{})
-	if err := json.Unmarshal(data, &out); err != nil {
-		return fmt.Errorf("error unmarshaling RawExtension: %w", err)
-	}
-	for k, v := range out {
-		if err := storeToParams(params, k, v); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func storeToParams(params map[string]string, key string, value interface{}) error {
 	if params == nil {
 		return fmt.Errorf("params map cannot be nil")
@@ -532,8 +515,6 @@ func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[str
 	}
 	modelTypes := map[string]interface{}{
 		"OpenAI": modelParams.OpenAI,
-		"LLama":  modelParams.LLama,
-		"Qwen":   modelParams.Qwen,
 	}
 
 	for name, model := range modelTypes {
@@ -541,12 +522,6 @@ func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[str
 			if err := processStruct(model, params); err != nil {
 				return fmt.Errorf("error processing %s params: %w", name, err)
 			}
-		}
-	}
-
-	if modelParams.Custom != nil {
-		if err := processRawExtension(modelParams.Custom, params); err != nil {
-			return fmt.Errorf("error parsing Custom params: %w", err)
 		}
 	}
 

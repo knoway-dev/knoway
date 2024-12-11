@@ -20,10 +20,6 @@ spec:
       openai:
         temperature: "0.5"
     overrideParams:
-      custom:
-        logprobs: true
-        testObj:
-          key: value1
       openai:
         # upstream model
         model: "openai/gpt-3.5-turbo"

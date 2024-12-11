@@ -94,20 +94,6 @@ spec:
                     type: string
                   defaultParams:
                     properties:
-                      custom:
-                        description: Qwen model parameters
-                        type: object
-                        x-kubernetes-preserve-unknown-fields: true
-                      llama:
-                        description: LLama model parameters
-                        properties:
-                          max_length:
-                            type: integer
-                          model:
-                            type: string
-                          temperature:
-                            type: string
-                        type: object
                       openai:
                         description: OpenAI model parameters
                         properties:
@@ -117,16 +103,6 @@ spec:
                             type: string
                           temperature:
                             type: string
-                        type: object
-                      qwen:
-                        description: Qwen model parameters
-                        properties:
-                          model:
-                            type: string
-                          temperature:
-                            type: string
-                          top_k:
-                            type: integer
                         type: object
                     type: object
                   headers:
@@ -166,20 +142,6 @@ spec:
                     type: array
                   overrideParams:
                     properties:
-                      custom:
-                        description: Qwen model parameters
-                        type: object
-                        x-kubernetes-preserve-unknown-fields: true
-                      llama:
-                        description: LLama model parameters
-                        properties:
-                          max_length:
-                            type: integer
-                          model:
-                            type: string
-                          temperature:
-                            type: string
-                        type: object
                       openai:
                         description: OpenAI model parameters
                         properties:
@@ -189,16 +151,6 @@ spec:
                             type: string
                           temperature:
                             type: string
-                        type: object
-                      qwen:
-                        description: Qwen model parameters
-                        properties:
-                          model:
-                            type: string
-                          temperature:
-                            type: string
-                          top_k:
-                            type: integer
                         type: object
                     type: object
                   timeout:

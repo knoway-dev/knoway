@@ -105,15 +105,6 @@ type CommonParams struct {
 type ModelParams struct {
 	// OpenAI model parameters
 	OpenAI *OpenAIParam `json:"openai,omitempty"`
-
-	// LLama model parameters
-	LLama *LLamaParam `json:"llama,omitempty"`
-
-	// Qwen model parameters
-	Qwen *QwenParam `json:"qwen,omitempty"`
-
-	// Qwen model parameters
-	Custom *runtime.RawExtension `json:"custom,omitempty"`
 }
 
 type OpenAIParam struct {

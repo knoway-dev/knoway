@@ -65,8 +65,6 @@ type ChatCompletionsResponse struct {
 	Error  *ErrorResponse `json:"error,omitempty"`
 	Stream bool           `json:"stream"`
 
-	// TODO: add more fields
-
 	request          object.LLMRequest
 	responseBody     json.RawMessage
 	bodyParsed       map[string]any
@@ -137,10 +135,10 @@ func (r *ChatCompletionsResponse) processBytes(bs []byte) error {
 
 func (r *ChatCompletionsResponse) MarshalJSON() ([]byte, error) {
 	if r == nil {
-		return nil, nil
+		panic("nil ChatCompletionsResponse")
 	}
 
-	return json.Marshal(r.responseBody)
+	return r.responseBody, nil
 }
 
 func (r *ChatCompletionsResponse) IsStream() bool {

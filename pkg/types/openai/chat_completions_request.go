@@ -20,8 +20,6 @@ type ChatCompletionsRequest struct {
 	Stream        bool          `json:"stream,omitempty"`
 	StreamOptions StreamOptions `json:"stream_options,omitempty"`
 
-	// TODO: add more fields
-
 	bodyParsed      map[string]any
 	bodyBuffer      *bytes.Buffer
 	incomingRequest *http.Request

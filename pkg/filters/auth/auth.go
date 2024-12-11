@@ -7,11 +7,10 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"path/filepath"
 	"strings"
 
+	"github.com/bmatcuk/doublestar/v4"
 	"github.com/samber/lo"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/anypb"
@@ -163,7 +162,11 @@ The rules defined in allowModels follows the spec of the following:
 func CanAccessModel(requestModel string, allowModels []string, denyModels []string) bool {
 	if lo.SomeBy(denyModels, func(rule string) bool {
 		// use glob matching to match the rule
-		matched, _ := filepath.Match(rule, requestModel)
+		matched, err := doublestar.Match(rule, requestModel)
+		if err != nil {
+			return false
+		}
+
 		return matched
 	}) {
 		return false
@@ -173,9 +176,14 @@ func CanAccessModel(requestModel string, allowModels []string, denyModels []stri
 	if len(allowModels) == 0 {
 		return true
 	}
+
 	return lo.SomeBy(allowModels, func(rule string) bool {
 		// use glob matching to match the rule
-		matched, _ := filepath.Match(rule, requestModel)
+		matched, err := doublestar.Match(rule, requestModel)
+		if err != nil {
+			return false
+		}
+
 		return matched
 	})
 }

@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -60,5 +61,5 @@ func (f *requestHandler) RequestModifier(ctx context.Context, request object.LLM
 }
 
 func (f *requestHandler) MarshalRequestBody(ctx context.Context, request object.LLMRequest, pre []byte) ([]byte, error) {
-	return request.GetBodyBuffer().Bytes(), nil
+	return json.Marshal(request)
 }

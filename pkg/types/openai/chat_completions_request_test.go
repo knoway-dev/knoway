@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"testing"
 
-	"google.golang.org/protobuf/types/known/structpb"
-
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func TestSetModel(t *testing.T) {
@@ -31,17 +31,16 @@ func TestSetModel(t *testing.T) {
 	require.NoError(t, err)
 
 	newModel := "gpt-4"
+
 	err = request.SetModel(newModel)
 	require.NoError(t, err)
-
 	assert.Equal(t, newModel, request.GetModel())
 
 	// Verify the body buffer has been updated
 	var body map[string]any
-	if err := json.Unmarshal(request.GetBodyBuffer().Bytes(), &body); err != nil {
-		t.Fatalf("Failed to unmarshal body: %v", err)
-	}
 
+	err = json.Unmarshal(lo.Must(json.Marshal(request)), &body)
+	require.NoError(t, err)
 	assert.Equal(t, newModel, body["model"])
 
 	messages := []map[string]any{
@@ -70,11 +69,11 @@ func TestSetDefaultParams(t *testing.T) {
 		"stream": false
 	}`)
 
-	req, err := http.NewRequest("POST", "/api/v1", bytes.NewReader(body))
-	assert.NoError(t, err, "failed to create HTTP request")
+	req, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, "/api/v1", bytes.NewReader(body))
+	require.NoError(t, err)
 
 	chatReq, err := NewChatCompletionRequest(req)
-	assert.NoError(t, err, "failed to create ChatCompletionsRequest")
+	require.NoError(t, err)
 
 	params := map[string]*structpb.Value{
 		"model":       structpb.NewStringValue("openai/gpt-4"),
@@ -84,13 +83,12 @@ func TestSetDefaultParams(t *testing.T) {
 	}
 
 	err = chatReq.SetDefaultParams(params)
-	assert.NoError(t, err, "SetDefaultParams failed")
+	require.NoError(t, err)
 
-	bodyParsed := chatReq.GetBodyParsed()
-	assert.Equal(t, false, bodyParsed["stream"], "stream")
-	assert.Equal(t, "gpt-4", bodyParsed["model"], "model")
-	assert.Equal(t, 0.7, bodyParsed["temperature"], "temperature")
-	assert.Equal(t, 100.0, bodyParsed["max_tokens"], "max_tokens")
+	assert.Equal(t, false, chatReq.bodyParsed["stream"])
+	assert.Equal(t, "gpt-4", chatReq.bodyParsed["model"])
+	assert.InDelta(t, 0.7, chatReq.bodyParsed["temperature"], 0.0001)
+	assert.InDelta(t, 100.0, chatReq.bodyParsed["max_tokens"], 0.0001)
 }
 
 func TestSetOverrideParams(t *testing.T) {
@@ -101,11 +99,11 @@ func TestSetOverrideParams(t *testing.T) {
 		"max_tokens": 200
 	}`)
 
-	req, err := http.NewRequest("POST", "/api/v1", bytes.NewReader(body))
-	assert.NoError(t, err, "failed to create HTTP request")
+	req, err := http.NewRequestWithContext(context.TODO(), http.MethodPost, "/api/v1", bytes.NewReader(body))
+	require.NoError(t, err)
 
 	chatReq, err := NewChatCompletionRequest(req)
-	assert.NoError(t, err, "failed to create ChatCompletionsRequest")
+	require.NoError(t, err)
 
 	params := map[string]*structpb.Value{
 		"model":       structpb.NewStringValue("openai/gpt-4"),
@@ -120,15 +118,14 @@ func TestSetOverrideParams(t *testing.T) {
 	}
 
 	err = chatReq.SetOverrideParams(params)
-	assert.NoError(t, err, "SetOverrideParams failed")
+	require.NoError(t, err)
 
-	bodyParsed := chatReq.GetBodyParsed()
-	assert.Equal(t, "openai/gpt-4", bodyParsed["model"], "model")
-	assert.Equal(t, 0.7, bodyParsed["temperature"], "temperature")
-	assert.Equal(t, 100.0, bodyParsed["max_tokens"], "max_tokens")
+	assert.Equal(t, "openai/gpt-4", chatReq.bodyParsed["model"])
+	assert.InDelta(t, 0.7, chatReq.bodyParsed["temperature"], 0.0001)
+	assert.InDelta(t, 100.0, chatReq.bodyParsed["max_tokens"], 0.0001)
 
-	assert.Equal(t, true, bodyParsed["stream"], "stream")
-	assert.Equal(t, map[string]interface{}{
+	assert.Equal(t, true, chatReq.bodyParsed["stream"])
+	assert.Equal(t, map[string]any{
 		"include_usage": true,
-	}, bodyParsed["stream_options"], "stream_options")
+	}, chatReq.bodyParsed["stream_options"])
 }

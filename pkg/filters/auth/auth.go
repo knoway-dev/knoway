@@ -110,19 +110,10 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 }
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
-	apiKey, ok := properties.GetAPIKeyFromCtx(ctx)
-	if !ok {
-		return filters.NewFailed(errors.New("missing API Key in context"))
-	}
-
-	request.SetAPIKey(apiKey)
-
 	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
 	if !ok {
 		return filters.NewFailed(errors.New("missing auth info in context"))
 	}
-
-	request.SetUser(authInfo.GetUserId())
 
 	accessModel := request.GetModel()
 	if accessModel == "" {

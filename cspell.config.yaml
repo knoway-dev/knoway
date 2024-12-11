@@ -104,6 +104,7 @@ words:
   - servicev1alpha1
   - staticcheck
   - stretchr
+  - structpb
   - stylecheck
   - subresource
   - tagalign

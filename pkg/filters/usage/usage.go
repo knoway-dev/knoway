@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"time"
 
 	"github.com/samber/lo"
 
@@ -83,7 +84,10 @@ func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest
 		apiKeyID = authInfo.GetApiKeyId()
 	}
 
-	_, err := f.usageClient.UsageReport(context.TODO(), &service.UsageReportRequest{
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Millisecond*time.Duration(f.config.GetStatsServer().GetTimeout()))
+	defer cancel()
+
+	_, err := f.usageClient.UsageReport(ctx, &service.UsageReportRequest{
 		ApiKeyId:          apiKeyID,
 		UserModelName:     request.GetModel(),
 		UpstreamModelName: response.GetModel(),

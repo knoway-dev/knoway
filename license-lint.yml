@@ -61,33 +61,8 @@ restricted_licenses:
   - Sleepycat
 
 allowlisted_modules:
-# DCE 5.0 repos, and DaoCloud ckube
-- ghippo.io/api
-- insight.io/api
-- kpanda.io/api
-- mspider.io/api
-- gitlab.daocloud.cn/ndx/ckube
-
 # BSD: https://github.com/gogo/protobuf/blob/master/LICENSE
 - github.com/gogo/protobuf
 
-# Apache 2.0
-- github.com/spf13/cobra
-- github.com/spf13/afero
-
-# Helm is Apache 2.0: https://github.com/helm/helm/blob/master/LICENSE
-# However, it has a bunch of LICENSE test files that our linter fails to understand
-- helm.sh/helm/v3
-
-# https://github.com/xeipuuv/gojsonpointer/blob/master/LICENSE-APACHE-2.0.txt
-- github.com/xeipuuv/gojsonpointer
-# https://github.com/xeipuuv/gojsonreference/blob/master/LICENSE-APACHE-2.0.txt
-- github.com/xeipuuv/gojsonreference
-# Apache 2.0: https://github.com/xeipuuv/gojsonschema/blob/master/LICENSE-APACHE-2.0.txt
-- github.com/xeipuuv/gojsonschema
-
 # MIT: https://github.com/kubernetes-sigs/yaml/blob/master/LICENSE
 - sigs.k8s.io/yaml
-
-# https://github.com/go-errors/errors/blob/master/LICENSE.MIT
-- github.com/go-errors/errors

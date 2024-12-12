@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/samber/lo"
@@ -66,42 +68,54 @@ func (f *requestHandler) RequestModifier(ctx context.Context, request object.LLM
 }
 
 func (f *requestHandler) MarshalUpstreamRequest(ctx context.Context, cluster *v1alpha1clusters.Cluster, llmRequest object.LLMRequest, request *http.Request) (*http.Request, error) {
-	jsonBody, err := json.Marshal(llmRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	url := cluster.GetUpstream().GetUrl()
-	url = strings.TrimSuffix(url, "/")
+	upstreamURL := cluster.GetUpstream().GetUrl()
+	upstreamURL = strings.TrimSuffix(upstreamURL, "/")
 
 	switch llmRequest.GetRequestType() {
 	case object.RequestTypeChatCompletions:
-		url += "/chat/completions"
+		upstreamURL += "/chat/completions"
 	case object.RequestTypeCompletions:
-		url += "/completions"
+		upstreamURL += "/completions"
 	case object.RequestTypeUnknown:
 		panic("unknown request type")
 	default:
 		panic("unknown request type: " + string(llmRequest.GetRequestType()))
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(jsonBody))
+	parsedUpstreamURL, err := url.Parse(upstreamURL)
 	if err != nil {
 		return nil, err
 	}
 
-	if !llmRequest.IsStream() { // non stream
-		req.Header.Set("Content-Type", "application/json")
-	} else { // stream
-		req.Header.Set("Accept", "text/event-stream")
-		req.Header.Set("Cache-Control", "no-cache")
-		req.Header.Set("Connection", "keep-alive")
+	jsonBody, err := json.Marshal(llmRequest)
+	if err != nil {
+		return nil, err
+	}
+
+	if request == nil {
+		request, err = http.NewRequestWithContext(ctx, http.MethodPost, upstreamURL, bytes.NewReader(jsonBody))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		request.URL = parsedUpstreamURL
+		request.Method = http.MethodPost
+		request.Body = io.NopCloser(bytes.NewReader(jsonBody))
 	}
 
 	// Apply headers
+	if !llmRequest.IsStream() { // non stream
+		request.Header.Set("Content-Type", "application/json")
+	} else { // stream
+		request.Header.Set("Accept", "text/event-stream")
+		request.Header.Set("Cache-Control", "no-cache")
+		request.Header.Set("Connection", "keep-alive")
+	}
+
+	// Apply user-defined headers
 	lo.ForEach(cluster.GetUpstream().GetHeaders(), func(h *v1alpha1clusters.Upstream_Header, _ int) {
-		req.Header.Set(h.GetKey(), h.GetValue())
+		request.Header.Set(h.GetKey(), h.GetValue())
 	})
 
-	return req, nil
+	return request, nil
 }

@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/samber/lo"
@@ -84,9 +85,12 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 		return filters.NewFailed(err)
 	}
 
+	getAuthCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(a.config.GetAuthServer().GetTimeout()))
+	defer cancel()
+
 	// check apikey
 	slog.Debug("auth filter: rpc APIKeyAuth")
-	response, err := a.authClient.APIKeyAuth(ctx, &service.APIKeyAuthRequest{
+	response, err := a.authClient.APIKeyAuth(getAuthCtx, &service.APIKeyAuthRequest{
 		ApiKey: apiKey,
 	})
 

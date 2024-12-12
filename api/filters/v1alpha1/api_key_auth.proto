@@ -6,7 +6,8 @@ option go_package = "knoway.dev/api/filters/v1alpha1";
 
 message APIKeyAuthConfig {
     message AuthServer {
-        string url = 1;
+        string url    = 1;
+        int64 timeout = 2;
     }
     AuthServer auth_server = 3;
 }

@@ -11,7 +11,6 @@ import (
 type RequestType string
 
 const (
-	RequestTypeUnknown         RequestType = "unknown"
 	RequestTypeChatCompletions RequestType = "chat_completions"
 	RequestTypeCompletions     RequestType = "completions"
 )

@@ -76,8 +76,6 @@ func (f *requestHandler) MarshalUpstreamRequest(ctx context.Context, cluster *v1
 		upstreamURL += "/chat/completions"
 	case object.RequestTypeCompletions:
 		upstreamURL += "/completions"
-	case object.RequestTypeUnknown:
-		panic("unknown request type")
 	default:
 		panic("unknown request type: " + string(llmRequest.GetRequestType()))
 	}

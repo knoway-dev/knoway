@@ -65,35 +65,3 @@ type LLMUsage interface {
 	GetCompletionTokens() uint64
 	GetPromptTokens() uint64
 }
-
-type RequestHeader struct {
-	APIKey string `json:"APIKey"`
-}
-
-var _ LLMRequest = (*BaseLLMRequest)(nil)
-
-type BaseLLMRequest struct{}
-
-func (r *BaseLLMRequest) SetDefaultParams(params map[string]*structpb.Value) error {
-	return nil
-}
-
-func (r *BaseLLMRequest) SetOverrideParams(params map[string]*structpb.Value) error {
-	return nil
-}
-
-func (r *BaseLLMRequest) IsStream() bool {
-	return false
-}
-
-func (r *BaseLLMRequest) SetModel(model string) error {
-	return nil
-}
-
-func (r *BaseLLMRequest) GetModel() string {
-	return ""
-}
-
-func (r *BaseLLMRequest) GetRequestType() RequestType {
-	return RequestTypeUnknown
-}

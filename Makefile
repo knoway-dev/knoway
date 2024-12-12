@@ -226,4 +226,3 @@ gen-check:
 security-scanning:
 	bash ./scripts/trivy.sh $(VULNEEABILITY_LEVEL) \
 	$(HUB)/$(PROD_NAME)/$(APP):$(VERSION)
-

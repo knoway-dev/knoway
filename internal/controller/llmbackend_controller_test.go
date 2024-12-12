@@ -18,68 +18,133 @@ package controller
 
 import (
 	"context"
+	"flag"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	"github.com/stretchr/testify/require"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"knoway.dev/api/v1alpha1"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
-	"knoway.dev/pkg/bootkit"
 )
 
-var _ = Describe("LLMBackend Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
-
-		ctx := context.Background()
-
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		llmbackend := &knowaydevv1alpha1.LLMBackend{}
-
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind LLMBackend")
-			err := k8sClient.Get(ctx, typeNamespacedName, llmbackend)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &knowaydevv1alpha1.LLMBackend{
+func TestLLMBackendReconciler_Reconcile(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupClient func(client.Client) client.Client
+		request     reconcile.Request
+		expectError bool
+		validate    func(*testing.T, client.Client)
+	}{
+		{
+			name: "Valid resource reconciled",
+			setupClient: func(cl client.Client) client.Client {
+				resource := &v1alpha1.LLMBackend{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
+						Name:      "test-model",
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: v1alpha1.LLMBackendSpec{
+						Name: "test-model",
+						Upstream: v1alpha1.BackendUpstream{
+							BaseURL: "xx/v1",
+						},
+						Filters: nil,
+					},
+					Status: v1alpha1.LLMBackendStatus{},
 				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				err := cl.Create(context.Background(), resource)
+				if err != nil {
+					t.Fatalf("failed to create resource: %v", err)
+				}
+				return cl
+			},
+			request: reconcile.Request{
+				NamespacedName: client.ObjectKey{
+					Namespace: "default",
+					Name:      "test-model",
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, cl client.Client) {
+				t.Helper()
+				resource := &v1alpha1.LLMBackend{}
+				err := cl.Get(context.Background(), client.ObjectKey{
+					Namespace: "default",
+					Name:      "test-model",
+				}, resource)
+				require.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			copts := zap.Options{
+				Development: true,
+			}
+			copts.BindFlags(flag.CommandLine)
+			ctrl.SetLogger(zap.New(zap.UseFlagOptions(&copts)))
+
+			fakeClient := tt.setupClient(NewFakeClientWithStatus())
+			reconciler := &LLMBackendReconciler{
+				Client: fakeClient,
+			}
+
+			_, err := reconciler.Reconcile(context.TODO(), tt.request)
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tt.validate != nil {
+				tt.validate(t, fakeClient)
 			}
 		})
+	}
+}
 
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &knowaydevv1alpha1.LLMBackend{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+func NewFakeClientWithStatus() client.Client {
+	return &FakeClientWithStatus{
+		Client: fake.NewClientBuilder().WithScheme(createTestScheme()).Build(),
+	}
+}
 
-			By("Cleanup the specific resource instance LLMBackend")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &LLMBackendReconciler{
-				Client:    k8sClient,
-				Scheme:    k8sClient.Scheme(),
-				LifeCycle: bootkit.NewEmptyLifeCycle(),
-			}
+type FakeClientWithStatus struct {
+	client.Client
+}
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
-		})
-	})
-})
+func (f *FakeClientWithStatus) Status() client.StatusWriter {
+	return &FakeStatusWriter{Client: f.Client}
+}
+
+type FakeStatusWriter struct {
+	client.Client
+}
+
+func (f *FakeStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
+	panic("implement me")
+}
+
+func (f *FakeStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
+	return f.Client.Update(ctx, obj)
+}
+
+func (f *FakeStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
+	panic("implement me")
+}
+
+func createTestScheme() *runtime.Scheme {
+	scheme := runtime.NewScheme()
+	_ = v1alpha1.AddToScheme(scheme)
+
+	return scheme
+}

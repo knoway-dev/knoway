@@ -24,7 +24,7 @@ default:
     - docker -v #override the global before_script
 
 variables:
-  REPO_NAME: gitlab.daocloud.cn/ndx/hydra
+  REPO_NAME: gitlab.daocloud.cn/ndx/ai/knoway
 
 stages:
   - prepare

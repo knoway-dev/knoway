@@ -76,10 +76,6 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 	}, nil
 }
 
-func (m *clusterManager) LoadFilters() filters.ClusterFilters {
-	return m.filters
-}
-
 func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, llmReq object.LLMRequest) (*http.Request, error) {
 	var err error
 	var req *http.Request
@@ -120,7 +116,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 		return nil, err
 	}
 
-	req, err := composeLLMRequestBody(ctx, m.LoadFilters(), m.cluster, llmReq)
+	req, err := composeLLMRequestBody(ctx, m.filters, m.cluster, llmReq)
 	if err != nil {
 		return nil, err
 	}
@@ -132,11 +128,11 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 		return nil, err
 	}
 
-	return composeLLMResponseFromBody(ctx, m.LoadFilters(), llmReq, rawResp, buffer)
+	return composeLLMResponseFromBody(ctx, m.filters, llmReq, rawResp, buffer)
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {
-	return m.LoadFilters().ForEachResponseComplete(ctx, req, res)
+	return m.filters.ForEachResponseComplete(ctx, req, res)
 }
 
 func doRequest(req *http.Request) (*http.Response, *bufio.Reader, error) {

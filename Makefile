@@ -149,7 +149,6 @@ ifneq ($(REGISTRY_USER_NAME),)
 endif
 	docker buildx create --name knoway-builder --use || true
 
-
 APP = knoway-gateway
 
 .PHONY: build-binaries ## Build or download manager binaries.
@@ -162,7 +161,7 @@ else
 BUILD_CMD=buildx build --platform $(PLATFORMS)
 endif
 
-images: build-binaries
+images: pre-docker-buildx build-binaries
 	docker $(BUILD_CMD) $(DOCKER_BUILD_FLAGS) \
 		--build-arg HUB=$(HUB) \
 		--build-arg VERSION=$(VERSION) \

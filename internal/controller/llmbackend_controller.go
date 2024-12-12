@@ -461,17 +461,46 @@ func processStruct(v interface{}, params map[string]*structpb.Value) error {
 		// Get the actual JSON key
 		jsonKey := strings.Split(tag, ",")[0]
 
-		// Handle the field value; if it's a pointer, and it may be a nil pointer, skip it
+		// Handle nil pointers
 		if field.Kind() == reflect.Ptr && field.IsNil() {
-			continue
-		} else if field.Kind() == reflect.Ptr {
-			field = field.Elem()
-		} else if field.Kind() == reflect.String && field.IsZero() {
 			continue
 		}
 
-		// Convert field.Interface() to *structpb.Value
-		value, err := structpb2.NewValue(field.Interface())
+		var fieldValue interface{}
+		if field.Kind() == reflect.Ptr {
+			// Dereference pointer
+			fieldValue = field.Elem().Interface()
+		} else {
+			fieldValue = field.Interface()
+		}
+
+		// Handle nested struct fields
+		if reflect.ValueOf(fieldValue).Kind() == reflect.Struct {
+			// Get the pointer to the nested struct
+			nestedStruct := field
+			if field.Kind() != reflect.Ptr {
+				nestedStruct = field.Addr()
+			}
+
+			nestedParams := make(map[string]*structpb.Value)
+			if err := processStruct(nestedStruct.Interface(), nestedParams); err != nil {
+				return err
+			}
+
+			// Convert nestedParams to *structpb.Struct
+			structValue := &structpb.Struct{
+				Fields: nestedParams,
+			}
+
+			// Convert to *structpb.Value
+			value := structpb2.NewStructValue(structValue)
+			params[jsonKey] = value
+
+			continue
+		}
+
+		// Convert fieldValue to *structpb.Value
+		value, err := structpb2.NewValue(fieldValue)
 		if err != nil {
 			return fmt.Errorf("failed to convert field %s to *structpb.Value: %w", jsonKey, err)
 		}

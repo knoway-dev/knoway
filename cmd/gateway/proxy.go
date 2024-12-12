@@ -34,7 +34,8 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
 					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url: cfg.AuthServer.URL,
+						Url:     cfg.AuthServer.URL,
+						Timeout: cfg.AuthServer.Timeout,
 					},
 				})
 				if err != nil {
@@ -51,7 +52,8 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
 					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url: cfg.StatsServer.URL,
+						Url:     cfg.StatsServer.URL,
+						Timeout: cfg.StatsServer.Timeout,
 					},
 				})
 				if err != nil {

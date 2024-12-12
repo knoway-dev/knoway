@@ -1,6 +1,7 @@
 package chat
 
 import (
+	"github.com/samber/lo"
 	"log/slog"
 	"net/http"
 
@@ -47,7 +48,7 @@ func (l *OpenAIChatListener) onCompletionsRequestWithError(writer http.ResponseW
 	}
 
 	resp, err := l.clusterDoCompletionsRequest(c, writer, request, llmRequest)
-	if !llmRequest.IsStream() {
+	if !llmRequest.IsStream() && !lo.IsNil(resp) {
 		for _, f := range l.filters.OnCompletionResponseFilters() {
 			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
 			if fResult.IsFailed() {

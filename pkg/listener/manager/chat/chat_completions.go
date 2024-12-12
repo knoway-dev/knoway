@@ -1,9 +1,10 @@
 package chat
 
 import (
-	"github.com/samber/lo"
 	"log/slog"
 	"net/http"
+
+	"github.com/samber/lo"
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/types/openai"

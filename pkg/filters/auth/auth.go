@@ -85,7 +85,7 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 		return filters.NewFailed(err)
 	}
 
-	getAuthCtx, cancel := context.WithTimeout(ctx, time.Millisecond*time.Duration(a.config.GetAuthServer().GetTimeout()))
+	getAuthCtx, cancel := context.WithTimeout(ctx, time.Second*time.Duration(a.config.GetAuthServer().GetTimeout()))
 	defer cancel()
 
 	// check apikey

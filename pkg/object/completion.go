@@ -8,6 +8,14 @@ import (
 	"knoway.dev/pkg/types/sse"
 )
 
+type RequestType string
+
+const (
+	RequestTypeUnknown         RequestType = "unknown"
+	RequestTypeChatCompletions RequestType = "chat_completions"
+	RequestTypeCompletions     RequestType = "completions"
+)
+
 type LLMRequest interface {
 	IsStream() bool
 	GetModel() string
@@ -15,6 +23,8 @@ type LLMRequest interface {
 
 	SetOverrideParams(params map[string]*structpb.Value) error
 	SetDefaultParams(params map[string]*structpb.Value) error
+
+	GetRequestType() RequestType
 }
 
 type LLMResponse interface {
@@ -62,13 +72,7 @@ type RequestHeader struct {
 
 var _ LLMRequest = (*BaseLLMRequest)(nil)
 
-type BaseLLMRequest struct {
-	Model string `json:"model,omitempty"`
-
-	// auth info
-	APIKey string `json:"api_key,omitempty"`
-	User   string `json:"user,omitempty"`
-}
+type BaseLLMRequest struct{}
 
 func (r *BaseLLMRequest) SetDefaultParams(params map[string]*structpb.Value) error {
 	return nil
@@ -83,19 +87,13 @@ func (r *BaseLLMRequest) IsStream() bool {
 }
 
 func (r *BaseLLMRequest) SetModel(model string) error {
-	if r == nil {
-		return nil
-	}
-
-	r.Model = model
-
 	return nil
 }
 
 func (r *BaseLLMRequest) GetModel() string {
-	if r == nil {
-		return ""
-	}
+	return ""
+}
 
-	return r.Model
+func (r *BaseLLMRequest) GetRequestType() RequestType {
+	return RequestTypeUnknown
 }

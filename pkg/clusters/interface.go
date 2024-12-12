@@ -10,5 +10,5 @@ import (
 type Cluster interface {
 	DoUpstreamRequest(ctx context.Context, req object.LLMRequest) (object.LLMResponse, error)
 	DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error
-	LoadFilters() []filters.ClusterFilter
+	LoadFilters() filters.ClusterFilters
 }

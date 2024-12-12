@@ -2,14 +2,10 @@ package manager
 
 import (
 	"bufio"
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"strings"
 
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
@@ -80,107 +76,33 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 	}, nil
 }
 
-func (m *clusterManager) LoadFilters() []filters.ClusterFilter {
-	return m.filters
-}
+func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, llmReq object.LLMRequest) (*http.Request, error) {
+	var err error
+	var req *http.Request
 
-func forEachRequestModifier(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest) (object.LLMRequest, error) {
-	for _, f := range f.OnRequestModifiers() {
-		var err error
+	llmReq, err = f.ForEachRequestModifier(ctx, llmReq)
+	if err != nil {
+		return nil, err
+	}
 
-		req, err = f.RequestModifier(ctx, req)
-		if err != nil {
-			return nil, err
-		}
+	req, err = f.ForEachUpstreamRequestMarshaller(ctx, cluster, llmReq, req)
+	if err != nil {
+		return nil, err
 	}
 
 	return req, nil
 }
 
-func forEachRequestMarshaller(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest) ([]byte, error) {
-	var bs []byte
-
-	for _, f := range f.OnRequestMarshallers() {
-		var err error
-
-		bs, err = f.MarshalRequestBody(ctx, req, bs)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if bs == nil {
-		// default implementation, use json marshal req
-		var err error
-
-		bs, err = json.Marshal(req)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return bs, nil
-}
-
-func forEachResponseMarshaller(
-	ctx context.Context,
-	f filters.ClusterFilters,
-	req object.LLMRequest,
-	rawResp *http.Response,
-	reader *bufio.Reader,
-	resp object.LLMResponse,
-) (object.LLMResponse, error) {
-	var err error
-
-	for _, f := range lo.Reverse(f).OnResponseUnmarshallers() {
-		resp, err = f.UnmarshalResponseBody(ctx, req, rawResp, reader, resp)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return resp, nil
-}
-
-func forEachResponseModifier(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest, resp object.LLMResponse) (object.LLMResponse, error) {
-	for _, f := range lo.Reverse(f).OnResponseModifiers() {
-		var err error
-
-		resp, err = f.ResponseModifier(ctx, req, resp)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return resp, nil
-}
-
-func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest) (io.Reader, error) {
-	var err error
-
-	req, err = forEachRequestModifier(ctx, f, req)
-	if err != nil {
-		return nil, err
-	}
-
-	bs, err := forEachRequestMarshaller(ctx, f, req)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes.NewReader(bs), nil
-}
-
-func composeLLMResponseFromBody(ctx context.Context, f []filters.ClusterFilter, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
+func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
 	var err error
 	var resp object.LLMResponse
 
-	resp, err = forEachResponseMarshaller(ctx, f, req, rawResp, reader, resp)
+	resp, err = f.ForEachResponseUnmarshaller(ctx, req, rawResp, reader, resp)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err = forEachResponseModifier(ctx, f, req, resp)
+	resp, err = f.ForEachResponseModifier(ctx, req, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -188,89 +110,32 @@ func composeLLMResponseFromBody(ctx context.Context, f []filters.ClusterFilter, 
 	return resp, nil
 }
 
-func (m *clusterManager) DoUpstreamRequest(ctx context.Context, req object.LLMRequest) (object.LLMResponse, error) {
+func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
 	err := properties.SetClusterToContext(ctx, m.cluster)
 	if err != nil {
 		return nil, err
 	}
 
-	body, err := composeLLMRequestBody(ctx, m.LoadFilters(), req)
+	req, err := composeLLMRequestBody(ctx, m.filters, m.cluster, llmReq)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO: lb policy
 	// TODO: body close
-	rawResp, buffer, err := doRequest(ctx, m.cluster.GetUpstream(), body, RequestWithStream(req.IsStream())) //nolint:bodyclose
+	rawResp, buffer, err := doRequest(req) //nolint:bodyclose
 	if err != nil {
 		return nil, err
 	}
 
-	return composeLLMResponseFromBody(ctx, m.LoadFilters(), req, rawResp, buffer)
+	return composeLLMResponseFromBody(ctx, m.filters, llmReq, rawResp, buffer)
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {
-	fs := filters.ClusterFilters(m.LoadFilters())
-
-	for _, f := range fs.OnResponseCompleters() {
-		err := f.ResponseComplete(ctx, req, res)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return m.filters.ForEachResponseComplete(ctx, req, res)
 }
 
-type requestOptions struct {
-	isStream bool
-	endpoint string // TODO: implement
-}
-
-type requestCallOption func(*requestOptions)
-
-func RequestWithStream(stream bool) requestCallOption {
-	return func(opts *requestOptions) {
-		opts.isStream = stream
-	}
-}
-
-func RequestWithEndpoint(endpoint string) requestCallOption {
-	return func(opts *requestOptions) {
-		opts.endpoint = endpoint
-	}
-}
-
-func doRequest(ctx context.Context, upstream *v1alpha1.Upstream, body io.Reader, callOpts ...requestCallOption) (*http.Response, *bufio.Reader, error) {
-	opts := &requestOptions{}
-
-	for _, opt := range callOpts {
-		opt(opts)
-	}
-
-	url := upstream.GetUrl()
-	url = strings.TrimSuffix(url, "/")
-	// TODO: implement, should switch different endpoint path based on provider or vendor
-	url += "/chat/completions"
-
-	req, err := http.NewRequest(http.MethodPost, url, body)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	req = req.WithContext(ctx)
-	req.Header.Set("Content-Type", "application/json")
-
-	if opts.isStream {
-		req.Header.Set("Accept", "text/event-stream")
-		req.Header.Set("Cache-Control", "no-cache")
-		req.Header.Set("Connection", "keep-alive")
-	}
-
-	lo.ForEach(upstream.GetHeaders(), func(h *v1alpha1.Upstream_Header, _ int) {
-		req.Header.Set(h.GetKey(), h.GetValue())
-	})
-
+func doRequest(req *http.Request) (*http.Response, *bufio.Reader, error) {
 	// send request
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

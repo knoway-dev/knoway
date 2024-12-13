@@ -174,16 +174,16 @@ Example:
 
 	{
 	    "error": {
-	        "message": "Incorrect API key provided: sk-abcd. You can find your API key at https://platform.openai.com/account/api-keys.",
+	        "message": "Incorrect API key provided: sk-****. You can find your API key at https://platform.openai.com/account/api-keys.",
 	        "type": "invalid_request_error",
 	        "param": null,
 	        "code": "invalid_api_key"
 	    }
 	}
 */
-func NewErrorIncorrectAPIKey() *ErrorResponse {
+func NewErrorIncorrectAPIKey(apiKey string) *ErrorResponse {
 	return NewErrorResponse(http.StatusUnauthorized, Error{
-		Message: "Incorrect API key provided: sk-abcd. You can find your API key at https://platform.openai.com/account/api-keys.",
+		Message: "Incorrect API key provided: " + apiKey + ". You can find your API key at https://platform.openai.com/account/api-keys.",
 		Type:    "invalid_request_error",
 		Code:    lo.ToPtr("invalid_api_key"),
 	})
@@ -366,9 +366,14 @@ func NewErrorFromLLMError(err error) *ErrorResponse {
 
 			return newError
 		},
-		string(object.LLMErrorCodeInsufficientQuota):  NewErrorQuotaExceeded,
-		string(object.LLMErrorCodeMissingAPIKey):      NewErrorMissingAPIKey,
-		string(object.LLMErrorCodeIncorrectAPIKey):    NewErrorIncorrectAPIKey,
+		string(object.LLMErrorCodeInsufficientQuota): NewErrorQuotaExceeded,
+		string(object.LLMErrorCodeMissingAPIKey):     NewErrorMissingAPIKey,
+		string(object.LLMErrorCodeIncorrectAPIKey): func() *ErrorResponse {
+			newError := NewErrorIncorrectAPIKey("******")
+			newError.ErrorBody.Message = llmError.GetMessage()
+
+			return newError
+		},
 		string(object.LLMErrorCodeMissingModel):       NewErrorMissingModel,
 		string(object.LLMErrorCodeServiceUnavailable): NewErrorServiceUnavailable,
 		string(object.LLMErrorCodeInternalError):      NewErrorInternalError,

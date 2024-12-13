@@ -121,12 +121,12 @@ func NewErrorMissingAPIKey() *BaseLLMError {
 	}
 }
 
-func NewErrorIncorrectAPIKey() *BaseLLMError {
+func NewErrorIncorrectAPIKey(apiKey string) *BaseLLMError {
 	return &BaseLLMError{
 		Status: http.StatusUnauthorized,
 		ErrorBody: &BaseError{
 			Code:    lo.ToPtr(LLMErrorCodeIncorrectAPIKey),
-			Message: "Incorrect API key provided",
+			Message: "Incorrect API key provided: " + apiKey,
 		},
 	}
 }

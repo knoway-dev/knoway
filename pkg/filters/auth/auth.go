@@ -76,7 +76,7 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHTTPRequest)
 	if err != nil {
-		return filters.NewFailed(object.NewErrorIncorrectAPIKey())
+		return filters.NewFailed(object.NewErrorMissingAPIKey())
 	}
 
 	err = properties.SetAPIKeyToCtx(ctx, apiKey)
@@ -100,7 +100,7 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 
 	if !response.GetIsValid() {
 		slog.Debug("auth filter: user apikey invalid", "user", response.GetUserId())
-		return filters.NewFailed(object.NewErrorIncorrectAPIKey())
+		return filters.NewFailed(object.NewErrorIncorrectAPIKey(apiKey))
 	}
 
 	slog.Debug("auth filter: user authorization succeeds", "user", response.GetUserId(), "allow models", response.GetAllowModels())

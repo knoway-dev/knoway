@@ -100,18 +100,18 @@ Release CI:
     - env
     - make release -j2 #REGISTRY_USER_NAME and REGISTRY_PASSWORD config as Gitlab Variables
 
-#Deploy DEV:
-#  rules:
-#    - *frontend_skip_rules
-#    - *commit_main_trigger_rules
-#    - *deploy_ci
-#    - if: '$CI_MERGE_REQUEST_LABELS =~ /fast-build-test/'
-#  retry:
-#    max: 2
-#  stage: deploy
-#  script:
-#    - export KUBE_CONFIG=$DEV_AGENT_KUBECONF
-#    - make deploy-agent
+Deploy Hydra DEV:
+  rules:
+    - *frontend_skip_rules
+    - *commit_main_trigger_rules
+    - *deploy_ci
+    - if: '$CI_MERGE_REQUEST_LABELS =~ /fast-build-test/'
+  retry:
+    max: 2
+  stage: deploy
+  script:
+    - export KUBE_CONFIG=$DEV_KUBECONF
+    - make deploy-hydra-knoway
 
 Unit Tests:
   rules:

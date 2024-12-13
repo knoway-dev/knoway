@@ -45,6 +45,12 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+KUBE_CONFIG ?=
+
+CUSTOM_DEPLOY_HELM_SETTINGS ?=
+
+CUSTOM_DEPLOY_HELM_SETTINGS_FILE ?=
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
@@ -225,3 +231,16 @@ gen-check:
 security-scanning:
 	bash ./scripts/trivy.sh $(VULNEEABILITY_LEVEL) \
 	$(HUB)/$(PROD_NAME)/$(APP):$(VERSION)
+
+.PHONY: deploy-hydra-knoway
+deploy-hydra-knoway:
+	echo auto deploy-hydra...
+	@if [ -z "$${KUBE_CONFIG}" ]; then env; echo missing KUBE_CONFIG; exit 12; fi
+	helm --kubeconfig ${KUBE_CONFIG} upgrade --install --create-namespace -n hydra-system knoway oci://$(HUB)/$(PROD_NAME)/knoway \
+	--version=$(VERSION) \
+	--set global.imageRegistry=$(HUB) \
+	$$([ -f "$(CUSTOM_DEPLOY_HELM_SETTINGS_FILE)" ] && echo "--values $(CUSTOM_DEPLOY_HELM_SETTINGS_FILE)") \
+	--set global.debug=true \
+	--set config.auth_server_url="hydra-agent-agent-controller:8083" \
+	--set config.stats_server_url="hydra-agent-agent-controller:8083" \
+	$(CUSTOM_DEPLOY_HELM_SETTINGS)

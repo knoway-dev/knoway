@@ -19,16 +19,16 @@ fullNameOverride: ""
 debug: false
 config:
   auth_server:
-    url: ""
-    # timeout in seconds
+    url: ''
+    # timeout in seconds, default is 3s
     timeout: 3
   stats_server:
-    url: ""
-    # timeout in seconds
+    url: ''
+    # timeout in seconds, default is 3s
     timeout: 3
 
 gateway:
   image:
-    registry: ""
+    registry: ''
     repository: knoway/knoway-gateway
     tag:

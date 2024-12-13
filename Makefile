@@ -241,6 +241,6 @@ deploy-hydra-knoway:
 	--set global.imageRegistry=$(HUB) \
 	$$([ -f "$(CUSTOM_DEPLOY_HELM_SETTINGS_FILE)" ] && echo "--values $(CUSTOM_DEPLOY_HELM_SETTINGS_FILE)") \
 	--set global.debug=true \
-	--set config.auth_server_url="hydra-agent-agent-controller:8083" \
-	--set config.stats_server_url="hydra-agent-agent-controller:8083" \
+	--set config.auth_server.url="hydra-agent-agent-controller:8083" \
+	--set config.stats_server.url="hydra-agent-agent-controller:8083" \
 	$(CUSTOM_DEPLOY_HELM_SETTINGS)

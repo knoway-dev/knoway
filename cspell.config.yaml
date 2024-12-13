@@ -6,6 +6,7 @@ words:
   - anypb
   - apikey
   - apimachinery
+  - bmatcuk
   - bodyclose
   - bootkit
   - bufconn
@@ -18,9 +19,11 @@ words:
   - copyloopvar
   - cyclop
   - depguard
+  - doublestar
   - Drainable
   - dupl
   - durationcheck
+  - durationpb
   - Equalf
   - err113
   - errcheck

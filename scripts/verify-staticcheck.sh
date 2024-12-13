@@ -6,7 +6,7 @@ set -o pipefail
 
 REPO_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 GOLANGCI_LINT_PKG="github.com/golangci/golangci-lint/cmd/golangci-lint"
-GOLANGCI_LINT_VER="v1.53.3"
+GOLANGCI_LINT_VER="v1.62.2"
 
 cd "${REPO_ROOT}"
 source "scripts/util.sh"

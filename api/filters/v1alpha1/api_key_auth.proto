@@ -9,7 +9,7 @@ option go_package = "knoway.dev/api/filters/v1alpha1";
 message APIKeyAuthConfig {
     message AuthServer {
         string url                       = 1;
-        google.protobuf.Duration timeout = 2;
+        google.protobuf.Duration timeout = 2;  // Default is 3s
     }
     AuthServer auth_server = 3;
 }
@@ -17,7 +17,7 @@ message APIKeyAuthConfig {
 message UsageStatsConfig {
     message StatsServer {
         string url                       = 1;
-        google.protobuf.Duration timeout = 2;
+        google.protobuf.Duration timeout = 2;  // Default is 3s
     }
     StatsServer stats_server = 3;
 }

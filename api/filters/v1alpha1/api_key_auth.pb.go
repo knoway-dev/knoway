@@ -198,7 +198,7 @@ type APIKeyAuthConfig_AuthServer struct {
 	unknownFields protoimpl.UnknownFields
 
 	Url     string             `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Timeout *duration.Duration `protobuf:"bytes,2,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	Timeout *duration.Duration `protobuf:"bytes,2,opt,name=timeout,proto3" json:"timeout,omitempty"` // Default is 3s
 }
 
 func (x *APIKeyAuthConfig_AuthServer) Reset() {
@@ -253,7 +253,7 @@ type UsageStatsConfig_StatsServer struct {
 	unknownFields protoimpl.UnknownFields
 
 	Url     string             `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
-	Timeout *duration.Duration `protobuf:"bytes,2,opt,name=timeout,proto3" json:"timeout,omitempty"`
+	Timeout *duration.Duration `protobuf:"bytes,2,opt,name=timeout,proto3" json:"timeout,omitempty"` // Default is 3s
 }
 
 func (x *UsageStatsConfig_StatsServer) Reset() {

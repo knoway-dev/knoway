@@ -15,6 +15,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	"knoway.dev/api/filters/v1alpha1"
 	service "knoway.dev/api/service/v1alpha1"
@@ -23,6 +24,10 @@ import (
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
+)
+
+const (
+	defaultAuthServerTimeout = 3 * time.Second
 )
 
 func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {
@@ -34,6 +39,10 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 	address := c.GetAuthServer().GetUrl()
 	if address == "" {
 		return nil, errors.New("invalid auth server url")
+	}
+
+	if c.GetAuthServer().GetTimeout().AsDuration() <= 0 {
+		c.AuthServer.Timeout = durationpb.New(defaultAuthServerTimeout)
 	}
 
 	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -85,7 +94,7 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 		return filters.NewFailed(err)
 	}
 
-	getAuthCtx, cancel := context.WithTimeout(ctx, time.Second*a.config.GetAuthServer().GetTimeout().AsDuration())
+	getAuthCtx, cancel := context.WithTimeout(ctx, a.config.GetAuthServer().GetTimeout().AsDuration())
 	defer cancel()
 
 	// check apikey

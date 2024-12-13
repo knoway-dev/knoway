@@ -10,6 +10,7 @@ import (
 	"knoway.dev/config"
 
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/durationpb"
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
@@ -34,7 +35,8 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
 					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url: cfg.AuthServer.URL,
+						Url:     cfg.AuthServer.URL,
+						Timeout: durationpb.New(time.Duration(cfg.AuthServer.Timeout) * time.Second),
 					},
 				})
 				if err != nil {
@@ -51,7 +53,8 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 			Config: func() *anypb.Any {
 				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
 					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url: cfg.StatsServer.URL,
+						Url:     cfg.StatsServer.URL,
+						Timeout: durationpb.New(time.Duration(cfg.StatsServer.Timeout) * time.Second),
 					},
 				})
 				if err != nil {

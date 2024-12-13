@@ -10,6 +10,8 @@ data:
     debug: {{.Values.debug }}
     gateway:
       auth_server:
-        url: {{.Values.config.auth_server_url }}
+        url: {{ .Values.config.auth_server.url }}
+        timeout: {{ .Values.config.auth_server.timeout }}
       stats_server:
-        url: {{.Values.config.stats_server_url }}
+        url: {{ .Values.config.stats_server.url }}
+        timeout: {{ .Values.config.stats_server.timeout }}

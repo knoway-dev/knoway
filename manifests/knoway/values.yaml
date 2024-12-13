@@ -18,8 +18,14 @@ fullNameOverride: ""
 
 debug: false
 config:
-  auth_server_url: ''
-  stats_server_url: ''
+  auth_server:
+    url: ''
+    # timeout in seconds, default is 3s
+    timeout: 3
+  stats_server:
+    url: ''
+    # timeout in seconds, default is 3s
+    timeout: 3
 
 gateway:
   image:

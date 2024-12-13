@@ -165,8 +165,8 @@ func (b *BootKit) Start() {
 		return
 	}
 
-	errChan := make(chan error, len(b.lifeCycle.hooks))
-	callStartHook(ctx, startWg, errChan, b.lifeCycle.hooks)
+	errChan := make(chan error, len(b.lifeCycle.GetHooks()))
+	callStartHook(ctx, startWg, errChan, b.lifeCycle.GetHooks())
 
 	go func() {
 		sigs := make(chan os.Signal, 2) //nolint:mnd
@@ -201,14 +201,14 @@ func (b *BootKit) Start() {
 }
 
 func (b *BootKit) stop() error {
-	if len(b.lifeCycle.hooks) == 0 {
+	if len(b.lifeCycle.GetHooks()) == 0 {
 		return nil
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), b.options.stopTimeout)
 	defer cancel()
 
-	return callStopHooks(ctx, b.lifeCycle.hooks)
+	return callStopHooks(ctx, b.lifeCycle.GetHooks())
 }
 
 func (b *BootKit) mayStop() {

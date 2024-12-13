@@ -74,6 +74,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		log.Log.Error(err, "reconcile LLMBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
+
 	log.Log.Info("reconcile LLMBackend modelName", "modelName", llmBackend.Spec.Name)
 
 	rrs := r.getReconciles()
@@ -170,20 +171,18 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 
 func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
 	if llmBackend.Spec.Name == "" {
-		return fmt.Errorf("spec.name cannot be empty")
+		return errors.New("spec.name cannot be empty")
 	}
 	if llmBackend.Spec.Upstream.BaseURL == "" {
 		return errors.New("upstream.baseUrl cannot be empty")
 	}
 
-	_, err := url.Parse(llmBackend.Spec.Upstream.BaseURL)
-	if err != nil {
+	if _, err := url.Parse(llmBackend.Spec.Upstream.BaseURL); err != nil {
 		return fmt.Errorf("upstream.baseUrl parse error: %w", err)
 	}
 
 	existingLLMBackendList := &knowaydevv1alpha1.LLMBackendList{}
-	err = r.Client.List(ctx, existingLLMBackendList)
-	if err != nil {
+	if err := r.Client.List(ctx, existingLLMBackendList); err != nil {
 		return fmt.Errorf("failed to list LLMBackend resources: %w", err)
 	}
 
@@ -384,6 +383,7 @@ func (r *LLMBackendReconciler) toUpstreamHeaders(ctx context.Context, backend *k
 		return nil, nil
 	}
 	hs := make([]*v1alpha1.Upstream_Header, 0)
+
 	for _, h := range backend.Spec.Upstream.Headers {
 		if h.Key == "" || h.Value == "" {
 			continue
@@ -401,21 +401,20 @@ func (r *LLMBackendReconciler) toUpstreamHeaders(ctx context.Context, backend *k
 		switch valueFrom.RefType {
 		case knowaydevv1alpha1.Secret:
 			secret := &v1.Secret{}
-			err := r.Client.Get(ctx, client.ObjectKey{Namespace: backend.GetNamespace(), Name: valueFrom.RefName}, secret)
-			if err != nil {
+			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: backend.GetNamespace(), Name: valueFrom.RefName}, secret); err != nil {
 				return nil, fmt.Errorf("failed to get Secret %s: %w", valueFrom.RefName, err)
 			}
 			data = secret.StringData
 		case knowaydevv1alpha1.ConfigMap:
 			configMap := &v1.ConfigMap{}
-			err := r.Client.Get(ctx, client.ObjectKey{Namespace: backend.GetNamespace(), Name: valueFrom.RefName}, configMap)
-			if err != nil {
+			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: backend.GetNamespace(), Name: valueFrom.RefName}, configMap); err != nil {
 				return nil, fmt.Errorf("failed to get ConfigMap %s: %w", valueFrom.RefName, err)
 			}
 			data = configMap.Data
 		default:
 			// noting
 		}
+
 		for key, value := range data {
 			hs = append(hs, &v1alpha1.Upstream_Header{
 				Key:   valueFrom.Prefix + key,
@@ -440,7 +439,7 @@ func processStruct(v interface{}, params map[string]*structpb.Value) error {
 	elem := val.Elem()
 	typ := elem.Type()
 
-	for i := 0; i < elem.NumField(); i++ {
+	for i := range make([]int, elem.NumField()) {
 		field := elem.Field(i)
 		structField := typ.Field(i)
 
@@ -449,6 +448,7 @@ func processStruct(v interface{}, params map[string]*structpb.Value) error {
 			if err := processStruct(field.Addr().Interface(), params); err != nil {
 				return err
 			}
+
 			continue
 		}
 
@@ -461,17 +461,46 @@ func processStruct(v interface{}, params map[string]*structpb.Value) error {
 		// Get the actual JSON key
 		jsonKey := strings.Split(tag, ",")[0]
 
-		// Handle the field value; if it's a pointer, and it may be a nil pointer, skip it
+		// Handle nil pointers
 		if field.Kind() == reflect.Ptr && field.IsNil() {
-			continue
-		} else if field.Kind() == reflect.Ptr {
-			field = field.Elem()
-		} else if field.Kind() == reflect.String && field.IsZero() {
 			continue
 		}
 
-		// Convert field.Interface() to *structpb.Value
-		value, err := structpb2.NewValue(field.Interface())
+		var fieldValue interface{}
+		if field.Kind() == reflect.Ptr {
+			// Dereference pointer
+			fieldValue = field.Elem().Interface()
+		} else {
+			fieldValue = field.Interface()
+		}
+
+		// Handle nested struct fields
+		if reflect.ValueOf(fieldValue).Kind() == reflect.Struct {
+			// Get the pointer to the nested struct
+			nestedStruct := field
+			if field.Kind() != reflect.Ptr {
+				nestedStruct = field.Addr()
+			}
+
+			nestedParams := make(map[string]*structpb.Value)
+			if err := processStruct(nestedStruct.Interface(), nestedParams); err != nil {
+				return err
+			}
+
+			// Convert nestedParams to *structpb.Struct
+			structValue := &structpb.Struct{
+				Fields: nestedParams,
+			}
+
+			// Convert to *structpb.Value
+			value := structpb2.NewStructValue(structValue)
+			params[jsonKey] = value
+
+			continue
+		}
+
+		// Convert fieldValue to *structpb.Value
+		value, err := structpb2.NewValue(fieldValue)
 		if err != nil {
 			return fmt.Errorf("failed to convert field %s to *structpb.Value: %w", jsonKey, err)
 		}
@@ -501,18 +530,19 @@ func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[str
 	return nil
 }
 
-func toParams(backed *knowaydevv1alpha1.LLMBackend) (defaultParams, overrideParams map[string]*structpb.Value, err error) {
+func toParams(backed *knowaydevv1alpha1.LLMBackend) (map[string]*structpb.Value, map[string]*structpb.Value, error) {
+	var defaultParams, overrideParams map[string]*structpb.Value
 	if backed == nil {
-		return
+		return nil, nil, nil
 	}
 
 	defaultParams, overrideParams = make(map[string]*structpb.Value), make(map[string]*structpb.Value)
 
-	if err = parseModelParams(backed.Spec.Upstream.DefaultParams, defaultParams); err != nil {
+	if err := parseModelParams(backed.Spec.Upstream.DefaultParams, defaultParams); err != nil {
 		return nil, nil, fmt.Errorf("error processing DefaultParams: %w", err)
 	}
 
-	if err = parseModelParams(backed.Spec.Upstream.OverrideParams, overrideParams); err != nil {
+	if err := parseModelParams(backed.Spec.Upstream.OverrideParams, overrideParams); err != nil {
 		return nil, nil, fmt.Errorf("error processing OverrideParams: %w", err)
 	}
 
@@ -525,6 +555,7 @@ func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, back
 	}
 
 	mName := backend.Spec.Name
+
 	hs, err := r.toUpstreamHeaders(ctx, backend)
 	if err != nil {
 		return nil, err

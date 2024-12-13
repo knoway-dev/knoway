@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/samber/lo"
+
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/types/openai"
 )
@@ -47,7 +49,7 @@ func (l *OpenAIChatListener) onCompletionsRequestWithError(writer http.ResponseW
 	}
 
 	resp, err := l.clusterDoCompletionsRequest(c, writer, request, llmRequest)
-	if !llmRequest.IsStream() {
+	if !llmRequest.IsStream() && !lo.IsNil(resp) {
 		for _, f := range l.filters.OnCompletionResponseFilters() {
 			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
 			if fResult.IsFailed() {

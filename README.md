@@ -39,8 +39,8 @@ $ helm repo add knoway https://release-ci.daocloud.io/chartrepo/knoway
 $ helm repo update
 $ helm upgrade --install --create-namespace -n knoway-system knoway knoway/knoway --version=${VERSION} \
     --set global.imageRegistry=release-ci.daocloud.io \
-    --set global.config.auth_server_url="<upstream gRPC auth server url>" \
-    --set global.config.stats_server_url="<upstream gRPC stats server url>"
+    --set config.auth_server_url="<upstream gRPC auth server url>" \
+    --set config.stats_server_url="<upstream gRPC stats server url>"
 ```
 
 ### To Uninstall

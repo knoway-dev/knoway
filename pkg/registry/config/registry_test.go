@@ -27,12 +27,14 @@ func TestNewRequestFiltersKeys(t *testing.T) {
 
 	expectedRequestFiltersKeys := []string{
 		"type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig",
+		"type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig",
 	}
 	keys := NewRequestFiltersKeys()
 	checkKeys(expectedRequestFiltersKeys, keys)
 
 	expectedClustersFiltersKeys := []string{
-		"type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig",
+		"type.googleapis.com/knoway.filters.v1alpha1.OpenAIRequestHandlerConfig",
+		"type.googleapis.com/knoway.filters.v1alpha1.OpenAIResponseHandlerConfig",
 	}
 	cKeys := NewClustersFiltersKeys()
 	checkKeys(expectedClustersFiltersKeys, cKeys)

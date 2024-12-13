@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -14,13 +15,13 @@ type ControllerConfig struct {
 }
 
 type AuthServer struct {
-	URL     string `yaml:"url" json:"url,omitempty" protobuf:"bytes,1,opt,name=url,proto3"`
-	Timeout int64  `yaml:"timeout" json:"timeout,omitempty" protobuf:"varint,2,opt,name=timeout,proto3"`
+	URL     string        `yaml:"url" json:"url,omitempty" protobuf:"bytes,1,opt,name=url,proto3"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout,omitempty" protobuf:"varint,2,opt,name=timeout,proto3"`
 }
 
 type StatsServer struct {
-	URL     string `yaml:"url" json:"url,omitempty" protobuf:"bytes,2,opt,name=url,proto3"`
-	Timeout int64  `yaml:"timeout" json:"timeout,omitempty" protobuf:"varint,2,opt,name=timeout,proto3"`
+	URL     string        `yaml:"url" json:"url,omitempty" protobuf:"bytes,2,opt,name=url,proto3"`
+	Timeout time.Duration `yaml:"timeout" json:"timeout,omitempty" protobuf:"varint,2,opt,name=timeout,proto3"`
 }
 
 type GatewayConfig struct {

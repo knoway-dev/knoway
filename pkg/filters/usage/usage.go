@@ -84,7 +84,7 @@ func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest
 		apiKeyID = authInfo.GetApiKeyId()
 	}
 
-	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*time.Duration(f.config.GetStatsServer().GetTimeout()))
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second*f.config.GetStatsServer().GetTimeout().AsDuration())
 	defer cancel()
 
 	_, err := f.usageClient.UsageReport(ctx, &service.UsageReportRequest{

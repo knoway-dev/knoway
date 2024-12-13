@@ -2,20 +2,22 @@ syntax = "proto3";
 
 package knoway.filters.v1alpha1;
 
+import "google/protobuf/duration.proto";
+
 option go_package = "knoway.dev/api/filters/v1alpha1";
 
 message APIKeyAuthConfig {
     message AuthServer {
-        string url    = 1;
-        int64 timeout = 2;
+        string url                       = 1;
+        google.protobuf.Duration timeout = 2;
     }
     AuthServer auth_server = 3;
 }
 
 message UsageStatsConfig {
     message StatsServer {
-        string url    = 1;
-        int64 timeout = 2;
+        string url                       = 1;
+        google.protobuf.Duration timeout = 2;
     }
     StatsServer stats_server = 3;
 }

@@ -15,6 +15,7 @@ require (
 	github.com/sashabaranov/go-openai v1.35.7
 	github.com/stoewer/go-strcase v1.2.0
 	github.com/stretchr/testify v1.8.4
+	go.opentelemetry.io/otel v1.19.0
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v3 v3.0.1

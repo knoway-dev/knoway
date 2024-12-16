@@ -106,7 +106,7 @@ type CommonParams struct {
 
 	// Temperature is the sampling temperature, between 0 and 2.
 	// Higher values like 0.8 make the output more random, while lower values like 0.2 make it more focused and deterministic.
-	Temperature *string `json:"temperature,omitempty"`
+	Temperature *string `json:"temperature,omitempty" floatString:"true"`
 }
 
 type OpenAIParam struct {
@@ -118,7 +118,7 @@ type OpenAIParam struct {
 	// MaxCompletionTokens limits the maximum number of tokens for completion.
 	MaxCompletionTokens *int `json:"max_completion_tokens,omitempty"`
 	// TopP is the nucleus sampling probability, between 0 and 1.
-	TopP *string `json:"top_p,omitempty"`
+	TopP *string `json:"top_p,omitempty" floatString:"true"`
 	// Stream specifies whether to enable streaming responses.
 	Stream *bool `json:"stream,omitempty"`
 	// StreamOptions defines additional options for streaming responses.

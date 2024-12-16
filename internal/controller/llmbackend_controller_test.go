@@ -64,10 +64,10 @@ func TestProcessStruct_OpenAIChatParams(t *testing.T) {
 			},
 			expected: map[string]*structpb.Value{
 				"model":                 structpb.NewStringValue("gpt-3.5-turbo"),
-				"temperature":           structpb.NewStringValue("0.7"),
+				"temperature":           structpb.NewNumberValue(0.7),
 				"max_tokens":            structpb.NewNumberValue(100),
 				"max_completion_tokens": structpb.NewNumberValue(200),
-				"top_p":                 structpb.NewStringValue("0.3"),
+				"top_p":                 structpb.NewNumberValue(0.3),
 				"stream":                structpb.NewBoolValue(true),
 				"stream_options": structpb.NewStructValue(&structpb.Struct{
 					Fields: map[string]*structpb.Value{

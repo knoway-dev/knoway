@@ -224,9 +224,9 @@ func TestChatCompletionsResponse_GetError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			err := tc.response.GetError()
 			if tc.expectNilError {
-				assert.Nil(t, err)
+				require.NoError(t, err)
 			} else {
-				assert.NotNil(t, err)
+				require.Error(t, err)
 			}
 		})
 	}

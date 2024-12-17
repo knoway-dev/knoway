@@ -100,7 +100,7 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 		return filters.NewFailed(err)
 	}
 
-	rp := properties.GetRequestFromCtx(ctx)
+	rp := properties.RequestPropertiesFromCtx(ctx)
 	rp.EnabledAuthFilter = true
 	rp.APIKey = apiKey
 	rp.AuthInfo = response
@@ -116,7 +116,7 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 }
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
-	rp := properties.GetRequestFromCtx(ctx)
+	rp := properties.RequestPropertiesFromCtx(ctx)
 	if rp.AuthInfo == nil {
 		return filters.NewFailed(errors.New("missing auth info in context"))
 	}

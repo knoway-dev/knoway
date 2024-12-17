@@ -12,7 +12,7 @@ import (
 
 func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
 	return func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
-		rp := properties.GetRequestFromCtx(request.Context())
+		rp := properties.RequestPropertiesFromCtx(request.Context())
 
 		if err == nil {
 			if resp != nil {

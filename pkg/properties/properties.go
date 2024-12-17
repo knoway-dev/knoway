@@ -23,7 +23,10 @@ type RequestProperties struct {
 	ErrorMessage string
 }
 
-func GetRequestFromCtx(ctx context.Context) *RequestProperties {
+// RequestPropertiesFromCtx retrieves RequestProperties from context
+// Note: The returned pointer allows direct access and modification of the underlying RequestProperties
+// Be careful when modifying the properties as they are shared across the request context
+func RequestPropertiesFromCtx(ctx context.Context) *RequestProperties {
 	props, pok := fromPropertiesContext(ctx)
 	if !pok {
 		return nil

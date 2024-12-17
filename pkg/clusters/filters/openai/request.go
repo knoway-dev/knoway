@@ -44,7 +44,7 @@ type requestHandler struct {
 }
 
 func (f *requestHandler) RequestModifier(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error) {
-	rp := properties.GetRequestFromCtx(ctx)
+	rp := properties.RequestPropertiesFromCtx(ctx)
 	if rp.Cluster == nil {
 		return request, errors.New("cluster not found in context")
 	}

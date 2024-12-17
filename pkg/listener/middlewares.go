@@ -24,7 +24,7 @@ func WithLog() Middleware {
 			resp, err := next(writer, request)
 			elapsed := time.Since(start)
 
-			rp := properties.GetRequestFromCtx(request.Context())
+			rp := properties.RequestPropertiesFromCtx(request.Context())
 			attrs := []any{
 				slog.Int("status", rp.StatusCode),
 				slog.String("remote_ip", utils.RealIPFromRequest(request)),

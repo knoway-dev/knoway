@@ -25,7 +25,7 @@ func (l *OpenAIChatListener) onListModelsRequestWithError(writer http.ResponseWr
 	clusters := cluster.ListModels()
 
 	// auth filters
-	rp := properties.GetRequestFromCtx(request.Context())
+	rp := properties.RequestPropertiesFromCtx(request.Context())
 
 	if rp.EnabledAuthFilter {
 		if rp.AuthInfo != nil {

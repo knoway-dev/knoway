@@ -52,7 +52,7 @@ func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, req object.
 }
 
 func (f *responseHandler) ResponseModifier(ctx context.Context, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
-	rp := properties.GetRequestFromCtx(ctx)
+	rp := properties.RequestPropertiesFromCtx(ctx)
 	if rp.Cluster == nil {
 		return response, errors.New("cluster not found in context")
 	}

@@ -5,18 +5,19 @@ import (
 	"log/slog"
 	"net/http"
 
-	"knoway.dev/pkg/properties"
+	"knoway.dev/pkg/kcontext"
+
 	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
 )
 
 func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
 	return func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
-		rp := properties.RequestPropertiesFromCtx(request.Context())
+		rMeta := kcontext.RequestMetadataFromCtx(request.Context())
 
 		if err == nil {
 			if resp != nil {
-				rp.StatusCode = http.StatusOK
+				rMeta.StatusCode = http.StatusOK
 
 				utils.WriteJSONForHTTP(http.StatusOK, resp, writer)
 			}
@@ -40,8 +41,8 @@ func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, req
 			slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause)
 		}
 
-		rp.StatusCode = openAIError.Status
-		rp.ErrorMessage = openAIError.Error()
+		rMeta.StatusCode = openAIError.Status
+		rMeta.ErrorMessage = openAIError.Error()
 
 		utils.WriteJSONForHTTP(openAIError.Status, openAIError, writer)
 	}

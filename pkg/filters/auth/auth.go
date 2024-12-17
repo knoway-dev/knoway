@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"knoway.dev/pkg/kcontext"
+
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
@@ -22,7 +24,6 @@ import (
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
 )
 
@@ -100,9 +101,9 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 		return filters.NewFailed(err)
 	}
 
-	rp := properties.RequestPropertiesFromCtx(ctx)
-	rp.EnabledAuthFilter = true
-	rp.AuthInfo = response
+	rMeta := kcontext.RequestMetadataFromCtx(ctx)
+	rMeta.EnabledAuthFilter = true
+	rMeta.AuthInfo = response
 
 	if !response.GetIsValid() {
 		slog.Debug("auth filter: user apikey invalid", "user", response.GetUserId())
@@ -115,11 +116,11 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 }
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
-	rp := properties.RequestPropertiesFromCtx(ctx)
-	if rp.AuthInfo == nil {
+	rMeta := kcontext.RequestMetadataFromCtx(ctx)
+	if rMeta.AuthInfo == nil {
 		return filters.NewFailed(errors.New("missing auth info in context"))
 	}
-	authInfo := rp.AuthInfo
+	authInfo := rMeta.AuthInfo
 
 	accessModel := request.GetModel()
 	if accessModel == "" {

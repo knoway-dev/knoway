@@ -102,7 +102,6 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 
 	rp := properties.RequestPropertiesFromCtx(ctx)
 	rp.EnabledAuthFilter = true
-	rp.APIKey = apiKey
 	rp.AuthInfo = response
 
 	if !response.GetIsValid() {

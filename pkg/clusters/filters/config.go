@@ -40,7 +40,7 @@ type ClusterFilterRequestPreflight interface {
 type ClusterFilterRequestModifier interface {
 	ClusterFilter
 
-	RequestModifier(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error)
+	RequestModifier(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest) (object.LLMRequest, error)
 }
 
 type ClusterFilterEndpointSelector interface {
@@ -52,7 +52,7 @@ type ClusterFilterEndpointSelector interface {
 type ClusterFilterUpstreamRequestMarshaller interface {
 	ClusterFilter
 
-	// MarshalRequestBody is an optional method that allows the filter to modify the request body before
+	// MarshalUpstreamRequest is an optional method that allows the filter to modify the request body before
 	// it is sent to the upstream cluster. If pre is not nil, it contains the body of the previous filter
 	// in the chain.
 	MarshalUpstreamRequest(ctx context.Context, cluster *v1alpha1.Cluster, llmRequest object.LLMRequest, request *http.Request) (*http.Request, error)
@@ -70,7 +70,7 @@ type ClusterFilterResponseUnmarshaller interface {
 type ClusterFilterResponseModifier interface {
 	ClusterFilter
 
-	ResponseModifier(ctx context.Context, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error)
+	ResponseModifier(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error)
 }
 
 type ClusterFilterResponseComplete interface {
@@ -100,11 +100,11 @@ func (c ClusterFilters) RequestModifiers() []ClusterFilterRequestModifier {
 	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestModifier](c)
 }
 
-func (c ClusterFilters) ForEachRequestModifier(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error) {
+func (c ClusterFilters) ForEachRequestModifier(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest) (object.LLMRequest, error) {
 	for _, f := range c.RequestModifiers() {
 		var err error
 
-		request, err = f.RequestModifier(ctx, request)
+		request, err = f.RequestModifier(ctx, cluster, request)
 		if err != nil {
 			return nil, err
 		}
@@ -169,11 +169,11 @@ func (c ClusterFilters) ResponseModifiers() []ClusterFilterResponseModifier {
 	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseModifier](c)
 }
 
-func (c ClusterFilters) ForEachResponseModifier(ctx context.Context, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
+func (c ClusterFilters) ForEachResponseModifier(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
 	for _, f := range lo.Reverse(c).ResponseModifiers() {
 		var err error
 
-		response, err = f.ResponseModifier(ctx, request, response)
+		response, err = f.ResponseModifier(ctx, cluster, request, response)
 		if err != nil {
 			return nil, err
 		}

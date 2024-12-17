@@ -2,22 +2,18 @@ package properties
 
 import (
 	"context"
-	"errors"
 	"net/http"
-	"sync"
 
-	"knoway.dev/api/clusters/v1alpha1"
 	v1alpha12 "knoway.dev/api/service/v1alpha1"
 )
 
 type RequestProperties struct {
 	EnabledAuthFilter bool
-	AuthInfo          *v1alpha12.APIKeyAuthResponse
-	APIKey            string
+
+	AuthInfo *v1alpha12.APIKeyAuthResponse
 
 	RequestModel  string
 	ResponseModel string
-	Cluster       *v1alpha1.Cluster
 
 	StatusCode   int
 	ErrorMessage string
@@ -27,7 +23,7 @@ type RequestProperties struct {
 // Note: The returned pointer allows direct access and modification of the underlying RequestProperties
 // Be careful when modifying the properties as they are shared across the request context
 func RequestPropertiesFromCtx(ctx context.Context) *RequestProperties {
-	props, pok := fromPropertiesContext(ctx)
+	props, pok := ctx.Value(propertiesKey{}).(*property)
 	if !pok {
 		return nil
 	}
@@ -37,8 +33,6 @@ func RequestPropertiesFromCtx(ctx context.Context) *RequestProperties {
 
 func InitPropertiesContext(request *http.Request) context.Context {
 	return context.WithValue(request.Context(), propertiesKey{}, &property{
-		mutex:   sync.RWMutex{},
-		pp:      make(map[string]any),
 		request: &RequestProperties{},
 	})
 }
@@ -46,63 +40,5 @@ func InitPropertiesContext(request *http.Request) context.Context {
 type propertiesKey struct{}
 
 type property struct {
-	mutex   sync.RWMutex
-	pp      map[string]any
 	request *RequestProperties
-}
-
-func (p *property) Set(key string, value interface{}) {
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	p.pp[key] = value
-}
-
-func (p *property) Get(key string) (any, bool) {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
-
-	value, exists := p.pp[key]
-	if !exists {
-		return nil, false
-	}
-
-	return value, true
-}
-
-func fromPropertiesContext(ctx context.Context) (*property, bool) {
-	props, ok := ctx.Value(propertiesKey{}).(*property)
-	return props, ok
-}
-
-func setProperty(ctx context.Context, key string, value interface{}) error {
-	props, ok := fromPropertiesContext(ctx)
-	if !ok {
-		return errors.New("context does not have properties space, please use NewPropertiesContext to initialize it")
-	}
-	// update old ctx
-	props.Set(key, value)
-
-	return nil
-}
-
-func getProperty[T any](ctx context.Context, key string) (T, bool) {
-	var zero T
-
-	props, pok := fromPropertiesContext(ctx)
-	if !pok {
-		return zero, false
-	}
-
-	value, exists := props.Get(key)
-	if !exists {
-		return zero, false
-	}
-
-	v, ok := value.(T)
-	if !ok {
-		return zero, false
-	}
-
-	return v, true
 }

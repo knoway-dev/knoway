@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -19,7 +18,6 @@ import (
 	"knoway.dev/pkg/bootkit"
 	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
 )
 
@@ -43,13 +41,7 @@ type requestHandler struct {
 	cfg *v1alpha1.OpenAIRequestHandlerConfig
 }
 
-func (f *requestHandler) RequestModifier(ctx context.Context, request object.LLMRequest) (object.LLMRequest, error) {
-	rp := properties.RequestPropertiesFromCtx(ctx)
-	if rp.Cluster == nil {
-		return request, errors.New("cluster not found in context")
-	}
-	cluster := rp.Cluster
-
+func (f *requestHandler) RequestModifier(ctx context.Context, cluster *v1alpha1clusters.Cluster, request object.LLMRequest) (object.LLMRequest, error) {
 	err := request.SetModel(cluster.GetName())
 	if err != nil {
 		return request, err

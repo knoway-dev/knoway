@@ -3,10 +3,11 @@ package openai
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
+
+	v1alpha12 "knoway.dev/api/clusters/v1alpha1"
 
 	"google.golang.org/protobuf/types/known/anypb"
 
@@ -14,7 +15,6 @@ import (
 	"knoway.dev/pkg/bootkit"
 	clusterfilters "knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
 	"knoway.dev/pkg/types/openai"
 )
@@ -51,13 +51,8 @@ func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, req object.
 	}
 }
 
-func (f *responseHandler) ResponseModifier(ctx context.Context, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
-	rp := properties.RequestPropertiesFromCtx(ctx)
-	if rp.Cluster == nil {
-		return response, errors.New("cluster not found in context")
-	}
-
-	err := response.SetModel(rp.Cluster.GetName())
+func (f *responseHandler) ResponseModifier(ctx context.Context, cluster *v1alpha12.Cluster, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
+	err := response.SetModel(cluster.GetName())
 	if err != nil {
 		return response, err
 	}

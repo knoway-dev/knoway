@@ -25,10 +25,12 @@ func (l *OpenAIChatListener) onListModelsRequestWithError(writer http.ResponseWr
 	clusters := cluster.ListModels()
 
 	// auth filters
-	if properties.EnabledAuthFilterFromCtx(request.Context()) {
-		if authInfo, ok := properties.GetAuthInfoFromCtx(request.Context()); ok {
+	rp := properties.GetRequestFromCtx(request.Context())
+
+	if rp.EnabledAuthFilter {
+		if rp.AuthInfo != nil {
 			clusters = lo.Filter(clusters, func(item *v1alpha4.Cluster, index int) bool {
-				return auth.CanAccessModel(item.GetName(), authInfo.GetAllowModels(), authInfo.GetDenyModels())
+				return auth.CanAccessModel(item.GetName(), rp.AuthInfo.GetAllowModels(), rp.AuthInfo.GetDenyModels())
 			})
 		}
 	}

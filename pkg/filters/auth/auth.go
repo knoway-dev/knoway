@@ -79,19 +79,11 @@ type AuthFilter struct {
 
 func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
-	if err := properties.SetEnabledAuthFilterToCtx(ctx, true); err != nil {
-		return filters.NewFailed(err)
-	}
 
 	// parse apikey
 	apiKey, err := BearerMarshal(sourceHTTPRequest)
 	if err != nil {
 		return filters.NewFailed(object.NewErrorMissingAPIKey())
-	}
-
-	err = properties.SetAPIKeyToCtx(ctx, apiKey)
-	if err != nil {
-		return filters.NewFailed(err)
 	}
 
 	getAuthCtx, cancel := context.WithTimeout(ctx, a.config.GetAuthServer().GetTimeout().AsDuration())
@@ -107,9 +99,11 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
 		return filters.NewFailed(err)
 	}
-	if err = properties.SetAuthInfoToCtx(ctx, response); err != nil {
-		return filters.NewFailed(err)
-	}
+
+	rp := properties.GetRequestFromCtx(ctx)
+	rp.EnabledAuthFilter = true
+	rp.APIKey = apiKey
+	rp.AuthInfo = response
 
 	if !response.GetIsValid() {
 		slog.Debug("auth filter: user apikey invalid", "user", response.GetUserId())
@@ -122,10 +116,11 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 }
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
-	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
-	if !ok {
+	rp := properties.GetRequestFromCtx(ctx)
+	if rp.AuthInfo == nil {
 		return filters.NewFailed(errors.New("missing auth info in context"))
 	}
+	authInfo := rp.AuthInfo
 
 	accessModel := request.GetModel()
 	if accessModel == "" {

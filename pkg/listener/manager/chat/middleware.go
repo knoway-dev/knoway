@@ -5,8 +5,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/nekomeowww/fo"
-
 	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
@@ -14,14 +12,18 @@ import (
 
 func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
 	return func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
+		rp := properties.GetRequestFromCtx(request.Context())
+
 		if err == nil {
 			if resp != nil {
-				fo.May0(properties.SetStatusCodeToCtx(request.Context(), http.StatusOK))
+				rp.StatusCode = http.StatusOK
+
 				utils.WriteJSONForHTTP(http.StatusOK, resp, writer)
 			}
 
 			return
 		}
+
 		if errors.Is(err, SkipResponse) {
 			return
 		}
@@ -38,8 +40,8 @@ func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, req
 			slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause)
 		}
 
-		fo.May0(properties.SetStatusCodeToCtx(request.Context(), openAIError.Status))
-		fo.May0(properties.SetErrorMessageToCtx(request.Context(), openAIError.Error()))
+		rp.StatusCode = openAIError.Status
+		rp.ErrorMessage = openAIError.Error()
 
 		utils.WriteJSONForHTTP(openAIError.Status, openAIError, writer)
 	}

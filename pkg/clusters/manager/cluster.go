@@ -111,10 +111,8 @@ func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, r
 }
 
 func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
-	err := properties.SetClusterToContext(ctx, m.cluster)
-	if err != nil {
-		return nil, err
-	}
+	rp := properties.GetRequestFromCtx(ctx)
+	rp.Cluster = m.cluster
 
 	req, err := composeLLMRequestBody(ctx, m.filters, m.cluster, llmReq)
 	if err != nil {

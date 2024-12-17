@@ -83,14 +83,11 @@ func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest
 	}
 
 	var apiKeyID string
-
-	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
-	if !ok {
-		slog.Warn("no auth info in context")
-
-		return
+	if rp := properties.GetRequestFromCtx(ctx); rp != nil && rp.AuthInfo != nil {
+		apiKeyID = rp.AuthInfo.GetApiKeyId()
 	} else {
-		apiKeyID = authInfo.GetApiKeyId()
+		slog.Warn("no auth info in context")
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), f.config.GetStatsServer().GetTimeout().AsDuration())

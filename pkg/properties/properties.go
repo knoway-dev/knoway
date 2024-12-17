@@ -3,20 +3,49 @@ package properties
 import (
 	"context"
 	"errors"
+	"net/http"
 	"sync"
+
+	"knoway.dev/api/clusters/v1alpha1"
+	v1alpha12 "knoway.dev/api/service/v1alpha1"
 )
+
+type RequestProperties struct {
+	EnabledAuthFilter bool
+	AuthInfo          *v1alpha12.APIKeyAuthResponse
+	APIKey            string
+
+	RequestModel  string
+	ResponseModel string
+	Cluster       *v1alpha1.Cluster
+
+	StatusCode   int
+	ErrorMessage string
+}
+
+func GetRequestFromCtx(ctx context.Context) *RequestProperties {
+	props, pok := fromPropertiesContext(ctx)
+	if !pok {
+		return nil
+	}
+
+	return props.request
+}
+
+func InitPropertiesContext(request *http.Request) context.Context {
+	return context.WithValue(request.Context(), propertiesKey{}, &property{
+		mutex:   sync.RWMutex{},
+		pp:      make(map[string]any),
+		request: &RequestProperties{},
+	})
+}
 
 type propertiesKey struct{}
 
 type property struct {
-	mutex sync.RWMutex
-	pp    map[string]any
-}
-
-func newProperty() *property {
-	return &property{
-		pp: make(map[string]any),
-	}
+	mutex   sync.RWMutex
+	pp      map[string]any
+	request *RequestProperties
 }
 
 func (p *property) Set(key string, value interface{}) {
@@ -38,19 +67,12 @@ func (p *property) Get(key string) (any, bool) {
 	return value, true
 }
 
-// fromPropertiesContext 从 context 中获取所有属性
 func fromPropertiesContext(ctx context.Context) (*property, bool) {
 	props, ok := ctx.Value(propertiesKey{}).(*property)
 	return props, ok
 }
 
-// NewPropertiesContext 初始化 PropertiesContext
-func NewPropertiesContext(ctx context.Context) context.Context {
-	return context.WithValue(ctx, propertiesKey{}, newProperty())
-}
-
-// SetProperty 设置任意类型的值到 context 中
-func SetProperty(ctx context.Context, key string, value interface{}) error {
+func setProperty(ctx context.Context, key string, value interface{}) error {
 	props, ok := fromPropertiesContext(ctx)
 	if !ok {
 		return errors.New("context does not have properties space, please use NewPropertiesContext to initialize it")
@@ -61,8 +83,7 @@ func SetProperty(ctx context.Context, key string, value interface{}) error {
 	return nil
 }
 
-// GetProperty 获取任意类型的值从 context 中
-func GetProperty[T any](ctx context.Context, key string) (T, bool) {
+func getProperty[T any](ctx context.Context, key string) (T, bool) {
 	var zero T
 
 	props, pok := fromPropertiesContext(ctx)

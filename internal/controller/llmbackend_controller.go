@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
+	"strconv"
 	"strings"
 	"time"
 
@@ -426,7 +427,6 @@ func (r *LLMBackendReconciler) toUpstreamHeaders(ctx context.Context, backend *k
 	return hs, nil
 }
 
-// TODO: unit test
 func processStruct(v interface{}, params map[string]*structpb.Value) error {
 	val := reflect.ValueOf(v)
 
@@ -472,6 +472,17 @@ func processStruct(v interface{}, params map[string]*structpb.Value) error {
 			fieldValue = field.Elem().Interface()
 		} else {
 			fieldValue = field.Interface()
+		}
+
+		// Check if you need to convert to float
+		if isFloatString := structField.Tag.Get("floatString"); isFloatString == "true" {
+			if strVal, ok := fieldValue.(string); ok {
+				if floatVal, err := strconv.ParseFloat(strVal, 64); err == nil {
+					fieldValue = floatVal
+				} else {
+					return fmt.Errorf("failed to convert string to float for field %s: %w", jsonKey, err)
+				}
+			}
 		}
 
 		// Handle nested struct fields

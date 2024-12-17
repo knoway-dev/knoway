@@ -30,7 +30,7 @@ func TestSetModel(t *testing.T) {
 	request, err := NewChatCompletionRequest(httpRequest)
 	require.NoError(t, err)
 
-	newModel := "gpt-4"
+	newModel := lo.RandomString(10, lo.LettersCharset)
 
 	err = request.SetModel(newModel)
 	require.NoError(t, err)

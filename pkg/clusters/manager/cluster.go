@@ -6,9 +6,12 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
+
+	"knoway.dev/pkg/metadata"
 
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/bootkit"
@@ -114,6 +117,8 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 	if err != nil {
 		return nil, err
 	}
+
+	metadata.RequestMetadataFromCtx(ctx).UpstreamRequestTime = time.Now()
 
 	// TODO: lb policy
 	// TODO: body close

@@ -48,7 +48,7 @@ func (l *OpenAIChatListener) onCompletionsRequestWithError(writer http.ResponseW
 		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
 	}
 
-	resp, err := l.clusterDoCompletionsRequest(c, writer, request, llmRequest)
+	resp, err := l.clusterDoCompletionsRequest(request.Context(), c, writer, request, llmRequest)
 	if !llmRequest.IsStream() && !lo.IsNil(resp) {
 		for _, f := range l.filters.OnCompletionResponseFilters() {
 			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)

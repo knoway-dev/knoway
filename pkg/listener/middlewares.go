@@ -21,9 +21,7 @@ import (
 func WithLog() Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
-			start := time.Now()
 			resp, err := next(writer, request)
-			elapsed := time.Since(start)
 
 			rMeta := metadata.RequestMetadataFromCtx(request.Context())
 			attrs := []any{
@@ -36,8 +34,8 @@ func WithLog() Middleware {
 				slog.String("protocol", request.Proto),
 				slog.String("referer", request.Referer()),
 				slog.String("user_agent", request.UserAgent()),
-				slog.Int64("latency", int64(elapsed)),
-				slog.Duration("latency_human", elapsed),
+				slog.Int64("latency", time.Since(rMeta.RequestTime).Milliseconds()),
+				slog.Duration("latency_human", time.Since(rMeta.RequestTime)),
 				slog.Any("headers", lo.OmitByKeys(request.Header, []string{"Authorization"})),
 				slog.Any("query", request.URL.Query()),
 				slog.Any("cookies", lo.Map(request.Cookies(), func(item *http.Cookie, index int) string {
@@ -56,7 +54,7 @@ func WithLog() Middleware {
 	}
 }
 
-func WithProperties() Middleware {
+func WithInitMetadata() Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			return next(writer, request.WithContext(metadata.InitMetadataContext(request)))
@@ -195,6 +193,18 @@ func WithRejectAfterDrainedInterceptor(d Drainable) Middleware {
 			}
 
 			return next(writer, request)
+		}
+	}
+}
+
+func WithRequestTimer() Middleware {
+	return func(next HandlerFunc) HandlerFunc {
+		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
+			metadata.RequestMetadataFromCtx(request.Context()).RequestTime = time.Now()
+			resp, err := next(writer, request)
+			metadata.RequestMetadataFromCtx(request.Context()).ResponseTime = time.Now()
+
+			return resp, err
 		}
 	}
 }

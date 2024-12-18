@@ -26,6 +26,7 @@ type ChatCompletionStreamChunk struct {
 	isEmpty bool
 	isDone  bool
 	isUsage bool
+	isFirst bool
 }
 
 func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
@@ -40,6 +41,7 @@ func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte
 
 	resp.response = streamResp
 	resp.Model = model
+	resp.isFirst = streamResp.IsFirst()
 
 	if streamResp.GetModel() == "" {
 		err = streamResp.SetModel(model)
@@ -56,6 +58,7 @@ func NewEmptyChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *Cha
 
 	resp.isEmpty = true
 	resp.response = streamResp
+	resp.isFirst = streamResp.IsFirst()
 
 	return resp
 }
@@ -65,6 +68,7 @@ func NewDoneChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *Chat
 
 	resp.isDone = true
 	resp.response = streamResp
+	resp.isFirst = streamResp.IsFirst()
 
 	return resp
 }
@@ -88,6 +92,7 @@ func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs [
 	resp.isUsage = true
 	resp.response = streamResp
 	resp.Model = model
+	resp.isFirst = streamResp.IsFirst()
 
 	if streamResp.GetModel() == "" {
 		err = streamResp.SetModel(model)
@@ -97,6 +102,10 @@ func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs [
 	}
 
 	return resp, nil
+}
+
+func (r *ChatCompletionStreamChunk) IsFirst() bool {
+	return r.isFirst
 }
 
 func (r *ChatCompletionStreamChunk) IsEmpty() bool {
@@ -188,6 +197,7 @@ type ChatCompletionStreamResponse struct {
 	hasErrorPrefix   bool
 	errorEventBuffer *bytes.Buffer
 	isDone           bool
+	chunkNum         int
 }
 
 func NewChatCompletionStreamResponse(request object.LLMRequest, response *http.Response, reader *bufio.Reader) (*ChatCompletionStreamResponse, error) {
@@ -204,6 +214,10 @@ func NewChatCompletionStreamResponse(request object.LLMRequest, response *http.R
 func (r *ChatCompletionStreamResponse) MarshalJSON() ([]byte, error) {
 	// NOTICE: stream response should not be marshaled
 	return json.Marshal(nil)
+}
+
+func (r *ChatCompletionStreamResponse) IsFirst() bool {
+	return r.chunkNum == 1
 }
 
 func (r *ChatCompletionStreamResponse) IsEOF() bool {
@@ -235,6 +249,9 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		// TODO: Empty message handling
 		return NewEmptyChatCompletionStreamChunk(r), nil
 	}
+
+	// count chunk valid
+	r.chunkNum++
 
 	noPrefixLine := bytes.TrimPrefix(noSpaceLine, headerData)
 	if string(noPrefixLine) == "[DONE]" {

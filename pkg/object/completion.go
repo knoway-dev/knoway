@@ -41,6 +41,7 @@ type LLMResponse interface {
 type LLMStreamResponse interface {
 	LLMResponse
 
+	IsFirst() bool
 	IsEOF() bool
 	NextChunk() (LLMChunkResponse, error)
 }
@@ -48,6 +49,7 @@ type LLMStreamResponse interface {
 type LLMChunkResponse interface {
 	json.Marshaler
 
+	IsFirst() bool
 	IsEmpty() bool
 	IsDone() bool
 	IsUsage() bool

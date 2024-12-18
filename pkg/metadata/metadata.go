@@ -19,11 +19,11 @@ type RequestMetadata struct {
 	StatusCode   int
 	ErrorMessage string
 
-	RequestTime                    time.Time
-	ResponseTime                   time.Time
-	UpstreamRequestTime            time.Time
-	UpstreamResponseTime           time.Time
-	UpstreamFirstChunkResponseTime time.Time
+	RequestAt                 time.Time
+	ResponseAt                time.Time
+	UpstreamRequestAt         time.Time
+	UpstreamResponseAt        time.Time
+	UpstreamFirstValidChunkAt time.Time
 }
 
 // RequestMetadataFromCtx retrieves RequestMetadata from context

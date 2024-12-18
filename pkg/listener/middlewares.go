@@ -34,8 +34,8 @@ func WithLog() Middleware {
 				slog.String("protocol", request.Proto),
 				slog.String("referer", request.Referer()),
 				slog.String("user_agent", request.UserAgent()),
-				slog.Int64("latency", time.Since(rMeta.RequestTime).Milliseconds()),
-				slog.Duration("latency_human", time.Since(rMeta.RequestTime)),
+				slog.Int64("latency", time.Since(rMeta.RequestAt).Milliseconds()),
+				slog.Duration("latency_human", time.Since(rMeta.RequestAt)),
 				slog.Any("headers", lo.OmitByKeys(request.Header, []string{"Authorization"})),
 				slog.Any("query", request.URL.Query()),
 				slog.Any("cookies", lo.Map(request.Cookies(), func(item *http.Cookie, index int) string {
@@ -200,9 +200,9 @@ func WithRejectAfterDrainedInterceptor(d Drainable) Middleware {
 func WithRequestTimer() Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
-			metadata.RequestMetadataFromCtx(request.Context()).RequestTime = time.Now()
+			metadata.RequestMetadataFromCtx(request.Context()).RequestAt = time.Now()
 			resp, err := next(writer, request)
-			metadata.RequestMetadataFromCtx(request.Context()).ResponseTime = time.Now()
+			metadata.RequestMetadataFromCtx(request.Context()).ResponseAt = time.Now()
 
 			return resp, err
 		}

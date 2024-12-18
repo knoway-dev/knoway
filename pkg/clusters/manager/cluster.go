@@ -118,7 +118,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 		return nil, err
 	}
 
-	metadata.RequestMetadataFromCtx(ctx).UpstreamRequestTime = time.Now()
+	metadata.RequestMetadataFromCtx(ctx).UpstreamRequestAt = time.Now()
 
 	// TODO: lb policy
 	// TODO: body close

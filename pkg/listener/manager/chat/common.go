@@ -99,10 +99,10 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 			continue
 		}
 		if chunk.IsDone() {
-			metadata.RequestMetadataFromCtx(ctx).UpstreamResponseTime = time.Now()
+			metadata.RequestMetadataFromCtx(ctx).UpstreamResponseAt = time.Now()
 		}
 		if chunk.IsFirst() {
-			metadata.RequestMetadataFromCtx(ctx).UpstreamFirstChunkResponseTime = time.Now()
+			metadata.RequestMetadataFromCtx(ctx).UpstreamFirstValidChunkAt = time.Now()
 		}
 
 		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
@@ -159,7 +159,7 @@ func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c 
 	}
 
 	if resp.GetError() != nil || !resp.IsStream() {
-		metadata.RequestMetadataFromCtx(ctx).UpstreamResponseTime = time.Now()
+		metadata.RequestMetadataFromCtx(ctx).UpstreamResponseAt = time.Now()
 
 		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
 		if err != nil {

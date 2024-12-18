@@ -5,15 +5,14 @@ import (
 	"log/slog"
 	"net/http"
 
-	"knoway.dev/pkg/kcontext"
-
+	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
 )
 
 func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
 	return func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
-		rMeta := kcontext.RequestMetadataFromCtx(request.Context())
+		rMeta := metadata.RequestMetadataFromCtx(request.Context())
 
 		if err == nil {
 			if resp != nil {

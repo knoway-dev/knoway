@@ -5,13 +5,12 @@ import (
 	"sort"
 	"strings"
 
-	"knoway.dev/pkg/kcontext"
-
 	"github.com/samber/lo"
 	goopenai "github.com/sashabaranov/go-openai"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/filters/auth"
+	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/registry/cluster"
 )
 
@@ -26,7 +25,7 @@ func (l *OpenAIChatListener) onListModelsRequestWithError(writer http.ResponseWr
 	clusters := cluster.ListModels()
 
 	// auth filters
-	rMeta := kcontext.RequestMetadataFromCtx(request.Context())
+	rMeta := metadata.RequestMetadataFromCtx(request.Context())
 
 	if rMeta.EnabledAuthFilter {
 		if rMeta.AuthInfo != nil {

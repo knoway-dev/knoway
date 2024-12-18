@@ -8,8 +8,6 @@ import (
 	"log/slog"
 	"time"
 
-	"knoway.dev/pkg/kcontext"
-
 	"github.com/samber/lo"
 
 	"google.golang.org/grpc"
@@ -21,6 +19,7 @@ import (
 	service "knoway.dev/api/service/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
+	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/protoutils"
 )
@@ -84,7 +83,7 @@ func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest
 	}
 
 	var apiKeyID string
-	if rMeta := kcontext.RequestMetadataFromCtx(ctx); rMeta != nil && rMeta.AuthInfo != nil {
+	if rMeta := metadata.RequestMetadataFromCtx(ctx); rMeta != nil && rMeta.AuthInfo != nil {
 		apiKeyID = rMeta.AuthInfo.GetApiKeyId()
 	} else {
 		slog.Warn("no auth info in context")

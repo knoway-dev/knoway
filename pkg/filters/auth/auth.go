@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"knoway.dev/pkg/kcontext"
-
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
@@ -23,6 +21,7 @@ import (
 	service "knoway.dev/api/service/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
+	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/protoutils"
 )
@@ -101,7 +100,7 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 		return filters.NewFailed(err)
 	}
 
-	rMeta := kcontext.RequestMetadataFromCtx(ctx)
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
 	rMeta.EnabledAuthFilter = true
 	rMeta.AuthInfo = response
 
@@ -116,7 +115,7 @@ func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *
 }
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
-	rMeta := kcontext.RequestMetadataFromCtx(ctx)
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
 	if rMeta.AuthInfo == nil {
 		return filters.NewFailed(errors.New("missing auth info in context"))
 	}

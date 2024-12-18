@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"knoway.dev/pkg/kcontext"
+	"knoway.dev/pkg/metadata"
 
 	"github.com/nekomeowww/fo"
 	"github.com/samber/lo"
@@ -25,7 +25,7 @@ func WithLog() Middleware {
 			resp, err := next(writer, request)
 			elapsed := time.Since(start)
 
-			rMeta := kcontext.RequestMetadataFromCtx(request.Context())
+			rMeta := metadata.RequestMetadataFromCtx(request.Context())
 			attrs := []any{
 				slog.Int("status", rMeta.StatusCode),
 				slog.String("remote_ip", utils.RealIPFromRequest(request)),
@@ -59,7 +59,7 @@ func WithLog() Middleware {
 func WithProperties() Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
-			return next(writer, request.WithContext(kcontext.InitMetadataContext(request)))
+			return next(writer, request.WithContext(metadata.InitMetadataContext(request)))
 		}
 	}
 }

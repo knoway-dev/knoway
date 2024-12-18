@@ -8,11 +8,12 @@ import (
 	"sync"
 	"time"
 
+	"knoway.dev/pkg/metadata"
+
 	"github.com/nekomeowww/fo"
 	"github.com/samber/lo"
 
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
 )
@@ -24,8 +25,9 @@ func WithLog() Middleware {
 			resp, err := next(writer, request)
 			elapsed := time.Since(start)
 
+			rMeta := metadata.RequestMetadataFromCtx(request.Context())
 			attrs := []any{
-				slog.Int("status", fo.May1(properties.GetStatusCodeFromCtx(request.Context()))),
+				slog.Int("status", rMeta.StatusCode),
 				slog.String("remote_ip", utils.RealIPFromRequest(request)),
 				slog.String("host", request.Host),
 				slog.String("uri", request.RequestURI),
@@ -43,9 +45,8 @@ func WithLog() Middleware {
 				})),
 			}
 
-			errorMessage := fo.May1(properties.GetErrorMessageFromCtx(request.Context()))
-			if errorMessage != "" {
-				attrs = append(attrs, slog.String("error", errorMessage))
+			if rMeta.ErrorMessage != "" {
+				attrs = append(attrs, slog.String("error", rMeta.ErrorMessage))
 			}
 
 			slog.Info("request handled", attrs...)
@@ -58,7 +59,7 @@ func WithLog() Middleware {
 func WithProperties() Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
-			return next(writer, request.WithContext(properties.NewPropertiesContext(request.Context())))
+			return next(writer, request.WithContext(metadata.InitMetadataContext(request)))
 		}
 	}
 }

@@ -15,7 +15,6 @@ import (
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/filters"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/properties"
 	registryfilters "knoway.dev/pkg/registry/config"
 )
 
@@ -80,7 +79,7 @@ func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluste
 	var err error
 	var req *http.Request
 
-	llmReq, err = f.ForEachRequestModifier(ctx, llmReq)
+	llmReq, err = f.ForEachRequestModifier(ctx, cluster, llmReq)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +92,7 @@ func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluste
 	return req, nil
 }
 
-func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
+func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
 	var err error
 	var resp object.LLMResponse
 
@@ -102,7 +101,7 @@ func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, r
 		return nil, err
 	}
 
-	resp, err = f.ForEachResponseModifier(ctx, req, resp)
+	resp, err = f.ForEachResponseModifier(ctx, cluster, req, resp)
 	if err != nil {
 		return nil, err
 	}
@@ -111,11 +110,6 @@ func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, r
 }
 
 func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
-	err := properties.SetClusterToContext(ctx, m.cluster)
-	if err != nil {
-		return nil, err
-	}
-
 	req, err := composeLLMRequestBody(ctx, m.filters, m.cluster, llmReq)
 	if err != nil {
 		return nil, err
@@ -128,7 +122,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 		return nil, err
 	}
 
-	return composeLLMResponseFromBody(ctx, m.filters, llmReq, rawResp, buffer)
+	return composeLLMResponseFromBody(ctx, m.filters, m.cluster, llmReq, rawResp, buffer)
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {

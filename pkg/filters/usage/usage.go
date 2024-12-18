@@ -19,8 +19,8 @@ import (
 	service "knoway.dev/api/service/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
+	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/properties"
 	"knoway.dev/pkg/protoutils"
 )
 
@@ -83,14 +83,11 @@ func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest
 	}
 
 	var apiKeyID string
-
-	authInfo, ok := properties.GetAuthInfoFromCtx(ctx)
-	if !ok {
-		slog.Warn("no auth info in context")
-
-		return
+	if rMeta := metadata.RequestMetadataFromCtx(ctx); rMeta != nil && rMeta.AuthInfo != nil {
+		apiKeyID = rMeta.AuthInfo.GetApiKeyId()
 	} else {
-		apiKeyID = authInfo.GetApiKeyId()
+		slog.Warn("no auth info in context")
+		return
 	}
 
 	ctx, cancel := context.WithTimeout(context.TODO(), f.config.GetStatsServer().GetTimeout().AsDuration())

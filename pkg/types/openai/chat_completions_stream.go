@@ -29,7 +29,7 @@ type ChatCompletionStreamChunk struct {
 	isFirst bool
 }
 
-func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
+func NewChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
 	resp := new(ChatCompletionStreamChunk)
 
 	err := resp.processBytes(bs)
@@ -53,7 +53,7 @@ func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte
 	return resp, nil
 }
 
-func NewEmptyChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *ChatCompletionStreamChunk {
+func NewEmptyChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse) *ChatCompletionStreamChunk {
 	resp := new(ChatCompletionStreamChunk)
 
 	resp.isEmpty = true
@@ -63,17 +63,7 @@ func NewEmptyChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *Cha
 	return resp
 }
 
-func NewDoneChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *ChatCompletionStreamChunk {
-	resp := new(ChatCompletionStreamChunk)
-
-	resp.isDone = true
-	resp.response = streamResp
-	resp.isFirst = streamResp.IsFirst()
-
-	return resp
-}
-
-func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
+func NewUsageChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
 	resp := new(ChatCompletionStreamChunk)
 
 	err := resp.processBytes(bs)
@@ -102,6 +92,15 @@ func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs [
 	}
 
 	return resp, nil
+}
+
+func NewDoneChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse) *ChatCompletionStreamChunk {
+	resp := new(ChatCompletionStreamChunk)
+
+	resp.isDone = true
+	resp.response = streamResp
+
+	return resp
 }
 
 func (r *ChatCompletionStreamChunk) IsFirst() bool {

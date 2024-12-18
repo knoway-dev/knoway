@@ -41,7 +41,6 @@ type LLMResponse interface {
 type LLMStreamResponse interface {
 	LLMResponse
 
-	IsFirst() bool
 	IsEOF() bool
 	NextChunk() (LLMChunkResponse, error)
 }

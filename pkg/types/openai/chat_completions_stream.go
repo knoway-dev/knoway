@@ -28,7 +28,7 @@ type ChatCompletionStreamChunk struct {
 	isUsage bool
 }
 
-func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte, model string) (*ChatCompletionStreamChunk, error) {
+func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
 	resp := new(ChatCompletionStreamChunk)
 
 	err := resp.processBytes(bs)
@@ -36,11 +36,16 @@ func NewChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte
 		return NewEmptyChatCompletionStreamChunk(streamResp), err
 	}
 
-	resp.response = streamResp
+	model := utils.GetByJSONPath[string](resp.bodyParsed, "{ .model }")
 
-	err = resp.SetModel(model)
-	if err != nil {
-		return NewEmptyChatCompletionStreamChunk(streamResp), err
+	resp.response = streamResp
+	resp.Model = model
+
+	if streamResp.GetModel() == "" {
+		err = streamResp.SetModel(model)
+		if err != nil {
+			return NewEmptyChatCompletionStreamChunk(streamResp), err
+		}
 	}
 
 	return resp, nil
@@ -64,7 +69,7 @@ func NewDoneChatCompletionStreamChunk(streamResp object.LLMStreamResponse) *Chat
 	return resp
 }
 
-func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte, model string) (*ChatCompletionStreamChunk, error) {
+func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
 	resp := new(ChatCompletionStreamChunk)
 
 	err := resp.processBytes(bs)
@@ -73,6 +78,7 @@ func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs [
 	}
 
 	usageMap := utils.GetByJSONPath[map[string]any](resp.bodyParsed, "{ .usage }")
+	model := utils.GetByJSONPath[string](resp.bodyParsed, "{ .model }")
 
 	resp.Usage, err = utils.FromMap[Usage](usageMap)
 	if err != nil {
@@ -81,10 +87,13 @@ func NewUsageChatCompletionStreamChunk(streamResp object.LLMStreamResponse, bs [
 
 	resp.isUsage = true
 	resp.response = streamResp
+	resp.Model = model
 
-	err = resp.SetModel(model)
-	if err != nil {
-		return NewEmptyChatCompletionStreamChunk(streamResp), err
+	if streamResp.GetModel() == "" {
+		err = streamResp.SetModel(model)
+		if err != nil {
+			return NewEmptyChatCompletionStreamChunk(streamResp), err
+		}
 	}
 
 	return resp, nil
@@ -233,7 +242,7 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		return NewDoneChatCompletionStreamChunk(r), io.EOF
 	}
 	if bytes.Contains(noPrefixLine, usageCompletionTokens) {
-		chunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine, r.GetModel())
+		chunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine)
 		if err != nil {
 			return chunk, err
 		}
@@ -243,7 +252,7 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		return chunk, nil
 	}
 
-	return NewChatCompletionStreamChunk(r, noPrefixLine, r.GetModel())
+	return NewChatCompletionStreamChunk(r, noPrefixLine)
 }
 
 func (r *ChatCompletionStreamResponse) IsStream() bool {

@@ -153,13 +153,18 @@ func (l *OpenAIChatListener) findCluster(ctx context.Context, llmRequest object.
 }
 
 func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c clusters.Cluster, writer http.ResponseWriter, request *http.Request, llmRequest object.LLMRequest) (object.LLMResponse, error) {
+	metadata.RequestMetadataFromCtx(request.Context()).RequestModel = llmRequest.GetModel()
+
 	resp, err := c.DoUpstreamRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, openai.NewErrorInternalError().WithCause(err)
 	}
 
+	rp := metadata.RequestMetadataFromCtx(request.Context())
+	rp.ResponseModel = llmRequest.GetModel()
+
 	if resp.GetError() != nil || !resp.IsStream() {
-		metadata.RequestMetadataFromCtx(ctx).UpstreamResponseAt = time.Now()
+		rp.UpstreamResponseAt = time.Now()
 
 		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
 		if err != nil {

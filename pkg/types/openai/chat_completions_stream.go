@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/types/sse"
@@ -197,6 +198,9 @@ type ChatCompletionStreamResponse struct {
 	errorEventBuffer *bytes.Buffer
 	isDone           bool
 	chunkNum         int
+
+	// Mutex for locking
+	mu sync.Mutex
 }
 
 func NewChatCompletionStreamResponse(request object.LLMRequest, response *http.Response, reader *bufio.Reader) (*ChatCompletionStreamResponse, error) {
@@ -216,14 +220,23 @@ func (r *ChatCompletionStreamResponse) MarshalJSON() ([]byte, error) {
 }
 
 func (r *ChatCompletionStreamResponse) IsFirst() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	return r.chunkNum == 1
 }
 
 func (r *ChatCompletionStreamResponse) IsEOF() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	return r.isDone
 }
 
 func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	line, err := r.reader.ReadBytes('\n')
 	if err != nil || r.hasErrorPrefix {
 		// TODO: handle error

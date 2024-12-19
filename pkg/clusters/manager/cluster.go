@@ -78,53 +78,22 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 	}, nil
 }
 
-func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, llmReq object.LLMRequest) (*http.Request, error) {
-	rMeta := metadata.RequestMetadataFromCtx(ctx)
-
+func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
 	var err error
-	var req *http.Request
 
-	llmReq, err = f.ForEachRequestModifier(ctx, cluster, llmReq)
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+	rMeta.UpstreamProvider = m.cluster.GetProvider()
+
+	llmReq, err = m.filters.ForEachRequestModifier(ctx, m.cluster, llmReq)
 	if err != nil {
 		return nil, err
 	}
 
 	rMeta.UpstreamRequestModel = llmReq.GetModel()
 
-	req, err = f.ForEachUpstreamRequestMarshaller(ctx, cluster, llmReq, req)
-	if err != nil {
-		return nil, err
-	}
+	var req *http.Request
 
-	return req, nil
-}
-
-func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
-	rMeta := metadata.RequestMetadataFromCtx(ctx)
-
-	var err error
-	var llmResp object.LLMResponse
-
-	llmResp, err = f.ForEachResponseUnmarshaller(ctx, req, rawResp, reader, llmResp)
-	if err != nil {
-		return nil, err
-	}
-
-	rMeta.UpstreamResponseModel = llmResp.GetModel()
-
-	llmResp, err = f.ForEachResponseModifier(ctx, cluster, req, llmResp)
-	if err != nil {
-		return nil, err
-	}
-
-	return llmResp, nil
-}
-
-func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
-	rMeta := metadata.RequestMetadataFromCtx(ctx)
-	rMeta.UpstreamProvider = m.cluster.GetProvider()
-
-	req, err := composeLLMRequestBody(ctx, m.filters, m.cluster, llmReq)
+	req, err = m.filters.ForEachUpstreamRequestMarshaller(ctx, m.cluster, llmReq, req)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +111,16 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 	// or find it's way to the destination, or upstream timeout
 	rMeta.UpstreamRespondAt = time.Now()
 
-	llmResp, err := composeLLMResponseFromBody(ctx, m.filters, m.cluster, llmReq, rawResp, buffer)
+	var llmResp object.LLMResponse
+
+	llmResp, err = m.filters.ForEachResponseUnmarshaller(ctx, llmReq, rawResp, buffer, llmResp)
+	if err != nil {
+		return nil, err
+	}
+
+	rMeta.UpstreamResponseModel = llmResp.GetModel()
+
+	llmResp, err = m.filters.ForEachResponseModifier(ctx, m.cluster, llmReq, llmResp)
 	if err != nil {
 		return nil, err
 	}

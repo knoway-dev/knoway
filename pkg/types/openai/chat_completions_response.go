@@ -204,7 +204,3 @@ func (r *ChatCompletionsResponse) GetError() object.LLMError {
 
 	return nil
 }
-
-func (r *ChatCompletionsResponse) GetResponse() *http.Response {
-	return r.outgoingResponse
-}

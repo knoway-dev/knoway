@@ -2,7 +2,6 @@ package object
 
 import (
 	"encoding/json"
-	"net/http"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
@@ -25,17 +24,6 @@ type LLMRequest interface {
 	SetDefaultParams(params map[string]*structpb.Value) error
 
 	GetRequestType() RequestType
-	GetRequest() *http.Request
-}
-
-func IsLLMRequest(r any) bool {
-	_, ok := r.(LLMRequest)
-	return ok
-}
-
-func IsLLMStreamRequest(r any) bool {
-	llmReq, ok := r.(LLMRequest)
-	return ok && llmReq.IsStream()
 }
 
 type LLMResponse interface {
@@ -48,8 +36,6 @@ type LLMResponse interface {
 
 	GetModel() string
 	SetModel(modelName string) error
-
-	GetResponse() *http.Response
 }
 
 func IsLLMResponse(r any) bool {
@@ -89,11 +75,6 @@ type LLMChunkResponse interface {
 	GetUsage() LLMUsage
 
 	ToServerSentEvent() (*sse.Event, error)
-}
-
-func IsLLMChunkResponse(r any) bool {
-	_, ok := r.(LLMChunkResponse)
-	return ok
 }
 
 type LLMUsage interface {

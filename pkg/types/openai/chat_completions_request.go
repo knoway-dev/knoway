@@ -120,6 +120,11 @@ func (r *ChatCompletionsRequest) SetDefaultParams(params map[string]*structpb.Va
 		}
 	}
 
+	changedModel := r.bodyParsed["model"]
+	if model, ok := changedModel.(string); ok && r.Model != model {
+		r.Model = model
+	}
+
 	return nil
 }
 
@@ -134,6 +139,11 @@ func (r *ChatCompletionsRequest) SetOverrideParams(params map[string]*structpb.V
 		if err != nil {
 			return err
 		}
+	}
+
+	changedModel := r.bodyParsed["model"]
+	if model, ok := changedModel.(string); ok && r.Model != model {
+		r.Model = model
 	}
 
 	return nil

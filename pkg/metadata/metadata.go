@@ -3,6 +3,7 @@ package metadata
 import (
 	"context"
 	"net/http"
+	"time"
 
 	v1alpha12 "knoway.dev/api/service/v1alpha1"
 )
@@ -17,6 +18,12 @@ type RequestMetadata struct {
 
 	StatusCode   int
 	ErrorMessage string
+
+	RequestAt                 time.Time
+	ResponseAt                time.Time
+	UpstreamRequestAt         time.Time
+	UpstreamResponseAt        time.Time
+	UpstreamFirstValidChunkAt time.Time
 }
 
 // RequestMetadataFromCtx retrieves RequestMetadata from context

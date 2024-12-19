@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/types/sse"
@@ -26,6 +27,7 @@ type ChatCompletionStreamChunk struct {
 	isEmpty bool
 	isDone  bool
 	isUsage bool
+	isFirst bool
 }
 
 func NewChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse, bs []byte) (*ChatCompletionStreamChunk, error) {
@@ -40,6 +42,7 @@ func NewChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse, bs [
 
 	resp.response = streamResp
 	resp.Model = model
+	resp.isFirst = streamResp.IsFirst()
 
 	if streamResp.GetModel() == "" {
 		err = streamResp.SetModel(model)
@@ -56,6 +59,7 @@ func NewEmptyChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse)
 
 	resp.isEmpty = true
 	resp.response = streamResp
+	resp.isFirst = streamResp.IsFirst()
 
 	return resp
 }
@@ -79,6 +83,7 @@ func NewUsageChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse,
 	resp.isUsage = true
 	resp.response = streamResp
 	resp.Model = model
+	resp.isFirst = streamResp.IsFirst()
 
 	if streamResp.GetModel() == "" {
 		err = streamResp.SetModel(model)
@@ -97,6 +102,10 @@ func NewDoneChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse) 
 	resp.response = streamResp
 
 	return resp
+}
+
+func (r *ChatCompletionStreamChunk) IsFirst() bool {
+	return r.isFirst
 }
 
 func (r *ChatCompletionStreamChunk) IsEmpty() bool {
@@ -188,6 +197,10 @@ type ChatCompletionStreamResponse struct {
 	hasErrorPrefix   bool
 	errorEventBuffer *bytes.Buffer
 	isDone           bool
+	chunkNum         int
+
+	// Mutex for locking
+	mu sync.Mutex
 }
 
 func NewChatCompletionStreamResponse(request object.LLMRequest, response *http.Response, reader *bufio.Reader) (*ChatCompletionStreamResponse, error) {
@@ -206,7 +219,17 @@ func (r *ChatCompletionStreamResponse) MarshalJSON() ([]byte, error) {
 	return json.Marshal(nil)
 }
 
+func (r *ChatCompletionStreamResponse) IsFirst() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	return r.chunkNum == 1
+}
+
 func (r *ChatCompletionStreamResponse) IsEOF() bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
 	return r.isDone
 }
 
@@ -219,7 +242,9 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 
 	noSpaceLine := bytes.TrimSpace(line)
 	if bytes.HasPrefix(noSpaceLine, errorPrefix) {
+		r.mu.Lock()
 		r.hasErrorPrefix = true
+		r.mu.Unlock()
 	}
 
 	if !bytes.HasPrefix(noSpaceLine, headerData) || r.hasErrorPrefix {
@@ -236,18 +261,28 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		return NewEmptyChatCompletionStreamChunk(r), nil
 	}
 
+	r.mu.Lock()
+	r.chunkNum++
+	r.mu.Unlock()
+
 	noPrefixLine := bytes.TrimPrefix(noSpaceLine, headerData)
 	if string(noPrefixLine) == "[DONE]" {
+		r.mu.Lock()
 		r.isDone = true
+		r.mu.Unlock()
+
 		return NewDoneChatCompletionStreamChunk(r), io.EOF
 	}
+
 	if bytes.Contains(noPrefixLine, usageCompletionTokens) {
 		chunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine)
 		if err != nil {
 			return chunk, err
 		}
 
+		r.mu.Lock()
 		r.Usage = chunk.Usage
+		r.mu.Unlock()
 
 		return chunk, nil
 	}

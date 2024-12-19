@@ -6,8 +6,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"time"
 
 	goopenai "github.com/sashabaranov/go-openai"
+
+	"knoway.dev/pkg/metadata"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/clusters"
@@ -95,6 +98,12 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 		if chunk.IsEmpty() {
 			continue
 		}
+		if chunk.IsDone() {
+			metadata.RequestMetadataFromCtx(ctx).UpstreamResponseAt = time.Now()
+		}
+		if chunk.IsFirst() {
+			metadata.RequestMetadataFromCtx(ctx).UpstreamFirstValidChunkAt = time.Now()
+		}
 
 		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
 			fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, chunk)
@@ -143,13 +152,20 @@ func (l *OpenAIChatListener) findCluster(ctx context.Context, llmRequest object.
 	return c, true
 }
 
-func (l *OpenAIChatListener) clusterDoCompletionsRequest(c clusters.Cluster, writer http.ResponseWriter, request *http.Request, llmRequest object.LLMRequest) (object.LLMResponse, error) {
-	resp, err := c.DoUpstreamRequest(request.Context(), llmRequest)
+func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c clusters.Cluster, writer http.ResponseWriter, request *http.Request, llmRequest object.LLMRequest) (object.LLMResponse, error) {
+	metadata.RequestMetadataFromCtx(request.Context()).RequestModel = llmRequest.GetModel()
+
+	resp, err := c.DoUpstreamRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, openai.NewErrorInternalError().WithCause(err)
 	}
 
+	rp := metadata.RequestMetadataFromCtx(request.Context())
+	rp.ResponseModel = llmRequest.GetModel()
+
 	if resp.GetError() != nil || !resp.IsStream() {
+		rp.UpstreamResponseAt = time.Now()
+
 		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
 		if err != nil {
 			return nil, openai.NewErrorInternalError().WithCause(err)

@@ -32,29 +32,37 @@ func WithLog(pickRequestHeaders []string, pickUpstreamResponseHeaders []string) 
 				slog.String("method", request.Method),
 				slog.String("path", request.URL.Path),
 				slog.String("protocol", request.Proto),
-				slog.String("referer", request.Referer()),
 				slog.String("user_agent", request.UserAgent()),
+				slog.String("referer", request.Referer()),
 				slog.Any("headers", lo.PickByKeys(request.Header, pickRequestHeaders)),
 				slog.Any("query", request.URL.Query()),
 				slog.Int64("latency", rMeta.RespondAt.Sub(rMeta.RequestAt).Milliseconds()),
 				slog.Duration("latency_human", rMeta.RespondAt.Sub(rMeta.RequestAt)),
-				slog.String("auth_info_api_key_id", ""),
-				slog.String("auth_info_user_id", ""),
+				slog.String("auth_info_api_key_id", rMeta.AuthInfo.GetApiKeyId()),
+				slog.String("auth_info_user_id", rMeta.AuthInfo.GetUserId()),
 				slog.String("request_model", rMeta.RequestModel),
 				slog.String("response_model", rMeta.ResponseModel),
 				slog.String("upstream_provider", rMeta.UpstreamProvider),
 				slog.String("upstream_request_model", rMeta.UpstreamRequestModel),
-				slog.Time("upstream_request_at", rMeta.UpstreamRequestAt),
 				slog.String("upstream_response_model", rMeta.UpstreamResponseModel),
 				slog.Int("upstream_response_status_code", rMeta.UpstreamResponseStatusCode),
 				slog.Any("upstream_response_header", lo.PickByKeys(rMeta.UpstreamResponseHeader.OrElse(http.Header{}), pickUpstreamResponseHeaders)),
-				slog.Int64("upstream_latency", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt).Milliseconds()),
-				slog.Duration("upstream_latency_human", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt)),
 				slog.Uint64("llm_usage_prompt_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetPromptTokens()),
 				slog.Uint64("llm_usage_completion_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetCompletionTokens()),
 				slog.Uint64("llm_usage_total_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetTotalTokens()),
-				slog.Int64("upstream_first_chunk_latency", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt).Milliseconds()),
-				slog.Duration("upstream_first_chunk_latency_human", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt)),
+			}
+
+			if !rMeta.UpstreamRespondAt.IsZero() {
+				attrs = append(attrs,
+					slog.Int64("upstream_latency", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt).Milliseconds()),
+					slog.Duration("upstream_latency_human", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt)),
+				)
+			}
+			if !rMeta.UpstreamFirstValidChunkAt.IsZero() {
+				attrs = append(attrs,
+					slog.Int64("upstream_first_chunk_latency", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt).Milliseconds()),
+					slog.Duration("upstream_first_chunk_latency_human", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt)),
+				)
 			}
 
 			slog.Info("", attrs...)

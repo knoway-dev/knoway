@@ -153,9 +153,6 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 	if !lo.IsNil(llmResp.GetError()) {
 		rMeta.UpstreamResponseErrorMessage = llmResp.GetError().Error()
 	}
-	if !lo.IsNil(llmResp.GetUsage()) {
-		rMeta.LLMUpstreamUsage = mo.Some(llmResp.GetUsage())
-	}
 
 	return llmResp, nil
 }

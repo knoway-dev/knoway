@@ -175,6 +175,10 @@ func (r *ChatCompletionStreamChunk) ToServerSentEvent() (*sse.Event, error) {
 	}, nil
 }
 
+func (r *ChatCompletionStreamChunk) GetUsage() object.LLMUsage {
+	return r.Usage
+}
+
 // https://github.com/sashabaranov/go-openai/blob/74ed75f291f8f55d1104a541090d46c021169115/stream_reader.go#L13C1-L16C2
 var (
 	headerData            = []byte("data: ")

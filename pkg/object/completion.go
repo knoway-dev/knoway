@@ -86,6 +86,7 @@ type LLMChunkResponse interface {
 
 	GetModel() string
 	SetModel(modelName string) error
+	GetUsage() LLMUsage
 
 	ToServerSentEvent() (*sse.Event, error)
 }

@@ -8,9 +8,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/samber/lo"
+	"github.com/samber/mo"
 	goopenai "github.com/sashabaranov/go-openai"
 
 	"knoway.dev/pkg/metadata"
+	"knoway.dev/pkg/utils"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/clusters"
@@ -19,7 +22,6 @@ import (
 	registryroute "knoway.dev/pkg/registry/route"
 	"knoway.dev/pkg/route"
 	"knoway.dev/pkg/types/openai"
-	"knoway.dev/pkg/utils"
 )
 
 func ClustersToOpenAIModels(clusters []*v1alpha4.Cluster) []goopenai.Model {
@@ -47,20 +49,17 @@ func ClusterToOpenAIModel(cluster *v1alpha4.Cluster) goopenai.Model {
 }
 
 var (
-	SkipResponse = errors.New("skip writing response") //nolint:errname,stylecheck
+	SkipStreamResponse = errors.New("skip writing stream response") //nolint:errname,stylecheck
 )
 
-func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request object.LLMRequest, resp object.LLMResponse, writer http.ResponseWriter) error {
-	streamResp, ok := resp.(object.LLMStreamResponse)
-	if !ok {
-		return openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
-	}
+func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request object.LLMRequest, streamResp object.LLMStreamResponse, writer http.ResponseWriter) {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
 
 	marshalToWriter := func(chunk object.LLMChunkResponse) error {
 		event, err := chunk.ToServerSentEvent()
 		if err != nil {
 			slog.Error("failed to convert chunk body to server sent event payload", "error", err)
-			return openai.NewErrorInternalError().WithCause(err)
+			return err
 		}
 
 		err = event.MarshalTo(writer)
@@ -71,8 +70,6 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 
 		return nil
 	}
-
-	utils.WriteEventStreamHeadersForHTTP(writer)
 
 	for {
 		chunk, err := streamResp.NextChunk()
@@ -85,24 +82,27 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 					}
 				}
 				if err = marshalToWriter(chunk); err != nil {
-					// Ignore
-					return nil //nolint:nilerr
+					// Ignore, terminate stream reading
+					return
 				}
 
 				break
 			}
 
-			return openai.NewErrorInternalError().WithCause(err)
+			slog.Error("failed to get next chunk from stream response", slog.Any("error", err))
+
+			return
 		}
 
 		if chunk.IsEmpty() {
 			continue
 		}
-		if chunk.IsDone() {
-			metadata.RequestMetadataFromCtx(ctx).UpstreamRespondAt = time.Now()
+		if chunk.IsUsage() && !lo.IsNil(chunk.GetUsage()) {
+			rMeta.LLMUpstreamUsage = mo.Some(chunk.GetUsage())
 		}
 		if chunk.IsFirst() {
-			metadata.RequestMetadataFromCtx(ctx).UpstreamFirstValidChunkAt = time.Now()
+			rMeta.UpstreamFirstValidChunkAt = time.Now()
+			rMeta.UpstreamResponseModel = chunk.GetModel()
 		}
 
 		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
@@ -112,11 +112,10 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 			}
 		}
 		if err = marshalToWriter(chunk); err != nil {
-			return err
+			// Ignore, terminate stream reading
+			return
 		}
 	}
-
-	return nil
 }
 
 func (l *OpenAIChatListener) findRoute(ctx context.Context, llmRequest object.LLMRequest) (route.Route, string) {
@@ -153,9 +152,16 @@ func (l *OpenAIChatListener) findCluster(ctx context.Context, llmRequest object.
 }
 
 func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c clusters.Cluster, writer http.ResponseWriter, request *http.Request, llmRequest object.LLMRequest) (object.LLMResponse, error) {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+
 	resp, err := c.DoUpstreamRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, openai.NewErrorInternalError().WithCause(err)
+	}
+
+	// For non-streaming responses, usage should be set here
+	if !resp.IsStream() && !lo.IsNil(resp.GetUsage()) {
+		rMeta.LLMUpstreamUsage = mo.Some(resp.GetUsage())
 	}
 
 	if resp.GetError() != nil || !resp.IsStream() {
@@ -171,16 +177,31 @@ func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c 
 		return resp, nil
 	}
 
-	err = l.pipeCompletionsStream(request.Context(), llmRequest, resp, writer)
-	if err != nil {
-		return resp, err
+	streamResp, ok := resp.(object.LLMStreamResponse)
+	if !ok {
+		return resp, openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
+	}
+
+	utils.WriteEventStreamHeadersForHTTP(writer)
+	// NOTICE: from now on, there should not have any explicit error get returned
+	// since the status code will be written by above call. If there is any error
+	// it should be written as a chunk in the stream response.
+	l.pipeCompletionsStream(request.Context(), llmRequest, streamResp, writer)
+
+	// For streaming responses, usage should be set after the stream is done
+	if !lo.IsNil(resp.GetUsage()) {
+		rMeta.LLMUpstreamUsage = mo.Some(resp.GetUsage())
 	}
 
 	// REVIEW: better way to compose the in and out actions?
 	err = c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
 	if err != nil {
-		return resp, openai.NewErrorInternalError().WithCause(err)
+		slog.Error("failed to call DoUpstreamResponseComplete", slog.Any("error", err))
+
+		// Ignore, we shouldn't return any error here. Since the stream is already written
+		// to the client, if any error occurred here, it should be logged and ignored.
+		return resp, SkipStreamResponse
 	}
 
-	return resp, SkipResponse
+	return resp, SkipStreamResponse
 }

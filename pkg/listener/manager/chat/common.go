@@ -55,7 +55,16 @@ var (
 func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request object.LLMRequest, streamResp object.LLMStreamResponse, writer http.ResponseWriter) {
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
 
-	marshalToWriter := func(chunk object.LLMChunkResponse) error {
+	handleChunk := func(chunk object.LLMChunkResponse) error {
+		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
+			fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, chunk)
+			if fResult.IsFailed() {
+				// REVIEW: ignore? Or should fResult be returned?
+				// Related topics: moderation, censorship, or filter keywords from the response
+				slog.Error("error occurred during invoking of OnCompletionStreamResponse filters", "error", fResult.Error)
+			}
+		}
+
 		event, err := chunk.ToServerSentEvent()
 		if err != nil {
 			slog.Error("failed to convert chunk body to server sent event payload", "error", err)
@@ -74,24 +83,19 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 	for {
 		chunk, err := streamResp.NextChunk()
 		if err != nil {
-			if errors.Is(err, io.EOF) {
-				for _, f := range l.filters.OnCompletionStreamResponseFilters() {
-					fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, chunk)
-					if fResult.IsFailed() {
-						slog.Error("error occurred during invoking of OnCompletionStreamResponse filters", "error", fResult.Error)
-					}
-				}
-				if err = marshalToWriter(chunk); err != nil {
-					// Ignore, terminate stream reading
-					return
-				}
-
-				break
+			if !errors.Is(err, io.EOF) {
+				slog.Error("failed to get next chunk from stream response", slog.Any("error", err))
+				return
 			}
 
-			slog.Error("failed to get next chunk from stream response", slog.Any("error", err))
+			// EOF, send last chunk
+			if err := handleChunk(chunk); err != nil {
+				// Ignore, terminate stream reading
+				return
+			}
 
-			return
+			// Then terminate the stream
+			break
 		}
 
 		if chunk.IsEmpty() {
@@ -105,13 +109,7 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 			rMeta.UpstreamResponseModel = chunk.GetModel()
 		}
 
-		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
-			fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, chunk)
-			if fResult.IsFailed() {
-				slog.Error("error occurred during invoking of OnCompletionStreamResponse filters", "error", fResult.Error)
-			}
-		}
-		if err = marshalToWriter(chunk); err != nil {
+		if err := handleChunk(chunk); err != nil {
 			// Ignore, terminate stream reading
 			return
 		}

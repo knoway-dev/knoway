@@ -234,9 +234,6 @@ func (r *ChatCompletionStreamResponse) IsEOF() bool {
 }
 
 func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	line, err := r.reader.ReadBytes('\n')
 	if err != nil || r.hasErrorPrefix {
 		// TODO: handle error
@@ -245,7 +242,9 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 
 	noSpaceLine := bytes.TrimSpace(line)
 	if bytes.HasPrefix(noSpaceLine, errorPrefix) {
+		r.mu.Lock()
 		r.hasErrorPrefix = true
+		r.mu.Unlock()
 	}
 
 	if !bytes.HasPrefix(noSpaceLine, headerData) || r.hasErrorPrefix {
@@ -262,21 +261,28 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 		return NewEmptyChatCompletionStreamChunk(r), nil
 	}
 
-	// count chunk valid
+	r.mu.Lock()
 	r.chunkNum++
+	r.mu.Unlock()
 
 	noPrefixLine := bytes.TrimPrefix(noSpaceLine, headerData)
 	if string(noPrefixLine) == "[DONE]" {
+		r.mu.Lock()
 		r.isDone = true
+		r.mu.Unlock()
+
 		return NewDoneChatCompletionStreamChunk(r), io.EOF
 	}
+
 	if bytes.Contains(noPrefixLine, usageCompletionTokens) {
 		chunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine)
 		if err != nil {
 			return chunk, err
 		}
 
+		r.mu.Lock()
 		r.Usage = chunk.Usage
+		r.mu.Unlock()
 
 		return chunk, nil
 	}

@@ -11,9 +11,12 @@ message ListenerFilter {
     google.protobuf.Any config = 2;
 }
 
+message Log {
+    bool enable = 1;
+}
+
 message ChatCompletionListener {
-    string name                           = 1;
-    repeated ListenerFilter filters       = 2;
-    repeated string pick_request_headers  = 3;
-    repeated string pick_response_headers = 4;
+    string name                     = 1;
+    repeated ListenerFilter filters = 2;
+    Log access_log                  = 3;
 }

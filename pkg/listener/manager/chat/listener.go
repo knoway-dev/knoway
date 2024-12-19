@@ -59,7 +59,7 @@ func (l *OpenAIChatListener) RegisterRoutes(mux *mux.Router) error {
 	middlewares := listener.WithMiddlewares(
 		listener.WithCancellable(l.cancellable),
 		listener.WithInitMetadata(),
-		listener.WithLog(l.cfg.GetPickRequestHeaders(), l.cfg.GetPickResponseHeaders()),
+		listener.WithAccessLog(l.cfg.GetAccessLog().GetEnable()),
 		listener.WithRequestTimer(),
 		listener.WithOptions(),
 		listener.WithResponseHandler(ResponseHandler()),

@@ -23,9 +23,12 @@ type StatsServer struct {
 	Timeout int64  `yaml:"timeout" json:"timeout,omitempty" protobuf:"varint,2,opt,name=timeout,proto3"` // Unit in seconds
 }
 
+type LogConfig struct {
+	Enable bool `yaml:"enable" json:"enable,omitempty"`
+}
+
 type Log struct {
-	PickRequestHeaders  []string `yaml:"pick_request_headers,omitempty" json:"pick_request_headers,omitempty"`
-	PickResponseHeaders []string `yaml:"pick_response_headers,omitempty" json:"pick_response_headers,omitempty"`
+	AccessLog *LogConfig `yaml:"access_log" json:"access_log,omitempty"`
 }
 
 type GatewayConfig struct {

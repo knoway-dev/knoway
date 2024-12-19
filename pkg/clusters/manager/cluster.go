@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/samber/mo"
 	"google.golang.org/protobuf/proto"
-
-	"knoway.dev/pkg/metadata"
 
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/filters"
+	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
 	registryfilters "knoway.dev/pkg/registry/config"
 )
@@ -79,6 +79,8 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 }
 
 func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, llmReq object.LLMRequest) (*http.Request, error) {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+
 	var err error
 	var req *http.Request
 
@@ -86,6 +88,8 @@ func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluste
 	if err != nil {
 		return nil, err
 	}
+
+	rMeta.UpstreamRequestModel = llmReq.GetModel()
 
 	req, err = f.ForEachUpstreamRequestMarshaller(ctx, cluster, llmReq, req)
 	if err != nil {
@@ -96,29 +100,36 @@ func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluste
 }
 
 func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+
 	var err error
-	var resp object.LLMResponse
+	var llmResp object.LLMResponse
 
-	resp, err = f.ForEachResponseUnmarshaller(ctx, req, rawResp, reader, resp)
+	llmResp, err = f.ForEachResponseUnmarshaller(ctx, req, rawResp, reader, llmResp)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err = f.ForEachResponseModifier(ctx, cluster, req, resp)
+	rMeta.UpstreamResponseModel = llmResp.GetModel()
+
+	llmResp, err = f.ForEachResponseModifier(ctx, cluster, req, llmResp)
 	if err != nil {
 		return nil, err
 	}
 
-	return resp, nil
+	return llmResp, nil
 }
 
 func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+	rMeta.UpstreamProvider = m.cluster.GetProvider()
+
 	req, err := composeLLMRequestBody(ctx, m.filters, m.cluster, llmReq)
 	if err != nil {
 		return nil, err
 	}
 
-	metadata.RequestMetadataFromCtx(ctx).UpstreamRequestAt = time.Now()
+	rMeta.UpstreamRequestAt = time.Now()
 
 	// TODO: lb policy
 	// TODO: body close
@@ -127,7 +138,26 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 		return nil, err
 	}
 
-	return composeLLMResponseFromBody(ctx, m.filters, m.cluster, llmReq, rawResp, buffer)
+	// err != nil means the connection is not possible to establish
+	// or find it's way to the destination, or upstream timeout
+	rMeta.UpstreamRespondAt = time.Now()
+
+	llmResp, err := composeLLMResponseFromBody(ctx, m.filters, m.cluster, llmReq, rawResp, buffer)
+	if err != nil {
+		return nil, err
+	}
+
+	rMeta.UpstreamResponseStatusCode = rawResp.StatusCode
+	rMeta.UpstreamResponseHeader = mo.Some(rawResp.Header)
+
+	if !lo.IsNil(llmResp.GetError()) {
+		rMeta.UpstreamResponseErrorMessage = llmResp.GetError().Error()
+	}
+	if !lo.IsNil(llmResp.GetUsage()) {
+		rMeta.LLMUpstreamUsage = mo.Some(llmResp.GetUsage())
+	}
+
+	return llmResp, nil
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {

@@ -66,7 +66,7 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 }
 
 var _ filters.RequestFilter = (*AuthFilter)(nil)
-var _ filters.OnRequestPreflightFilter = (*AuthFilter)(nil)
+var _ filters.OnRequestPreFilter = (*AuthFilter)(nil)
 var _ filters.OnCompletionRequestFilter = (*AuthFilter)(nil)
 
 type AuthFilter struct {
@@ -77,7 +77,7 @@ type AuthFilter struct {
 	authClient service.AuthServiceClient
 }
 
-func (a *AuthFilter) OnRequestPreflight(ctx context.Context, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+func (a *AuthFilter) OnRequestPre(ctx context.Context, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
 	slog.Debug("starting auth filter OnCompletionRequest")
 
 	// parse apikey
@@ -119,6 +119,7 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 	if rMeta.AuthInfo == nil {
 		return filters.NewFailed(errors.New("missing auth info in context"))
 	}
+
 	authInfo := rMeta.AuthInfo
 
 	accessModel := request.GetModel()

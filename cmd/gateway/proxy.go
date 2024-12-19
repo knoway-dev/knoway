@@ -25,8 +25,10 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 	}
 
 	baseListenConfig := &v1alpha1.ChatCompletionListener{
-		Name:    "openai",
-		Filters: []*v1alpha1.ListenerFilter{},
+		Name:                "openai",
+		Filters:             []*v1alpha1.ListenerFilter{},
+		PickRequestHeaders:  cfg.Log.PickRequestHeaders,
+		PickResponseHeaders: cfg.Log.PickResponseHeaders,
 	}
 
 	if cfg.AuthServer.URL != "" {

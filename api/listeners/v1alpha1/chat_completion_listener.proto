@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-option go_package = "knoway.dev/api/listeners/v1alpha1";
-
 package knoway.listeners.v1alpha1;
 
 import "google/protobuf/any.proto";
+
+option go_package = "knoway.dev/api/listeners/v1alpha1";
 
 message ListenerFilter {
     string name                = 1;
@@ -12,6 +12,8 @@ message ListenerFilter {
 }
 
 message ChatCompletionListener {
-    string name                     = 1;
-    repeated ListenerFilter filters = 5;
+    string name                           = 1;
+    repeated ListenerFilter filters       = 2;
+    repeated string pick_request_headers  = 3;
+    repeated string pick_response_headers = 4;
 }

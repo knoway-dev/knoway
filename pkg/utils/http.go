@@ -30,6 +30,7 @@ func WriteEventStreamHeadersForHTTP(writer http.ResponseWriter) {
 	writer.Header().Set("Cache-Control", "no-cache")
 	writer.Header().Set("Connection", "keep-alive")
 	writer.Header().Set("Transfer-Encoding", "chunked")
+	writer.WriteHeader(http.StatusOK)
 
 	SafeFlush(writer)
 }

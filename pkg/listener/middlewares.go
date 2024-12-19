@@ -18,7 +18,7 @@ import (
 	"knoway.dev/pkg/utils"
 )
 
-func WithLog() Middleware {
+func WithLog(pickRequestHeaders []string, pickUpstreamResponseHeaders []string) Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			resp, err := next(writer, request)
@@ -34,20 +34,30 @@ func WithLog() Middleware {
 				slog.String("protocol", request.Proto),
 				slog.String("referer", request.Referer()),
 				slog.String("user_agent", request.UserAgent()),
-				slog.Int64("latency", time.Since(rMeta.RequestAt).Milliseconds()),
-				slog.Duration("latency_human", time.Since(rMeta.RequestAt)),
-				slog.Any("headers", lo.OmitByKeys(request.Header, []string{"Authorization"})),
+				slog.Any("headers", lo.PickByKeys(request.Header, pickRequestHeaders)),
 				slog.Any("query", request.URL.Query()),
-				slog.Any("cookies", lo.Map(request.Cookies(), func(item *http.Cookie, index int) string {
-					return item.String()
-				})),
+				slog.Int64("latency", rMeta.RespondAt.Sub(rMeta.RequestAt).Milliseconds()),
+				slog.Duration("latency_human", rMeta.RespondAt.Sub(rMeta.RequestAt)),
+				slog.String("auth_info_api_key_id", ""),
+				slog.String("auth_info_user_id", ""),
+				slog.String("request_model", rMeta.RequestModel),
+				slog.String("response_model", rMeta.ResponseModel),
+				slog.String("upstream_provider", rMeta.UpstreamProvider),
+				slog.String("upstream_request_model", rMeta.UpstreamRequestModel),
+				slog.Time("upstream_request_at", rMeta.UpstreamRequestAt),
+				slog.String("upstream_response_model", rMeta.UpstreamResponseModel),
+				slog.Int("upstream_response_status_code", rMeta.UpstreamResponseStatusCode),
+				slog.Any("upstream_response_header", lo.PickByKeys(rMeta.UpstreamResponseHeader.OrElse(http.Header{}), pickUpstreamResponseHeaders)),
+				slog.Int64("upstream_latency", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt).Milliseconds()),
+				slog.Duration("upstream_latency_human", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt)),
+				slog.Uint64("llm_usage_prompt_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetPromptTokens()),
+				slog.Uint64("llm_usage_completion_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetCompletionTokens()),
+				slog.Uint64("llm_usage_total_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetTotalTokens()),
+				slog.Int64("upstream_first_chunk_latency", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt).Milliseconds()),
+				slog.Duration("upstream_first_chunk_latency_human", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt)),
 			}
 
-			if rMeta.ErrorMessage != "" {
-				attrs = append(attrs, slog.String("error", rMeta.ErrorMessage))
-			}
-
-			slog.Info("request handled", attrs...)
+			slog.Info("", attrs...)
 
 			return resp, err
 		}
@@ -75,7 +85,7 @@ func WithOptions() Middleware {
 	}
 }
 
-func WithRecover() Middleware {
+func WithRecoverWithError() Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			defer func() {
@@ -173,7 +183,7 @@ func (l *CancellableRequestMap) CancelAllAfterWithContext(ctx context.Context, t
 	})
 }
 
-func WithCancellableInterceptor(cancellable *CancellableRequestMap) Middleware {
+func WithCancellable(cancellable *CancellableRequestMap) Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			ctx, cancel := context.WithCancel(request.Context())
@@ -185,7 +195,7 @@ func WithCancellableInterceptor(cancellable *CancellableRequestMap) Middleware {
 	}
 }
 
-func WithRejectAfterDrainedInterceptor(d Drainable) Middleware {
+func WithRejectAfterDrainedWithError(d Drainable) Middleware {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			if d.HasDrained() {
@@ -202,7 +212,7 @@ func WithRequestTimer() Middleware {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			metadata.RequestMetadataFromCtx(request.Context()).RequestAt = time.Now()
 			resp, err := next(writer, request)
-			metadata.RequestMetadataFromCtx(request.Context()).ResponseAt = time.Now()
+			metadata.RequestMetadataFromCtx(request.Context()).RespondAt = time.Now()
 
 			return resp, err
 		}

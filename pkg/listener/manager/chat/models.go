@@ -14,13 +14,22 @@ import (
 	"knoway.dev/pkg/registry/cluster"
 )
 
-func (l *OpenAIChatListener) onListModelsRequestWithError(writer http.ResponseWriter, request *http.Request) (any, error) {
-	for _, f := range l.filters.OnRequestPreflightFilters() {
-		fResult := f.OnRequestPreflight(request.Context(), request)
+func (l *OpenAIChatListener) listModels(writer http.ResponseWriter, request *http.Request) (any, error) {
+	for _, f := range l.filters.OnRequestPreFilters() {
+		fResult := f.OnRequestPre(request.Context(), request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error
 		}
 	}
+
+	var resp any
+	var err error
+
+	defer func() {
+		for _, f := range l.filters.OnResponsePostFilters() {
+			f.OnResponsePost(request.Context(), request, resp, err)
+		}
+	}()
 
 	clusters := cluster.ListModels()
 

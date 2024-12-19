@@ -313,10 +313,14 @@ func (r *ChatCompletionStreamResponse) GetUsage() object.LLMUsage {
 	return r.Usage
 }
 
-func (r *ChatCompletionStreamResponse) GetError() error {
+func (r *ChatCompletionStreamResponse) GetError() object.LLMError {
 	if r.Error != nil {
 		return r.Error
 	}
 
 	return nil
+}
+
+func (r *ChatCompletionStreamResponse) GetResponse() *http.Response {
+	return r.outgoingResponse
 }

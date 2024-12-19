@@ -5,8 +5,28 @@ controller:
 
 gateway:
   auth_server:
-    url: '10.33.2.23:31960'
+    url: ''
     timeout: 0
   stats_server:
-    url: '10.33.2.23:31960'
+    url: ''
     timeout: 0
+  log:
+    pick_request_headers:
+      - 'Accept-Encoding'
+      - 'Accept-Language'
+      - 'Accept'
+      - 'Cache-Control'
+      - 'Content-Type'
+      - 'Content-Length'
+      - 'Content-Encoding'
+      - 'Connection'
+      - 'Host'
+      - 'Origin'
+      - 'Transfer-Encoding'
+    pick_response_headers:
+      - 'Cache-Control'
+      - 'Content-Type'
+      - 'Content-Length'
+      - 'Content-Encoding'
+      - 'Connection'
+      - 'Transfer-Encoding'

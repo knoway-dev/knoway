@@ -50,10 +50,10 @@ type IsRequestFilter struct{}
 
 func (IsRequestFilter) isRequestFilter() {}
 
-type OnRequestPreflightFilter interface {
+type OnRequestPreFilter interface {
 	RequestFilter
 
-	OnRequestPreflight(ctx context.Context, sourceHTTPRequest *http.Request) RequestFilterResult
+	OnRequestPre(ctx context.Context, sourceHTTPRequest *http.Request) RequestFilterResult
 }
 
 type OnCompletionRequestFilter interface {
@@ -74,10 +74,16 @@ type OnCompletionStreamResponseFilter interface {
 	OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, responseChunk object.LLMChunkResponse) RequestFilterResult
 }
 
+type OnResponsePostFilter interface {
+	RequestFilter
+
+	OnResponsePost(ctx context.Context, request *http.Request, response any, err error)
+}
+
 type RequestFilters []RequestFilter
 
-func (r RequestFilters) OnRequestPreflightFilters() []OnRequestPreflightFilter {
-	return utils.TypeAssertFrom[RequestFilter, OnRequestPreflightFilter](r)
+func (r RequestFilters) OnRequestPreFilters() []OnRequestPreFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnRequestPreFilter](r)
 }
 
 func (r RequestFilters) OnCompletionRequestFilters() []OnCompletionRequestFilter {
@@ -90,4 +96,8 @@ func (r RequestFilters) OnCompletionResponseFilters() []OnCompletionResponseFilt
 
 func (r RequestFilters) OnCompletionStreamResponseFilters() []OnCompletionStreamResponseFilter {
 	return utils.TypeAssertFrom[RequestFilter, OnCompletionStreamResponseFilter](r)
+}
+
+func (r RequestFilters) OnResponsePostFilters() []OnResponsePostFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnResponsePostFilter](r)
 }

@@ -197,10 +197,14 @@ func (r *ChatCompletionsResponse) GetUsage() object.LLMUsage {
 	return r.Usage
 }
 
-func (r *ChatCompletionsResponse) GetError() error {
+func (r *ChatCompletionsResponse) GetError() object.LLMError {
 	if r.Error != nil {
 		return r.Error
 	}
 
 	return nil
+}
+
+func (r *ChatCompletionsResponse) GetResponse() *http.Response {
+	return r.outgoingResponse
 }

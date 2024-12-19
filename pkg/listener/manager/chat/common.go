@@ -56,8 +56,6 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 		return openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
 	}
 
-	utils.WriteEventStreamHeadersForHTTP(writer)
-
 	marshalToWriter := func(chunk object.LLMChunkResponse) error {
 		event, err := chunk.ToServerSentEvent()
 		if err != nil {
@@ -73,6 +71,8 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 
 		return nil
 	}
+
+	utils.WriteEventStreamHeadersForHTTP(writer)
 
 	for {
 		chunk, err := streamResp.NextChunk()
@@ -99,7 +99,7 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 			continue
 		}
 		if chunk.IsDone() {
-			metadata.RequestMetadataFromCtx(ctx).UpstreamResponseAt = time.Now()
+			metadata.RequestMetadataFromCtx(ctx).UpstreamRespondAt = time.Now()
 		}
 		if chunk.IsFirst() {
 			metadata.RequestMetadataFromCtx(ctx).UpstreamFirstValidChunkAt = time.Now()
@@ -153,26 +153,19 @@ func (l *OpenAIChatListener) findCluster(ctx context.Context, llmRequest object.
 }
 
 func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c clusters.Cluster, writer http.ResponseWriter, request *http.Request, llmRequest object.LLMRequest) (object.LLMResponse, error) {
-	metadata.RequestMetadataFromCtx(request.Context()).RequestModel = llmRequest.GetModel()
-
 	resp, err := c.DoUpstreamRequest(ctx, llmRequest)
 	if err != nil {
 		return nil, openai.NewErrorInternalError().WithCause(err)
 	}
 
-	rp := metadata.RequestMetadataFromCtx(request.Context())
-	rp.ResponseModel = llmRequest.GetModel()
-
 	if resp.GetError() != nil || !resp.IsStream() {
-		rp.UpstreamResponseAt = time.Now()
-
 		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
 		if err != nil {
-			return nil, openai.NewErrorInternalError().WithCause(err)
+			return resp, openai.NewErrorInternalError().WithCause(err)
 		}
 
 		if resp.GetError() != nil {
-			return nil, resp.GetError()
+			return resp, resp.GetError()
 		}
 
 		return resp, nil
@@ -180,14 +173,14 @@ func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c 
 
 	err = l.pipeCompletionsStream(request.Context(), llmRequest, resp, writer)
 	if err != nil {
-		return nil, err
+		return resp, err
 	}
 
 	// REVIEW: better way to compose the in and out actions?
 	err = c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
 	if err != nil {
-		return nil, openai.NewErrorInternalError().WithCause(err)
+		return resp, openai.NewErrorInternalError().WithCause(err)
 	}
 
-	return nil, SkipResponse
+	return resp, SkipResponse
 }

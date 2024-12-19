@@ -15,3 +15,6 @@ data:
       stats_server:
         url: {{ .Values.config.stats_server.url }}
         timeout: {{ .Values.config.stats_server.timeout }}
+      log:
+        pick_request_headers: {{- toYaml .Values.config.log.pick_request_headers | nindent 8 }}
+        pick_response_headers: {{- toYaml .Values.config.log.pick_response_headers | nindent 8 }}

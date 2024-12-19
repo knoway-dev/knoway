@@ -12,6 +12,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/nekomeowww/fo v1.4.0
 	github.com/samber/lo v1.47.0
+	github.com/samber/mo v1.13.0
 	github.com/sashabaranov/go-openai v1.35.7
 	github.com/stoewer/go-strcase v1.2.0
 	github.com/stretchr/testify v1.8.4

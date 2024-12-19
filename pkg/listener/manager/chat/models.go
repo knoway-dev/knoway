@@ -22,15 +22,6 @@ func (l *OpenAIChatListener) listModels(writer http.ResponseWriter, request *htt
 		}
 	}
 
-	var resp any
-	var err error
-
-	defer func() {
-		for _, f := range l.filters.OnResponsePostFilters() {
-			f.OnResponsePost(request.Context(), request, resp, err)
-		}
-	}()
-
 	clusters := cluster.ListModels()
 
 	// auth filters

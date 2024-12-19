@@ -2,9 +2,7 @@ package utils
 
 import (
 	"encoding/json"
-	"net"
 	"net/http"
-	"strings"
 )
 
 func SafeFlush(writer any) {
@@ -33,36 +31,4 @@ func WriteEventStreamHeadersForHTTP(writer http.ResponseWriter) {
 	writer.WriteHeader(http.StatusOK)
 
 	SafeFlush(writer)
-}
-
-const (
-	HeaderXForwardedFor = "X-Forwarded-For"
-	HeaderXRealIP       = "X-Real-Ip"
-)
-
-// Copied from https://github.com/labstack/echo/blob/3b017855b4d331002e2b8b28e903679b875ae3e9/context.go#L297
-func RealIPFromRequest(request *http.Request) string {
-	// Fall back to legacy behavior
-	if ip := request.Header.Get(HeaderXForwardedFor); ip != "" {
-		i := strings.IndexAny(ip, ",")
-		if i > 0 {
-			forwardedIP := strings.TrimSpace(ip[:i])
-			forwardedIP = strings.TrimPrefix(forwardedIP, "[")
-			forwardedIP = strings.TrimSuffix(forwardedIP, "]")
-
-			return forwardedIP
-		}
-
-		return ip
-	}
-	if ip := request.Header.Get(HeaderXRealIP); ip != "" {
-		ip = strings.TrimPrefix(ip, "[")
-		ip = strings.TrimSuffix(ip, "]")
-
-		return ip
-	}
-
-	ra, _, _ := net.SplitHostPort(request.RemoteAddr)
-
-	return ra
 }

@@ -23,13 +23,16 @@ func WithAccessLog(enable bool) Middleware {
 			resp, err := next(writer, request)
 
 			rMeta := metadata.RequestMetadataFromCtx(request.Context())
+
+			// TODO: make fields configurable
 			attrs := []any{
 				slog.String("method", request.Method),
 				slog.String("protocol", request.Proto),
 				slog.String("host", request.Host),
 				slog.String("uri", request.RequestURI),
-				slog.String("remote_ip", utils.RealIPFromRequest(request)),
-				slog.Duration("latency_human", rMeta.RespondAt.Sub(rMeta.RequestAt)),
+				slog.String("remote_address", request.RemoteAddr),
+				slog.String("x_forwarded_for", request.Header.Get("X-Forwarded-For")),
+				slog.Duration("response_duration", rMeta.RespondAt.Sub(rMeta.RequestAt)),
 				slog.String("auth_info_api_key_id", rMeta.AuthInfo.GetApiKeyId()),
 				slog.String("auth_info_user_id", rMeta.AuthInfo.GetUserId()),
 				slog.String("request_model", rMeta.RequestModel),
@@ -45,12 +48,12 @@ func WithAccessLog(enable bool) Middleware {
 
 			if !rMeta.UpstreamRespondAt.IsZero() {
 				attrs = append(attrs,
-					slog.Duration("upstream_latency_human", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt)),
+					slog.Duration("upstream_duration", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt)),
 				)
 			}
 			if !rMeta.UpstreamFirstValidChunkAt.IsZero() {
 				attrs = append(attrs,
-					slog.Duration("upstream_first_chunk_latency_human", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt)),
+					slog.Duration("upstream_first_chunk_duration", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt)),
 				)
 			}
 

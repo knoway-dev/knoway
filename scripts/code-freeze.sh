@@ -14,7 +14,7 @@ PURE_HOST=${GITLAB_HOST//https:\/\//}
 glab auth login -t ${GITLAB_CI_TOKEN} -h ${PURE_HOST}
 glab auth status
 
-minor_version=$(grep "MINOR_VERSION ?=" ${CUR_DIR}/../Makefile.core.mk | sed -r 's/MINOR_VERSION \?= v(.*)/\1/g' | xargs)
+minor_version=$(grep "MINOR_VERSION ?=" ${CUR_DIR}/../Makefile | sed -r 's/MINOR_VERSION \?= v(.*)/\1/g' | xargs)
 
 if [ -n "${NEXT_VERSION}" ] && ! echo ${NEXT_VERSION} | grep -E "^v\d+\.\d+$"; then
     echo "Invalid NEXT_VERSION: ${NEXT_VERSION}, require running on v*.* branch"
@@ -43,9 +43,9 @@ git checkout -b release-${minor_version}
 
 # change version
 if [ "$(uname)" = "Darwin" ]; then
-    sed -i "" "s/MINOR_VERSION ?=.*/MINOR_VERSION ?= ${NEXT_VERSION}/g" ${CUR_DIR}/../Makefile.core.mk
+    sed -i "" "s/MINOR_VERSION ?=.*/MINOR_VERSION ?= ${NEXT_VERSION}/g" ${CUR_DIR}/../Makefile
 else
-    sed -i "s/MINOR_VERSION ?=.*/MINOR_VERSION ?= ${NEXT_VERSION}/g" ${CUR_DIR}/../Makefile.core.mk
+    sed -i "s/MINOR_VERSION ?=.*/MINOR_VERSION ?= ${NEXT_VERSION}/g" ${CUR_DIR}/../Makefile
 fi
 
 # push release branch
@@ -56,7 +56,7 @@ glab label create --color="#ed9121" -n cherry-pick-release-${minor_version}
 
 git checkout ${CI_BUILD_REF_NAME}
 
-git add ${CUR_DIR}/../Makefile.core.mk
+git add ${CUR_DIR}/../Makefile
 git commit -m "Code freeze and bump MINOR_VERSION to ${NEXT_VERSION}"
 
 # push origin branch

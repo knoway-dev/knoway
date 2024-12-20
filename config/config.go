@@ -24,7 +24,7 @@ type StatsServer struct {
 }
 
 type LogConfig struct {
-	Enable bool `yaml:"enable" json:"enable,omitempty"`
+	Enabled bool `yaml:"enabled" json:"enabled,omitempty"`
 }
 
 type Log struct {

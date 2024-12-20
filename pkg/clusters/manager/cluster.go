@@ -86,7 +86,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 
 	llmReq, err = m.filters.ForEachRequestModifier(ctx, m.cluster, llmReq)
 	if err != nil {
-		return nil, err
+		return nil, object.LLMErrorOrInternalError(err)
 	}
 
 	rMeta.UpstreamRequestModel = llmReq.GetModel()
@@ -95,7 +95,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 
 	req, err = m.filters.ForEachUpstreamRequestMarshaller(ctx, m.cluster, llmReq, req)
 	if err != nil {
-		return nil, err
+		return nil, object.LLMErrorOrInternalError(err)
 	}
 
 	rMeta.UpstreamRequestAt = time.Now()
@@ -104,7 +104,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 	// TODO: body close
 	rawResp, buffer, err := doRequest(req) //nolint:bodyclose
 	if err != nil {
-		return nil, err
+		return nil, object.NewErrorBadGateway(err)
 	}
 
 	// err != nil means the connection is not possible to establish
@@ -115,14 +115,14 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 
 	llmResp, err = m.filters.ForEachResponseUnmarshaller(ctx, llmReq, rawResp, buffer, llmResp)
 	if err != nil {
-		return nil, err
+		return nil, object.LLMErrorOrInternalError(err)
 	}
 
 	rMeta.UpstreamResponseModel = llmResp.GetModel()
 
 	llmResp, err = m.filters.ForEachResponseModifier(ctx, m.cluster, llmReq, llmResp)
 	if err != nil {
-		return nil, err
+		return nil, object.LLMErrorOrInternalError(err)
 	}
 
 	rMeta.UpstreamResponseStatusCode = rawResp.StatusCode
@@ -136,7 +136,12 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {
-	return m.filters.ForEachResponseComplete(ctx, req, res)
+	err := m.filters.ForEachResponseComplete(ctx, req, res)
+	if err != nil {
+		return object.LLMErrorOrInternalError(err)
+	}
+
+	return nil
 }
 
 func doRequest(req *http.Request) (*http.Response, *bufio.Reader, error) {

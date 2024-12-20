@@ -341,6 +341,13 @@ func NewErrorInternalError() *ErrorResponse {
 	})
 }
 
+func NewErrorBadGateway() *ErrorResponse {
+	return NewErrorResponse(http.StatusBadGateway, Error{
+		Message: "bad gateway",
+		Type:    "upstream_error",
+	})
+}
+
 func NewErrorServiceUnavailable() *ErrorResponse {
 	return NewErrorResponse(http.StatusServiceUnavailable, Error{
 		Message: "service unavailable",
@@ -377,6 +384,12 @@ func NewErrorFromLLMError(err error) *ErrorResponse {
 		string(object.LLMErrorCodeMissingModel):       NewErrorMissingModel,
 		string(object.LLMErrorCodeServiceUnavailable): NewErrorServiceUnavailable,
 		string(object.LLMErrorCodeInternalError):      NewErrorInternalError,
+		string(object.LLMErrorCodeBadGateway): func() *ErrorResponse {
+			newError := NewErrorBadGateway()
+			newError.ErrorBody.Message = llmError.GetMessage()
+
+			return newError
+		},
 	}
 
 	errorConstructor, ok := m[llmError.GetCode()]

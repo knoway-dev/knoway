@@ -2,10 +2,12 @@ package object
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/samber/lo"
+	"knoway.dev/pkg/utils"
 )
 
 type LLMErrorCode string
@@ -18,6 +20,7 @@ const (
 	LLMErrorCodeMissingModel                 LLMErrorCode = "missing_model"
 	LLMErrorCodeServiceUnavailable           LLMErrorCode = "service_unavailable"
 	LLMErrorCodeInternalError                LLMErrorCode = "internal_error"
+	LLMErrorCodeBadGateway                   LLMErrorCode = "bad_gateway"
 )
 
 var _ LLMError = (*BaseLLMError)(nil)
@@ -141,12 +144,24 @@ func NewErrorMissingModel() *BaseLLMError {
 	}
 }
 
-func NewErrorInternalError() *BaseLLMError {
+func NewErrorInternalError(internalErrs ...error) *BaseLLMError {
+	internalErrs = append(internalErrs, errors.New("internal error"))
+
 	return &BaseLLMError{
 		Status: http.StatusInternalServerError,
 		ErrorBody: &BaseError{
 			Code:    lo.ToPtr(LLMErrorCodeInternalError),
-			Message: "internal error",
+			Message: lo.Must(lo.Coalesce(internalErrs...)).Error(),
+		},
+	}
+}
+
+func NewErrorBadGateway(upstreamErr error) *BaseLLMError {
+	return &BaseLLMError{
+		Status: http.StatusBadGateway,
+		ErrorBody: &BaseError{
+			Code:    lo.ToPtr(LLMErrorCodeBadGateway),
+			Message: lo.Must(lo.Coalesce(upstreamErr, errors.New("bad gateway"))).Error(),
 		},
 	}
 }
@@ -159,4 +174,18 @@ func NewErrorServiceUnavailable() *BaseLLMError {
 			Message: "service unavailable",
 		},
 	}
+}
+
+func LLMErrorOrInternalError(anyErrs ...error) LLMError {
+	anyErrs = lo.Filter(anyErrs, utils.FilterNonNil)
+
+	for _, err := range anyErrs {
+		if !IsLLMError(err) {
+			continue
+		}
+
+		return AsLLMError(err)
+	}
+
+	return NewErrorInternalError(anyErrs...)
 }

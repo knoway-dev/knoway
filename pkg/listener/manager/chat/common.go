@@ -154,7 +154,8 @@ func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c 
 
 	resp, err := c.DoUpstreamRequest(ctx, llmRequest)
 	if err != nil {
-		return nil, openai.NewErrorInternalError().WithCause(err)
+		// Cluster will ensure that error will always be LLMError
+		return nil, err
 	}
 
 	// For non-streaming responses, usage should be set here
@@ -165,7 +166,8 @@ func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c 
 	if resp.GetError() != nil || !resp.IsStream() {
 		err := c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)
 		if err != nil {
-			return resp, openai.NewErrorInternalError().WithCause(err)
+			// Cluster will ensure that error will always be LLMError
+			return resp, err
 		}
 
 		if resp.GetError() != nil {

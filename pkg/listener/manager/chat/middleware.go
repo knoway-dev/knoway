@@ -24,7 +24,12 @@ func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, req
 			return
 		}
 
-		if errors.Is(err, SkipResponse) {
+		if errors.Is(err, SkipStreamResponse) {
+			// NOTICE: special case where the response is already handled by the stream
+			// handler as we assume the stream handler will handle the response as
+			// status code 200 OK.
+			rMeta.StatusCode = http.StatusOK
+
 			return
 		}
 

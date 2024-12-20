@@ -5,8 +5,11 @@ controller:
 
 gateway:
   auth_server:
-    url: '10.33.2.23:31960'
+    url: ''
     timeout: 0
   stats_server:
-    url: '10.33.2.23:31960'
+    url: ''
     timeout: 0
+  log:
+    access_log:
+      enabled: true

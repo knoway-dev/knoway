@@ -72,6 +72,7 @@ words:
   - lll
   - llmbackend
   - llmbackends
+  - Loggable
   - maintidx
   - Marshallers
   - metav1

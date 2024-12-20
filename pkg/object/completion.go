@@ -32,10 +32,15 @@ type LLMResponse interface {
 	IsStream() bool
 	GetRequestID() string
 	GetUsage() LLMUsage
-	GetError() error
+	GetError() LLMError
 
 	GetModel() string
 	SetModel(modelName string) error
+}
+
+func IsLLMResponse(r any) bool {
+	_, ok := r.(LLMResponse)
+	return ok
 }
 
 type LLMStreamResponse interface {
@@ -43,6 +48,17 @@ type LLMStreamResponse interface {
 
 	IsEOF() bool
 	NextChunk() (LLMChunkResponse, error)
+}
+
+func IsLLMStreamResponse(r any) bool {
+	_, ok := r.(LLMStreamResponse)
+	if ok {
+		return true
+	}
+
+	llmResp, ok := r.(LLMStreamResponse)
+
+	return ok && llmResp.IsStream()
 }
 
 type LLMChunkResponse interface {
@@ -56,6 +72,7 @@ type LLMChunkResponse interface {
 
 	GetModel() string
 	SetModel(modelName string) error
+	GetUsage() LLMUsage
 
 	ToServerSentEvent() (*sse.Event, error)
 }
@@ -64,4 +81,20 @@ type LLMUsage interface {
 	GetTotalTokens() uint64
 	GetCompletionTokens() uint64
 	GetPromptTokens() uint64
+}
+
+var _ LLMUsage = (*DefaultLLMUsage)(nil)
+
+type DefaultLLMUsage struct{}
+
+func (u DefaultLLMUsage) GetPromptTokens() uint64 {
+	return 0
+}
+
+func (u DefaultLLMUsage) GetCompletionTokens() uint64 {
+	return 0
+}
+
+func (u DefaultLLMUsage) GetTotalTokens() uint64 {
+	return 0
 }

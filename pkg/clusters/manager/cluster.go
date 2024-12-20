@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/samber/mo"
 	"google.golang.org/protobuf/proto"
-
-	"knoway.dev/pkg/metadata"
 
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/filters"
+	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
 	registryfilters "knoway.dev/pkg/registry/config"
 )
@@ -78,47 +78,27 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 	}, nil
 }
 
-func composeLLMRequestBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, llmReq object.LLMRequest) (*http.Request, error) {
+func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
 	var err error
+
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+	rMeta.UpstreamProvider = m.cluster.GetProvider()
+
+	llmReq, err = m.filters.ForEachRequestModifier(ctx, m.cluster, llmReq)
+	if err != nil {
+		return nil, err
+	}
+
+	rMeta.UpstreamRequestModel = llmReq.GetModel()
+
 	var req *http.Request
 
-	llmReq, err = f.ForEachRequestModifier(ctx, cluster, llmReq)
+	req, err = m.filters.ForEachUpstreamRequestMarshaller(ctx, m.cluster, llmReq, req)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err = f.ForEachUpstreamRequestMarshaller(ctx, cluster, llmReq, req)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-func composeLLMResponseFromBody(ctx context.Context, f filters.ClusterFilters, cluster *v1alpha1.Cluster, req object.LLMRequest, rawResp *http.Response, reader *bufio.Reader) (object.LLMResponse, error) {
-	var err error
-	var resp object.LLMResponse
-
-	resp, err = f.ForEachResponseUnmarshaller(ctx, req, rawResp, reader, resp)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err = f.ForEachResponseModifier(ctx, cluster, req, resp)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
-}
-
-func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
-	req, err := composeLLMRequestBody(ctx, m.filters, m.cluster, llmReq)
-	if err != nil {
-		return nil, err
-	}
-
-	metadata.RequestMetadataFromCtx(ctx).UpstreamRequestAt = time.Now()
+	rMeta.UpstreamRequestAt = time.Now()
 
 	// TODO: lb policy
 	// TODO: body close
@@ -127,7 +107,32 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 		return nil, err
 	}
 
-	return composeLLMResponseFromBody(ctx, m.filters, m.cluster, llmReq, rawResp, buffer)
+	// err != nil means the connection is not possible to establish
+	// or find it's way to the destination, or upstream timeout
+	rMeta.UpstreamRespondAt = time.Now()
+
+	var llmResp object.LLMResponse
+
+	llmResp, err = m.filters.ForEachResponseUnmarshaller(ctx, llmReq, rawResp, buffer, llmResp)
+	if err != nil {
+		return nil, err
+	}
+
+	rMeta.UpstreamResponseModel = llmResp.GetModel()
+
+	llmResp, err = m.filters.ForEachResponseModifier(ctx, m.cluster, llmReq, llmResp)
+	if err != nil {
+		return nil, err
+	}
+
+	rMeta.UpstreamResponseStatusCode = rawResp.StatusCode
+	rMeta.UpstreamResponseHeader = mo.Some(rawResp.Header)
+
+	if !lo.IsNil(llmResp.GetError()) {
+		rMeta.UpstreamResponseErrorMessage = llmResp.GetError().Error()
+	}
+
+	return llmResp, nil
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {

@@ -15,3 +15,5 @@ data:
       stats_server:
         url: {{ .Values.config.stats_server.url }}
         timeout: {{ .Values.config.stats_server.timeout }}
+      log:
+        access_log: {{- toYaml .Values.config.log.access_log | nindent 10 }}

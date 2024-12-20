@@ -26,6 +26,10 @@ config:
     url: ''
     # timeout in seconds, default is 3s
     timeout: 3
+  log:
+    access_log:
+      enabled: true
+
 
 gateway:
   image:

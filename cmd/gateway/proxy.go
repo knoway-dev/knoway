@@ -27,11 +27,12 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 	baseListenConfig := &v1alpha1.ChatCompletionListener{
 		Name:    "openai",
 		Filters: []*v1alpha1.ListenerFilter{},
-		AccessLog: &v1alpha1.Log{
-			Enable: cfg.Log.AccessLog.Enable,
-		},
 	}
-
+	if cfg.Log.AccessLog != nil {
+		baseListenConfig.AccessLog = &v1alpha1.Log{
+			Enable: cfg.Log.AccessLog.Enabled,
+		}
+	}
 	if cfg.AuthServer.URL != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Name: "api-key-auth",

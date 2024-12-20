@@ -22,42 +22,44 @@ func WithAccessLog(enable bool) Middleware {
 		return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 			resp, err := next(writer, request)
 
-			rMeta := metadata.RequestMetadataFromCtx(request.Context())
+			if enable {
+				rMeta := metadata.RequestMetadataFromCtx(request.Context())
 
-			// TODO: make fields configurable
-			attrs := []any{
-				slog.String("method", request.Method),
-				slog.String("protocol", request.Proto),
-				slog.String("host", request.Host),
-				slog.String("uri", request.RequestURI),
-				slog.String("remote_address", request.RemoteAddr),
-				slog.String("x_forwarded_for", request.Header.Get("X-Forwarded-For")),
-				slog.Duration("response_duration", rMeta.RespondAt.Sub(rMeta.RequestAt)),
-				slog.String("auth_info_api_key_id", rMeta.AuthInfo.GetApiKeyId()),
-				slog.String("auth_info_user_id", rMeta.AuthInfo.GetUserId()),
-				slog.String("request_model", rMeta.RequestModel),
-				slog.String("response_model", rMeta.ResponseModel),
-				slog.Int("response_status", rMeta.StatusCode),
-				slog.String("upstream_provider", rMeta.UpstreamProvider),
-				slog.String("upstream_request_model", rMeta.UpstreamRequestModel),
-				slog.String("upstream_response_model", rMeta.UpstreamResponseModel),
-				slog.Int("upstream_response_status_code", rMeta.UpstreamResponseStatusCode),
-				slog.Uint64("llm_usage_prompt_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetPromptTokens()),
-				slog.Uint64("llm_usage_completion_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetCompletionTokens()),
-			}
+				// TODO: make fields configurable
+				attrs := []any{
+					slog.String("method", request.Method),
+					slog.String("protocol", request.Proto),
+					slog.String("host", request.Host),
+					slog.String("uri", request.RequestURI),
+					slog.String("remote_address", request.RemoteAddr),
+					slog.String("x_forwarded_for", request.Header.Get("X-Forwarded-For")),
+					slog.Duration("response_duration", rMeta.RespondAt.Sub(rMeta.RequestAt)),
+					slog.String("auth_info_api_key_id", rMeta.AuthInfo.GetApiKeyId()),
+					slog.String("auth_info_user_id", rMeta.AuthInfo.GetUserId()),
+					slog.String("request_model", rMeta.RequestModel),
+					slog.String("response_model", rMeta.ResponseModel),
+					slog.Int("response_status", rMeta.StatusCode),
+					slog.String("upstream_provider", rMeta.UpstreamProvider),
+					slog.String("upstream_request_model", rMeta.UpstreamRequestModel),
+					slog.String("upstream_response_model", rMeta.UpstreamResponseModel),
+					slog.Int("upstream_response_status_code", rMeta.UpstreamResponseStatusCode),
+					slog.Uint64("llm_usage_prompt_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetPromptTokens()),
+					slog.Uint64("llm_usage_completion_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetCompletionTokens()),
+				}
 
-			if !rMeta.UpstreamRespondAt.IsZero() {
-				attrs = append(attrs,
-					slog.Duration("upstream_duration", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt)),
-				)
-			}
-			if !rMeta.UpstreamFirstValidChunkAt.IsZero() {
-				attrs = append(attrs,
-					slog.Duration("upstream_first_chunk_duration", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt)),
-				)
-			}
+				if !rMeta.UpstreamRespondAt.IsZero() {
+					attrs = append(attrs,
+						slog.Duration("upstream_duration", rMeta.UpstreamRespondAt.Sub(rMeta.UpstreamRequestAt)),
+					)
+				}
+				if !rMeta.UpstreamFirstValidChunkAt.IsZero() {
+					attrs = append(attrs,
+						slog.Duration("upstream_first_chunk_duration", rMeta.UpstreamFirstValidChunkAt.Sub(rMeta.UpstreamRequestAt)),
+					)
+				}
 
-			slog.Info("", attrs...)
+				slog.Info("", attrs...)
+			}
 
 			return resp, err
 		}

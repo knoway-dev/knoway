@@ -176,7 +176,7 @@ gomod:
   before_script:
     - export GOPROXY="http://10.6.100.13:8081/repository/go-proxy/"
     - export GOSUMDB="sum.golang.org http://10.6.100.13:8081/repository/gosum/"
-    - export GOPRIVATE="gitlab.daocloud.cn,insight.io,mspider.io,kpanda.io,ghippo.io,hydra.io"
+    - export GOPRIVATE="gitlab.daocloud.cn"
 
 Security Scanning:
   rules:

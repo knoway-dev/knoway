@@ -32,7 +32,7 @@ echo "VERSION is ${CUR_VERSION}"
 echo "SHORT_VERSION is ${SHORT_VERSION}"
 
 if [ "${PRE_VERSION}" = "${CUR_VERSION}" ]; then
-    echo PRE_VERSION should not be same as hydra in current version >>/dev/stderr
+    echo PRE_VERSION should not be same as knoway in current version >>/dev/stderr
     exit 1
 fi
 
@@ -58,7 +58,7 @@ cd ${CUR_DIR}/..
 
 if ! git config user.name; then
     git config user.name "Auto Release Bot"
-    git config user.email "hydra-auto-release@daocloud.io"
+    git config user.email "knoway-auto-release@daocloud.io"
 fi
 
 # we no need to sync api repo any more
@@ -73,7 +73,7 @@ git commit -m "Release ${CUR_VERSION} and add release notes"
 cat ${CUR_DIR}/../changes/${SHORT_VERSION}/CHANGELOG-${CUR_VERSION}.md | git tag -a ${CUR_VERSION} -F-
 
 if [ -n "${GITLAB_CI_TOKEN}" ]; then
-    git remote set-url origin https://gitlab-ci-token:${GITLAB_CI_TOKEN}@gitlab.daocloud.cn/ndx/hydra.git
+    git remote set-url origin https://gitlab-ci-token:${GITLAB_CI_TOKEN}@gitlab.daocloud.cn/ndx/ai/knoway.git
 fi
 
 # push to release branch
@@ -96,7 +96,7 @@ git push origin ${CUR_VERSION}
 curl -s -v \
     -H "PRIVATE-TOKEN: ${GITLAB_CI_TOKEN}" \
     -H 'Content-Type: application/json' \
-    'https://gitlab.daocloud.cn/api/v4/projects/ndx%2Fhydra/releases' \
+    'https://gitlab.daocloud.cn/api/v4/projects/ndx%2Fai/knoway/releases' \
     -X POST \
     -d "$(echo '{}' | jq \
         --arg name "Release ${CUR_VERSION}" \

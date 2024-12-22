@@ -26,7 +26,7 @@ else
 fi
 
 if [ -n "${GITLAB_CI_TOKEN}" ]; then
-    git remote set-url origin https://gitlab-ci-token:${GITLAB_CI_TOKEN}@gitlab.daocloud.cn/ndx/hydra.git
+    git remote set-url origin https://gitlab-ci-token:${GITLAB_CI_TOKEN}@gitlab.daocloud.cn/ndx/ai/knoway.git
 fi
 
 if git ls-remote --exit-code origin release-${minor_version} &>/dev/null; then
@@ -36,7 +36,7 @@ fi
 
 if ! git config user.name; then
     git config user.name "Auto Release Bot"
-    git config user.email "hydra-auto-release@daocloud.io"
+    git config user.email "knoway-auto-release@daocloud.io"
 fi
 
 git checkout -b release-${minor_version}

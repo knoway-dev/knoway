@@ -13,6 +13,18 @@ global:
   # -- Global Docker registry secret names as an array
   imagePullSecrets: []
   high_available: false
+  # Global node selector
+  # If set, this will apply to all knoway components
+  # Individual components can be set to a different node selector
+  nodeSelector: {}
+  # Global tolerations
+  # If set, this will apply to all knoway components
+  # Individual components can be set to a different tolerations
+  tolerations: []
+  # Global affinity
+  # If set, this will apply to all knoway components
+  # Individual components can be set to a different affinity
+  affinity: {}
 
 fullNameOverride: ""
 
@@ -30,9 +42,11 @@ config:
     access_log:
       enabled: true
 
-
 gateway:
   image:
     registry: ''
     repository: knoway/knoway-gateway
     tag:
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}

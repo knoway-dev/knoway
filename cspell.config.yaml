@@ -18,6 +18,7 @@ words:
   - contextcheck
   - copyloopvar
   - cyclop
+  - daocloud
   - depguard
   - doublestar
   - Drainable
@@ -116,6 +117,7 @@ words:
   - tagalign
   - tagliatelle
   - testpackage
+  - tolerations
   - typecheck
   - unconvert
   - unmarshalled

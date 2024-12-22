@@ -21,6 +21,30 @@ spec:
         app: {{ .Values.fullNameOverride | default .Release.Name }}-gateway
     spec:
       {{- include "common.images.pullSecrets" . | indent 6 }}
+      {{- if and (.Values.global.nodeSelector) (not .Values.gateway.nodeSelector) }}
+      nodeSelector:
+{{ toYaml .Values.global.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if .Values.gateway.nodeSelector }}
+      nodeSelector:
+{{ toYaml .Values.gateway.nodeSelector | indent 8 }}
+    {{- end }}
+    {{- if and (.Values.global.affinity) (not .Values.gateway.affinity) }}
+      affinity:
+{{ toYaml .Values.global.affinity | indent 8 }}
+    {{- end }}
+    {{- if .Values.gateway.affinity }}
+      affinity:
+{{ toYaml .Values.gateway.affinity | indent 8 }}
+    {{- end }}
+    {{- if and (.Values.global.tolerations) (not .Values.gateway.tolerations) }}
+      tolerations:
+{{ toYaml .Values.global.tolerations | indent 8 }}
+    {{- end }}
+    {{- if .Values.gateway.tolerations }}
+      tolerations:
+{{ toYaml .Values.gateway.tolerations | indent 8 }}
+    {{- end }}
       dnsPolicy: ClusterFirst
       containers:
         - name: proxy

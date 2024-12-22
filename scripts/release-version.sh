@@ -96,7 +96,7 @@ git push origin ${CUR_VERSION}
 curl -s -v \
     -H "PRIVATE-TOKEN: ${GITLAB_CI_TOKEN}" \
     -H 'Content-Type: application/json' \
-    'https://gitlab.daocloud.cn/api/v4/projects/ndx%2Fai/knoway/releases' \
+    'https://gitlab.daocloud.cn/api/v4/projects/ndx%2Fai%2Fknoway/releases' \
     -X POST \
     -d "$(echo '{}' | jq \
         --arg name "Release ${CUR_VERSION}" \

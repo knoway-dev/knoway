@@ -13,7 +13,9 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/samber/lo"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
 
@@ -78,6 +80,9 @@ type AuthFilter struct {
 }
 
 func (a *AuthFilter) OnRequestPre(ctx context.Context, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+	rMeta.EnabledAuthFilter = true
+
 	slog.Debug("starting auth filter OnCompletionRequest")
 
 	// parse apikey
@@ -91,17 +96,36 @@ func (a *AuthFilter) OnRequestPre(ctx context.Context, sourceHTTPRequest *http.R
 
 	// check apikey
 	slog.Debug("auth filter: rpc APIKeyAuth")
+
 	response, err := a.authClient.APIKeyAuth(getAuthCtx, &service.APIKeyAuthRequest{
 		ApiKey: apiKey,
 	})
-
 	if err != nil {
-		slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
-		return filters.NewFailed(err)
+		s, ok := status.FromError(err)
+		if !ok {
+			slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
+			return filters.NewFailed(err)
+		}
+
+		switch s.Code() { //nolint:exhaustive
+		case codes.NotFound:
+			slog.Debug("auth filter: user apikey not found", "apikey", apiKey)
+			return filters.NewFailed(object.NewErrorIncorrectAPIKey(apiKey))
+		case codes.Unauthenticated:
+			slog.Debug("auth filter: user apikey invalid", "apikey", apiKey)
+			return filters.NewFailed(object.NewErrorIncorrectAPIKey(apiKey))
+		case codes.PermissionDenied:
+			slog.Debug("auth filter: user apikey permission denied", "apikey", apiKey)
+			return filters.NewFailed(object.NewErrorIncorrectAPIKey(apiKey))
+		case codes.Unavailable:
+			slog.Debug("auth filter: user apikey service unavailable", "apikey", apiKey)
+			return filters.NewFailed(object.NewErrorServiceUnavailable())
+		default:
+			slog.Error("auth filter: APIKeyAuth error: %s", "error", err)
+			return filters.NewFailed(err)
+		}
 	}
 
-	rMeta := metadata.RequestMetadataFromCtx(ctx)
-	rMeta.EnabledAuthFilter = true
 	rMeta.AuthInfo = response
 
 	if !response.GetIsValid() {

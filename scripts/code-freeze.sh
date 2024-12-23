@@ -14,7 +14,7 @@ PURE_HOST=${GITLAB_HOST//https:\/\//}
 glab auth login -t ${GITLAB_CI_TOKEN} -h ${PURE_HOST}
 glab auth status
 
-minor_version=$(grep "MINOR_VERSION ?=" ${CUR_DIR}/../Makefile | sed -r 's/MINOR_VERSION \?= v(.*)/\1/g' | xargs)
+minor_version=$(grep "MINOR_VERSION ?=" ${CUR_DIR}/../Makefile | sed -r 's/MINOR_VERSION \?= (.*)/\1/g' | xargs)
 
 if [ -n "${NEXT_VERSION}" ] && ! echo ${NEXT_VERSION} | grep -E "^v\d+\.\d+$"; then
     echo "Invalid NEXT_VERSION: ${NEXT_VERSION}, require running on v*.* branch"

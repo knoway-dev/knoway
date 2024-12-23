@@ -167,6 +167,7 @@ else
 BUILD_CMD=buildx build --platform $(PLATFORMS)
 endif
 
+.PHONY: images
 images: pre-docker-buildx build-binaries
 	docker $(BUILD_CMD) $(DOCKER_BUILD_FLAGS) \
 		--build-arg HUB=$(HUB) \
@@ -175,8 +176,10 @@ images: pre-docker-buildx build-binaries
 		-t $(HUB)/$(PROD_NAME)/$(APP):$(VERSION) \
 		-f Dockerfile .
 
+release-images: images
+
 .PHONY: release ## Build and push Docker images and Helm charts
-release: images push-chart
+release: release-images push-chart
 
 define in_place_replace
 	yq eval $(1) $(2) -i
@@ -194,7 +197,7 @@ helm:
 	$(call in_place_replace, '.global.imageRegistry = "$(HUB)"', dist/$(PROD_NAME)/values.yaml)
 
 	helm package dist/$(PROD_NAME) -d dist --version=$(VERSION)
-	@#rm -rf dist/$(PROD_NAME)
+	@rm -rf dist/$(PROD_NAME)
 
 .PHONY: push-chart
 push-chart: helm

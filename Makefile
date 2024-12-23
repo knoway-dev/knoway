@@ -10,7 +10,7 @@ HELM_REPO ?= https://release-ci.daocloud.io/chartrepo/knoway
 
 PROD_NAME = knoway
 
-MINOR_VERSION ?= 0.1
+MINOR_VERSION ?= v0.2
 VERSION ?= $(MINOR_VERSION).0-dev.$(shell git rev-parse --short=8 HEAD)
 
 REGISTRY_USER_NAME ?=

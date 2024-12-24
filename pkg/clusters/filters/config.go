@@ -16,11 +16,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/samber/lo"
-
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/utils"
 )
 
 type ClusterFilter interface {
@@ -77,122 +74,4 @@ type ClusterFilterResponseComplete interface {
 	ClusterFilter
 
 	ResponseComplete(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error
-}
-
-type ClusterFilters []ClusterFilter
-
-func (c ClusterFilters) RequestPreflights() []ClusterFilterRequestPreflight {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestPreflight](c)
-}
-
-func (c ClusterFilters) ForEachRequestPreflight(ctx context.Context, request object.LLMRequest) error {
-	for _, f := range c.RequestPreflights() {
-		err := f.RequestPreflight(ctx, request)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-func (c ClusterFilters) RequestModifiers() []ClusterFilterRequestModifier {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterRequestModifier](c)
-}
-
-func (c ClusterFilters) ForEachRequestModifier(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest) (object.LLMRequest, error) {
-	for _, f := range c.RequestModifiers() {
-		var err error
-
-		request, err = f.RequestModifier(ctx, cluster, request)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return request, nil
-}
-
-func (c ClusterFilters) EndpointSelectors() []ClusterFilterEndpointSelector {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterEndpointSelector](c)
-}
-
-func (c ClusterFilters) ForEachEndpointSelector(ctx context.Context, request object.LLMRequest, endpoints []string) string {
-	for _, f := range c.EndpointSelectors() {
-		selected := f.SelectEndpoint(ctx, request, endpoints)
-		if selected != "" {
-			return selected
-		}
-	}
-
-	return ""
-}
-
-func (c ClusterFilters) UpstreamRequestMarshallers() []ClusterFilterUpstreamRequestMarshaller {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterUpstreamRequestMarshaller](c)
-}
-
-func (c ClusterFilters) ForEachUpstreamRequestMarshaller(ctx context.Context, cluster *v1alpha1.Cluster, llmRequest object.LLMRequest, request *http.Request) (*http.Request, error) {
-	for _, f := range c.UpstreamRequestMarshallers() {
-		var err error
-
-		request, err = f.MarshalUpstreamRequest(ctx, cluster, llmRequest, request)
-		if err != nil {
-			return nil, err
-		}
-	}
-	if request == nil {
-		panic("ClusterFilterUpstreamRequestMarshaller iterated, but returned nil request or no filters found")
-	}
-
-	return request, nil
-}
-
-func (c ClusterFilters) ResponseUnmarshallers() []ClusterFilterResponseUnmarshaller {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseUnmarshaller](c)
-}
-
-func (c ClusterFilters) ForEachResponseUnmarshaller(ctx context.Context, request object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
-	for _, f := range c.ResponseUnmarshallers() {
-		var err error
-
-		pre, err = f.UnmarshalResponseBody(ctx, request, rawResponse, reader, pre)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return pre, nil
-}
-
-func (c ClusterFilters) ResponseModifiers() []ClusterFilterResponseModifier {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseModifier](c)
-}
-
-func (c ClusterFilters) ForEachResponseModifier(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
-	for _, f := range lo.Reverse(c).ResponseModifiers() {
-		var err error
-
-		response, err = f.ResponseModifier(ctx, cluster, request, response)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return response, nil
-}
-
-func (c ClusterFilters) ResponseCompleters() []ClusterFilterResponseComplete {
-	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseComplete](c)
-}
-
-func (c ClusterFilters) ForEachResponseComplete(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error {
-	for _, f := range lo.Reverse(c).ResponseCompleters() {
-		err := f.ResponseComplete(ctx, request, response)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

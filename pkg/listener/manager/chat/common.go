@@ -12,6 +12,7 @@ import (
 	"github.com/samber/mo"
 	goopenai "github.com/sashabaranov/go-openai"
 
+	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/utils"
 
@@ -56,7 +57,12 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
 
 	handleChunk := func(chunk object.LLMChunkResponse) error {
-		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
+		for _, filter := range l.filters {
+			f, ok := filter.(filters.OnCompletionStreamResponseFilter)
+			if !ok {
+				continue
+			}
+
 			fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, chunk)
 			if fResult.IsFailed() {
 				// REVIEW: ignore? Or should fResult be returned?

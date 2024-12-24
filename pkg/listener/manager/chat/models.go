@@ -9,13 +9,19 @@ import (
 	goopenai "github.com/sashabaranov/go-openai"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/filters/auth"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/registry/cluster"
 )
 
 func (l *OpenAIChatListener) listModels(writer http.ResponseWriter, request *http.Request) (any, error) {
-	for _, f := range l.filters.OnRequestPreFilters() {
+	for _, filter := range l.filters {
+		f, ok := filter.(filters.OnRequestPreFilter)
+		if !ok {
+			continue
+		}
+
 		fResult := f.OnRequestPre(request.Context(), request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error

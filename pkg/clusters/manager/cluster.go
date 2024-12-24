@@ -25,7 +25,7 @@ var _ clusters.Cluster = (*clusterManager)(nil)
 
 type clusterManager struct {
 	cluster *v1alpha1.Cluster
-	filters filters.ClusterFilters
+	filters []filters.ClusterFilter
 }
 
 func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) (clusters.Cluster, error) {
@@ -84,18 +84,35 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
 	rMeta.UpstreamProvider = m.cluster.GetProvider()
 
-	llmReq, err = m.filters.ForEachRequestModifier(ctx, m.cluster, llmReq)
-	if err != nil {
-		return nil, object.LLMErrorOrInternalError(err)
+	for _, filter := range m.filters {
+		f, ok := filter.(filters.ClusterFilterRequestModifier)
+		if !ok {
+			continue
+		}
+
+		llmReq, err = f.RequestModifier(ctx, m.cluster, llmReq)
+		if err != nil {
+			return nil, object.LLMErrorOrInternalError(err)
+		}
 	}
 
 	rMeta.UpstreamRequestModel = llmReq.GetModel()
 
 	var req *http.Request
 
-	req, err = m.filters.ForEachUpstreamRequestMarshaller(ctx, m.cluster, llmReq, req)
-	if err != nil {
-		return nil, object.LLMErrorOrInternalError(err)
+	for _, filter := range m.filters {
+		f, ok := filter.(filters.ClusterFilterUpstreamRequestMarshaller)
+		if !ok {
+			continue
+		}
+
+		req, err = f.MarshalUpstreamRequest(ctx, m.cluster, llmReq, req)
+		if err != nil {
+			return nil, object.LLMErrorOrInternalError(err)
+		}
+	}
+	if lo.IsNil(req) {
+		panic("ClusterFilterUpstreamRequestMarshaller iterated, but returned nil request or no filters found")
 	}
 
 	rMeta.UpstreamRequestAt = time.Now()
@@ -113,16 +130,35 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 
 	var llmResp object.LLMResponse
 
-	llmResp, err = m.filters.ForEachResponseUnmarshaller(ctx, llmReq, rawResp, buffer, llmResp)
-	if err != nil {
-		return nil, object.LLMErrorOrInternalError(err)
+	for _, filter := range m.filters {
+		f, ok := filter.(filters.ClusterFilterResponseUnmarshaller)
+		if !ok {
+			continue
+		}
+
+		var err error
+
+		llmResp, err = f.UnmarshalResponseBody(ctx, llmReq, rawResp, buffer, llmResp)
+		if err != nil {
+			return nil, object.LLMErrorOrInternalError(err)
+		}
+	}
+	if lo.IsNil(llmResp) {
+		panic("ClusterFilterResponseUnmarshaller iterated, but returned nil response or no filters found")
 	}
 
 	rMeta.UpstreamResponseModel = llmResp.GetModel()
 
-	llmResp, err = m.filters.ForEachResponseModifier(ctx, m.cluster, llmReq, llmResp)
-	if err != nil {
-		return nil, object.LLMErrorOrInternalError(err)
+	for _, filter := range m.filters {
+		f, ok := filter.(filters.ClusterFilterResponseModifier)
+		if !ok {
+			continue
+		}
+
+		llmResp, err = f.ResponseModifier(ctx, m.cluster, llmReq, llmResp)
+		if err != nil {
+			return nil, object.LLMErrorOrInternalError(err)
+		}
 	}
 
 	rMeta.UpstreamResponseStatusCode = rawResp.StatusCode
@@ -136,9 +172,16 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {
-	err := m.filters.ForEachResponseComplete(ctx, req, res)
-	if err != nil {
-		return object.LLMErrorOrInternalError(err)
+	for _, filter := range m.filters {
+		f, ok := filter.(filters.ClusterFilterResponseComplete)
+		if !ok {
+			continue
+		}
+
+		err := f.ResponseComplete(ctx, req, res)
+		if err != nil {
+			return object.LLMErrorOrInternalError(err)
+		}
 	}
 
 	return nil

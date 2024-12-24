@@ -2,7 +2,6 @@ package listener
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
@@ -106,7 +105,7 @@ func WithRecoverWithError() Middleware {
 						slog.String("stack", stack),
 					)
 
-					internalErr := openai.NewErrorInternalError().WithCause(fmt.Errorf("%v", r))
+					internalErr := openai.NewErrorInternalError()
 
 					utils.WriteJSONForHTTP(internalErr.Status, internalErr, writer)
 				}

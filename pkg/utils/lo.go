@@ -15,3 +15,9 @@ func TypeAssertFrom[F any, T any](items []F) []T {
 	filters := lo.Map(items, MapTypeAssert[F, T])
 	return lo.Filter(filters, FilterNonNil)
 }
+
+func Clone[T any, Slice ~[]T](collection Slice) Slice {
+	return lo.Map(collection, func(item T, _ int) T {
+		return item
+	})
+}

@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+
+	"knoway.dev/pkg/utils"
 )
 
 const (
@@ -121,7 +123,7 @@ func callStopHooks(ctx context.Context, hooks []lifeCycler) error {
 	wg := sync.WaitGroup{}
 	errChan := make(chan error)
 
-	for _, hook := range lo.Reverse(hooks) {
+	for _, hook := range lo.Reverse(utils.Clone(hooks)) {
 		wg.Add(1)
 
 		go func() {

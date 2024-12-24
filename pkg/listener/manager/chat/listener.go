@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/proto"
 
 	"knoway.dev/api/listeners/v1alpha1"
@@ -14,15 +15,17 @@ import (
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/registry/config"
+	"knoway.dev/pkg/utils"
 )
 
 var _ listener.Listener = (*OpenAIChatListener)(nil)
 var _ listener.Drainable = (*OpenAIChatListener)(nil)
 
 type OpenAIChatListener struct {
-	cfg         *v1alpha1.ChatCompletionListener
-	filters     filters.RequestFilters
-	cancellable *listener.CancellableRequestMap
+	cfg             *v1alpha1.ChatCompletionListener
+	filters         filters.RequestFilters
+	reversedFilters filters.RequestFilters
+	cancellable     *listener.CancellableRequestMap
 
 	mutex   sync.RWMutex
 	drained bool
@@ -51,6 +54,8 @@ func NewOpenAIChatListenerConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle
 
 		l.filters = append(l.filters, f)
 	}
+
+	l.reversedFilters = lo.Reverse(utils.Clone(l.filters))
 
 	return l, nil
 }

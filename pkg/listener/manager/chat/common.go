@@ -56,7 +56,7 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
 
 	handleChunk := func(chunk object.LLMChunkResponse) error {
-		for _, f := range l.filters.OnCompletionStreamResponseFilters() {
+		for _, f := range l.reversedFilters.OnCompletionStreamResponseFilters() {
 			fResult := f.OnCompletionStreamResponse(ctx, request, streamResp, chunk)
 			if fResult.IsFailed() {
 				// REVIEW: ignore? Or should fResult be returned?

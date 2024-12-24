@@ -19,13 +19,15 @@ import (
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
 	registryfilters "knoway.dev/pkg/registry/config"
+	"knoway.dev/pkg/utils"
 )
 
 var _ clusters.Cluster = (*clusterManager)(nil)
 
 type clusterManager struct {
-	cluster *v1alpha1.Cluster
-	filters filters.ClusterFilters
+	cluster         *v1alpha1.Cluster
+	filters         filters.ClusterFilters
+	reversedFilters filters.ClusterFilters
 }
 
 func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) (clusters.Cluster, error) {
@@ -72,9 +74,14 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 		}
 	}
 
+	// Add default filters
+	clusterFilters = append(clusterFilters, registryfilters.ClusterDefaultFilters(lifecycle)...)
+
 	return &clusterManager{
 		cluster: conf,
-		filters: append(clusterFilters, registryfilters.ClusterDefaultFilters(lifecycle)...),
+		filters: clusterFilters,
+		// NOTICE: lo.Reverse will modify the original slice, so we need to clone it
+		reversedFilters: lo.Reverse(utils.Clone(clusterFilters)),
 	}, nil
 }
 
@@ -113,14 +120,14 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 
 	var llmResp object.LLMResponse
 
-	llmResp, err = m.filters.ForEachResponseUnmarshaller(ctx, llmReq, rawResp, buffer, llmResp)
+	llmResp, err = m.reversedFilters.ForEachResponseUnmarshaller(ctx, llmReq, rawResp, buffer, llmResp)
 	if err != nil {
 		return nil, object.LLMErrorOrInternalError(err)
 	}
 
 	rMeta.UpstreamResponseModel = llmResp.GetModel()
 
-	llmResp, err = m.filters.ForEachResponseModifier(ctx, m.cluster, llmReq, llmResp)
+	llmResp, err = m.reversedFilters.ForEachResponseModifier(ctx, m.cluster, llmReq, llmResp)
 	if err != nil {
 		return nil, object.LLMErrorOrInternalError(err)
 	}
@@ -136,7 +143,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 }
 
 func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {
-	err := m.filters.ForEachResponseComplete(ctx, req, res)
+	err := m.reversedFilters.ForEachResponseComplete(ctx, req, res)
 	if err != nil {
 		return object.LLMErrorOrInternalError(err)
 	}

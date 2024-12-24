@@ -36,7 +36,7 @@ func (l *OpenAIChatListener) chatCompletions(writer http.ResponseWriter, request
 	var err error
 
 	defer func() {
-		for _, f := range l.filters.OnResponsePostFilters() {
+		for _, f := range l.reversedFilters.OnResponsePostFilters() {
 			f.OnResponsePost(request.Context(), request, resp, err)
 		}
 	}()
@@ -63,7 +63,7 @@ func (l *OpenAIChatListener) chatCompletions(writer http.ResponseWriter, request
 
 	resp, err = l.clusterDoCompletionsRequest(request.Context(), c, writer, request, llmRequest)
 	if !llmRequest.IsStream() && !lo.IsNil(resp) {
-		for _, f := range l.filters.OnCompletionResponseFilters() {
+		for _, f := range l.reversedFilters.OnCompletionResponseFilters() {
 			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
 			if fResult.IsFailed() {
 				slog.Error("error occurred during invoking of OnCompletionResponse filters", "error", fResult.Error)

@@ -16,8 +16,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/samber/lo"
-
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/utils"
@@ -170,7 +168,7 @@ func (c ClusterFilters) ResponseModifiers() []ClusterFilterResponseModifier {
 }
 
 func (c ClusterFilters) ForEachResponseModifier(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
-	for _, f := range lo.Reverse(c).ResponseModifiers() {
+	for _, f := range c.ResponseModifiers() {
 		var err error
 
 		response, err = f.ResponseModifier(ctx, cluster, request, response)
@@ -187,7 +185,7 @@ func (c ClusterFilters) ResponseCompleters() []ClusterFilterResponseComplete {
 }
 
 func (c ClusterFilters) ForEachResponseComplete(ctx context.Context, request object.LLMRequest, response object.LLMResponse) error {
-	for _, f := range lo.Reverse(c).ResponseCompleters() {
+	for _, f := range c.ResponseCompleters() {
 		err := f.ResponseComplete(ctx, request, response)
 		if err != nil {
 			return err

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/utils"
 )
 
 const (
@@ -77,4 +78,26 @@ type OnResponsePostFilter interface {
 	RequestFilter
 
 	OnResponsePost(ctx context.Context, request *http.Request, response any, err error)
+}
+
+type RequestFilters []RequestFilter
+
+func (r RequestFilters) OnRequestPreFilters() []OnRequestPreFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnRequestPreFilter](r)
+}
+
+func (r RequestFilters) OnCompletionRequestFilters() []OnCompletionRequestFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnCompletionRequestFilter](r)
+}
+
+func (r RequestFilters) OnCompletionResponseFilters() []OnCompletionResponseFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnCompletionResponseFilter](r)
+}
+
+func (r RequestFilters) OnCompletionStreamResponseFilters() []OnCompletionStreamResponseFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnCompletionStreamResponseFilter](r)
+}
+
+func (r RequestFilters) OnResponsePostFilters() []OnResponsePostFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnResponsePostFilter](r)
 }

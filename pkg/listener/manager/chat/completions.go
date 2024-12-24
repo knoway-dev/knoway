@@ -6,7 +6,6 @@ import (
 
 	"github.com/samber/lo"
 
-	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/types/openai"
@@ -29,12 +28,7 @@ func (l *OpenAIChatListener) unmarshalCompletionsRequestToLLMRequest(request *ht
 }
 
 func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *http.Request) (any, error) {
-	for _, filter := range l.filters {
-		f, ok := filter.(filters.OnRequestPreFilter)
-		if !ok {
-			continue
-		}
-
+	for _, f := range l.filters.OnRequestPreFilters() {
 		fResult := f.OnRequestPre(request.Context(), request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error
@@ -45,12 +39,7 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 	var err error
 
 	defer func() {
-		for _, filter := range l.filters {
-			f, ok := filter.(filters.OnResponsePostFilter)
-			if !ok {
-				continue
-			}
-
+		for _, f := range l.filters.OnResponsePostFilters() {
 			f.OnResponsePost(request.Context(), request, resp, err)
 		}
 	}()
@@ -63,12 +52,7 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 	rMeta := metadata.RequestMetadataFromCtx(request.Context())
 	rMeta.RequestModel = llmRequest.GetModel()
 
-	for _, filter := range l.filters {
-		f, ok := filter.(filters.OnCompletionRequestFilter)
-		if !ok {
-			continue
-		}
-
+	for _, f := range l.filters.OnCompletionRequestFilters() {
 		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error
@@ -82,12 +66,7 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 
 	resp, err = l.clusterDoCompletionsRequest(request.Context(), c, writer, request, llmRequest)
 	if !llmRequest.IsStream() && !lo.IsNil(resp) {
-		for _, filter := range l.filters {
-			f, ok := filter.(filters.OnCompletionResponseFilter)
-			if !ok {
-				continue
-			}
-
+		for _, f := range l.filters.OnCompletionResponseFilters() {
 			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
 			if fResult.IsFailed() {
 				slog.Error("error occurred during invoking of OnCompletionResponse filters", "error", fResult.Error)

@@ -21,7 +21,7 @@ var _ listener.Drainable = (*OpenAIChatListener)(nil)
 
 type OpenAIChatListener struct {
 	cfg         *v1alpha1.ChatCompletionListener
-	filters     []filters.RequestFilter
+	filters     filters.RequestFilters
 	cancellable *listener.CancellableRequestMap
 
 	mutex   sync.RWMutex

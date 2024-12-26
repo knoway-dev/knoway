@@ -288,6 +288,14 @@ func NewErrorModelNotFoundOrNotAccessible(model string) *ErrorResponse {
 	})
 }
 
+func NewErrorModelAccessDenied(model string) *ErrorResponse {
+	return NewErrorResponse(http.StatusForbidden, Error{
+		Message: fmt.Sprintf("You do not have access to the model `%s`.", model),
+		Type:    "invalid_request_error",
+		Code:    lo.ToPtr("model_access_denied"),
+	})
+}
+
 /*
 Example:
 
@@ -369,6 +377,12 @@ func NewErrorFromLLMError(err error) *ErrorResponse {
 	m := map[string]func() *ErrorResponse{
 		string(object.LLMErrorCodeModelNotFoundOrNotAccessible): func() *ErrorResponse {
 			newError := NewErrorModelNotFoundOrNotAccessible("")
+			newError.ErrorBody.Message = llmError.GetMessage()
+
+			return newError
+		},
+		string(object.LLMErrorCodeModelAccessDenied): func() *ErrorResponse {
+			newError := NewErrorModelAccessDenied("")
 			newError.ErrorBody.Message = llmError.GetMessage()
 
 			return newError

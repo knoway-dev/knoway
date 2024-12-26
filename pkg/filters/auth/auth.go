@@ -151,9 +151,19 @@ func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLM
 		slog.Debug("auth filter: user model not found", "user", authInfo.GetUserId())
 		return filters.NewFailed(object.NewErrorMissingModel())
 	}
-	if !CanAccessModel(accessModel, authInfo.GetAllowModels(), authInfo.GetDenyModels()) {
-		slog.Debug("auth filter: user can not access model", "user", authInfo.GetUserId(), "model", accessModel)
-		return filters.NewFailed(object.NewErrorModelNotFoundOrNotAccessible(accessModel))
+
+	denied := IsDenied(accessModel, authInfo.GetDenyModels())
+	granted := IsGranted(accessModel, authInfo.GetAllowModels())
+
+	if !CanAccessModelFromValues(denied, granted) {
+		if denied {
+			slog.Debug("auth filter: user access model is denied", "user", authInfo.GetUserId(), "model", accessModel)
+			return filters.NewFailed(object.NewErrorModelAccessDenied(accessModel))
+		}
+		if !granted {
+			slog.Debug("auth filter: user can not access model", "user", authInfo.GetUserId(), "model", accessModel)
+			return filters.NewFailed(object.NewErrorModelNotFoundOrNotAccessible(accessModel))
+		}
 	}
 
 	slog.Debug("auth filter: user authorization succeeds", "user", authInfo.GetUserId(), "allow models", authInfo.GetAllowModels())
@@ -180,19 +190,12 @@ func BearerMarshal(request *http.Request) (string, error) {
 	return token, nil
 }
 
-/*
-CanAccessModel determines whether the user can access the specified model.
+func IsDenied(requestModel string, denyModels []string) bool {
+	if len(denyModels) == 0 {
+		return false
+	}
 
-The rules defined in allowModels follows the spec of the following:
-
-- if * is provided, means that all public models can be accessed, except the ones with /.
-
-- if u-kebe/* is provided, means that all models under the u-kebe namespace can be accessed, if we define u- means all individual users, then u-kebe/* means that all models under the kebe user can be accessed.
-
-- if ** is provided, means that all models can be accessed.
-*/
-func CanAccessModel(requestModel string, allowModels []string, denyModels []string) bool {
-	if lo.SomeBy(denyModels, func(rule string) bool {
+	return lo.SomeBy(denyModels, func(rule string) bool {
 		// use glob matching to match the rule
 		matched, err := doublestar.Match(rule, requestModel)
 		if err != nil {
@@ -200,9 +203,10 @@ func CanAccessModel(requestModel string, allowModels []string, denyModels []stri
 		}
 
 		return matched
-	}) {
-		return false
-	}
+	})
+}
+
+func IsGranted(requestModel string, allowModels []string) bool {
 	// if allowModels is empty, means that all models can be accessed.
 	// This follows our definition in the api.
 	if len(allowModels) == 0 {
@@ -218,4 +222,26 @@ func CanAccessModel(requestModel string, allowModels []string, denyModels []stri
 
 		return matched
 	})
+}
+
+/*
+CanAccessModel determines whether the user can access the specified model.
+
+The rules defined in allowModels follows the spec of the following:
+
+- if * is provided, means that all public models can be accessed, except the ones with /.
+
+- if u-kebe/* is provided, means that all models under the u-kebe namespace can be accessed, if we define u- means all individual users, then u-kebe/* means that all models under the kebe user can be accessed.
+
+- if ** is provided, means that all models can be accessed.
+*/
+func CanAccessModel(requestModel string, allowModels []string, denyModels []string) bool {
+	denied := IsDenied(requestModel, denyModels)
+	granted := IsGranted(requestModel, allowModels)
+
+	return CanAccessModelFromValues(denied, granted)
+}
+
+func CanAccessModelFromValues(isDenied bool, isGranted bool) bool {
+	return !isDenied && isGranted
 }

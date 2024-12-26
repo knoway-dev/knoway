@@ -15,6 +15,7 @@ type LLMErrorCode string
 
 const (
 	LLMErrorCodeModelNotFoundOrNotAccessible LLMErrorCode = "model_not_found"
+	LLMErrorCodeModelAccessDenied            LLMErrorCode = "model_access_denied"
 	LLMErrorCodeInsufficientQuota            LLMErrorCode = "insufficient_quota"
 	LLMErrorCodeMissingAPIKey                LLMErrorCode = "missing_api_key"
 	LLMErrorCodeIncorrectAPIKey              LLMErrorCode = "incorrect_api_key"
@@ -101,6 +102,16 @@ func NewErrorModelNotFoundOrNotAccessible(model string) *BaseLLMError {
 		ErrorBody: &BaseError{
 			Code:    lo.ToPtr(LLMErrorCodeModelNotFoundOrNotAccessible),
 			Message: fmt.Sprintf("The model `%s` does not exist or you do not have access to it.", model),
+		},
+	}
+}
+
+func NewErrorModelAccessDenied(model string) *BaseLLMError {
+	return &BaseLLMError{
+		Status: http.StatusForbidden,
+		ErrorBody: &BaseError{
+			Code:    lo.ToPtr(LLMErrorCodeModelAccessDenied),
+			Message: fmt.Sprintf("You do not have access to the model `%s`.", model),
 		},
 	}
 }

@@ -128,6 +128,7 @@ words:
   - usestdlibvars
   - utilruntime
   - varnamelen
+  - vllm
   - whitespace
   - wrapcheck
   - wsl

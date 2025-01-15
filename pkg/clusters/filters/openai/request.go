@@ -94,10 +94,9 @@ func (f *requestHandler) MarshalUpstreamRequest(ctx context.Context, cluster *v1
 		request.Body = io.NopCloser(bytes.NewReader(jsonBody))
 	}
 
+	request.Header.Set("Content-Type", "application/json")
 	// Apply headers
-	if !llmRequest.IsStream() { // non stream
-		request.Header.Set("Content-Type", "application/json")
-	} else { // stream
+	if llmRequest.IsStream() { // non stream
 		request.Header.Set("Accept", "text/event-stream")
 		request.Header.Set("Cache-Control", "no-cache")
 		request.Header.Set("Connection", "keep-alive")

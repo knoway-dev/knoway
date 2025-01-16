@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.16.5
-  name: llmbackends.llm.knoway.dev
+  name: imagegenerationbackends.llm.knoway.dev
 spec:
   group: llm.knoway.dev
   names:
-    kind: LLMBackend
-    listKind: LLMBackendList
-    plural: llmbackends
-    singular: llmbackend
+    kind: ImageGenerationBackend
+    listKind: ImageGenerationBackendList
+    plural: imagegenerationbackends
+    singular: imagegenerationbackend
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -30,7 +30,8 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: LLMBackend is the Schema for the llmbackends API
+        description: ImageGenerationBackend is the Schema for the imagegenerationbackends
+          API.
         properties:
           apiVersion:
             description: |-
@@ -50,12 +51,13 @@ spec:
           metadata:
             type: object
           spec:
-            description: LLMBackendSpec defines the desired state of LLMBackend
+            description: ImageGenerationBackendSpec defines the desired state of ImageGenerationBackend.
             properties:
               filters:
                 description: Filters are applied to the model's requests
                 items:
-                  description: LLMBackendFilter represents the backend filter configuration.
+                  description: ImageGenerationFilter represents the image generation
+                    backend filter configuration.
                   properties:
                     custom:
                       description: "Custom: Custom plugin configuration\nExample:\n\n\tcustom:\n\t\tpluginName:
@@ -85,38 +87,44 @@ spec:
                       openai:
                         description: OpenAI model parameters
                         properties:
-                          max_completion_tokens:
-                            description: MaxCompletionTokens limits the maximum number
-                              of tokens for completion.
-                            type: integer
-                          max_tokens:
-                            description: |-
-                              MaxTokens is deprecated. Use MaxCompletionTokens instead.
-                              This value is not compatible with o1 series models.
-                            type: integer
                           model:
                             type: string
-                          stream:
-                            description: Stream specifies whether to enable streaming
-                              responses.
-                            type: boolean
-                          stream_options:
-                            description: StreamOptions defines additional options
-                              for streaming responses.
-                            properties:
-                              include_usage:
-                                description: IncludeUsage indicates whether to include
-                                  usage statistics before the [DONE] message.
-                                type: boolean
-                            type: object
-                          temperature:
-                            description: |-
-                              Temperature is the sampling temperature, between 0 and 2.
-                              Higher values like 0.8 make the output more random, while lower values like 0.2 make it more focused and deterministic.
+                          "n":
+                            description: N specifies the number of images to generate
                             type: string
-                          top_p:
-                            description: TopP is the nucleus sampling probability,
-                              between 0 and 1.
+                          prompt:
+                            description: A text description of the desired image(s).
+                            type: string
+                          quality:
+                            description: |-
+                              Quality specifies the quality of the image that will be generated.
+                              hd creates images with finer details and greater consistency across the image.
+                              Some of the model doesn't support this parameter.
+                            type: string
+                          response_format:
+                            description: |-
+                              ResponseFormat specifies the format in which the generated images are returned.
+                              Must be one of url or b64_json.
+                              URLs are only valid for 60 minutes after the image has been generated.
+                            type: string
+                          size:
+                            description: |-
+                              Size specifies the size of the generated images.
+                              Must be one of 256x256, 512x512, or 1024x1024 for dall-e-2.
+                              Must be one of 1024x1024, 1792x1024, or 1024x1792 for dall-e-3 models.
+                            type: string
+                          style:
+                            description: |-
+                              The style of the generated images.
+                              Must be one of vivid or natural.
+                              Vivid causes the model to lean towards generating hyper-real and dramatic images.
+                              Natural causes the model to produce more natural, less hyper-real looking images.
+                              This param is only supported for dall-e-3.
+                            type: string
+                          user:
+                            description: |-
+                              A unique identifier representing your end-user, which can help OpenAI to
+                              monitor and detect abuse.
                             type: string
                         type: object
                     type: object
@@ -160,38 +168,44 @@ spec:
                       openai:
                         description: OpenAI model parameters
                         properties:
-                          max_completion_tokens:
-                            description: MaxCompletionTokens limits the maximum number
-                              of tokens for completion.
-                            type: integer
-                          max_tokens:
-                            description: |-
-                              MaxTokens is deprecated. Use MaxCompletionTokens instead.
-                              This value is not compatible with o1 series models.
-                            type: integer
                           model:
                             type: string
-                          stream:
-                            description: Stream specifies whether to enable streaming
-                              responses.
-                            type: boolean
-                          stream_options:
-                            description: StreamOptions defines additional options
-                              for streaming responses.
-                            properties:
-                              include_usage:
-                                description: IncludeUsage indicates whether to include
-                                  usage statistics before the [DONE] message.
-                                type: boolean
-                            type: object
-                          temperature:
-                            description: |-
-                              Temperature is the sampling temperature, between 0 and 2.
-                              Higher values like 0.8 make the output more random, while lower values like 0.2 make it more focused and deterministic.
+                          "n":
+                            description: N specifies the number of images to generate
                             type: string
-                          top_p:
-                            description: TopP is the nucleus sampling probability,
-                              between 0 and 1.
+                          prompt:
+                            description: A text description of the desired image(s).
+                            type: string
+                          quality:
+                            description: |-
+                              Quality specifies the quality of the image that will be generated.
+                              hd creates images with finer details and greater consistency across the image.
+                              Some of the model doesn't support this parameter.
+                            type: string
+                          response_format:
+                            description: |-
+                              ResponseFormat specifies the format in which the generated images are returned.
+                              Must be one of url or b64_json.
+                              URLs are only valid for 60 minutes after the image has been generated.
+                            type: string
+                          size:
+                            description: |-
+                              Size specifies the size of the generated images.
+                              Must be one of 256x256, 512x512, or 1024x1024 for dall-e-2.
+                              Must be one of 1024x1024, 1792x1024, or 1024x1792 for dall-e-3 models.
+                            type: string
+                          style:
+                            description: |-
+                              The style of the generated images.
+                              Must be one of vivid or natural.
+                              Vivid causes the model to lean towards generating hyper-real and dramatic images.
+                              Natural causes the model to produce more natural, less hyper-real looking images.
+                              This param is only supported for dall-e-3.
+                            type: string
+                          user:
+                            description: |-
+                              A unique identifier representing your end-user, which can help OpenAI to
+                              monitor and detect abuse.
                             type: string
                         type: object
                     type: object
@@ -204,7 +218,8 @@ spec:
             - provider
             type: object
           status:
-            description: LLMBackendStatus defines the observed state of LLMBackend
+            description: ImageGenerationBackendStatus defines the observed state of
+              ImageGenerationBackend.
             properties:
               conditions:
                 description: Conditions represent the current conditions of the backend

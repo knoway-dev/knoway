@@ -130,32 +130,6 @@ type StreamOptions struct {
 	IncludeUsage *bool `json:"include_usage,omitempty"`
 }
 
-type Header struct {
-	Key   string `json:"key,omitempty"`
-	Value string `json:"value,omitempty"`
-}
-
-// HeaderFromSource represents the source of a set of ConfigMaps or Secrets
-type HeaderFromSource struct {
-	// An optional identifier to prepend to each key in the ref.
-	Prefix string `json:"prefix,omitempty"`
-	// Type of the source (ConfigMap or Secret)
-	RefType ValueFromType `json:"refType,omitempty"`
-	// Name of the source
-	RefName string `json:"refName,omitempty"`
-}
-
-// ValueFromType defines the type of source for headers.
-// +kubebuilder:validation:Enum=ConfigMap;Secret
-type ValueFromType string
-
-const (
-	// ConfigMap indicates that the header source is a ConfigMap.
-	ConfigMap ValueFromType = "ConfigMap"
-	// Secret indicates that the header source is a Secret.
-	Secret ValueFromType = "Secret"
-)
-
 // LLMBackendFilter represents the backend filter configuration.
 type LLMBackendFilter struct {
 	Name string `json:"name,omitempty"` // Filter name
@@ -167,16 +141,6 @@ type LLMBackendFilter struct {
 // At least one of the following must be specified: UsageStatsConfig, ModelRewriteConfig, or CustomConfig
 // +kubebuilder:validation:Required
 type FilterConfig struct {
-	// UsageStats:  Usage stats configuration
-	// +kubebuilder:validation:OneOf
-	// +optional
-	UsageStats *UsageStatsConfig `json:"usageStats,omitempty"`
-
-	//ModelRewrite: Model rewrite configuration
-	// +kubebuilder:validation:OneOf
-	// +optional
-	ModelRewrite *OpenAIModelNameRewriteConfig `json:"modelRewrite,omitempty"`
-
 	// Custom: Custom plugin configuration
 	// Example:
 	//
@@ -214,12 +178,3 @@ type LLMBackendStatus struct {
 	// Endpoints holds the upstream addresses of the current model (pod IP addresses)
 	Endpoints []string `json:"endpoints,omitempty"`
 }
-
-// StatusEnum defines the possible statuses for the LLMBackend
-type StatusEnum string
-
-const (
-	Unknown StatusEnum = "Unknown"
-	Healthy StatusEnum = "Healthy"
-	Failed  StatusEnum = "Failed"
-)

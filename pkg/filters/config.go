@@ -62,6 +62,12 @@ type OnCompletionRequestFilter interface {
 	OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) RequestFilterResult
 }
 
+type OnImageGenerationsRequestFilter interface {
+	RequestFilter
+
+	OnImageGenerationsRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) RequestFilterResult
+}
+
 type OnCompletionResponseFilter interface {
 	RequestFilter
 
@@ -72,6 +78,12 @@ type OnCompletionStreamResponseFilter interface {
 	RequestFilter
 
 	OnCompletionStreamResponse(ctx context.Context, request object.LLMRequest, response object.LLMStreamResponse, responseChunk object.LLMChunkResponse) RequestFilterResult
+}
+
+type OnImageGenerationsResponseFilter interface {
+	RequestFilter
+
+	OnImageGenerationsResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) RequestFilterResult
 }
 
 type OnResponsePostFilter interface {
@@ -90,12 +102,20 @@ func (r RequestFilters) OnCompletionRequestFilters() []OnCompletionRequestFilter
 	return utils.TypeAssertFrom[RequestFilter, OnCompletionRequestFilter](r)
 }
 
+func (r RequestFilters) OnImageGenerationsRequestFilters() []OnImageGenerationsRequestFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnImageGenerationsRequestFilter](r)
+}
+
 func (r RequestFilters) OnCompletionResponseFilters() []OnCompletionResponseFilter {
 	return utils.TypeAssertFrom[RequestFilter, OnCompletionResponseFilter](r)
 }
 
 func (r RequestFilters) OnCompletionStreamResponseFilters() []OnCompletionStreamResponseFilter {
 	return utils.TypeAssertFrom[RequestFilter, OnCompletionStreamResponseFilter](r)
+}
+
+func (r RequestFilters) OnImageGenerationsResponseFilters() []OnImageGenerationsResponseFilter {
+	return utils.TypeAssertFrom[RequestFilter, OnImageGenerationsResponseFilter](r)
 }
 
 func (r RequestFilters) OnResponsePostFilters() []OnResponsePostFilter {

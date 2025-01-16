@@ -63,20 +63,8 @@ spec:
                         \ \t\tsetting1: value1\n  \t\tsetting2: value2"
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
-                    modelRewrite:
-                      description: 'ModelRewrite: Model rewrite configuration'
-                      properties:
-                        modelName:
-                          type: string
-                      type: object
                     name:
                       type: string
-                    usageStats:
-                      description: 'UsageStats:  Usage stats configuration'
-                      properties:
-                        address:
-                          type: string
-                      type: object
                   type: object
                 type: array
               name:

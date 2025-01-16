@@ -17,15 +17,12 @@ import (
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/listener/manager/chat"
+	"knoway.dev/pkg/listener/manager/image"
 )
 
-func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg config.GatewayConfig) error {
-	if listenerAddr == "" {
-		listenerAddr = ":8080"
-	}
-
+func newChatListenerConfig(cfg config.GatewayConfig) *v1alpha1.ChatCompletionListener {
 	baseListenConfig := &v1alpha1.ChatCompletionListener{
-		Name:    "openai",
+		Name:    "openai-chat",
 		Filters: []*v1alpha1.ListenerFilter{},
 	}
 	if cfg.Log.AccessLog != nil {
@@ -33,6 +30,7 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 			Enable: cfg.Log.AccessLog.Enabled,
 		}
 	}
+
 	if cfg.AuthServer.URL != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Name: "api-key-auth",
@@ -70,8 +68,68 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 		})
 	}
 
+	return baseListenConfig
+}
+
+func newImageListenerConfig(cfg config.GatewayConfig) *v1alpha1.ImageListener {
+	baseListenConfig := &v1alpha1.ImageListener{
+		Name:    "openai-image",
+		Filters: []*v1alpha1.ListenerFilter{},
+	}
+	if cfg.Log.AccessLog != nil {
+		baseListenConfig.AccessLog = &v1alpha1.Log{
+			Enable: cfg.Log.AccessLog.Enabled,
+		}
+	}
+
+	if cfg.AuthServer.URL != "" {
+		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
+			Name: "api-key-auth",
+			Config: func() *anypb.Any {
+				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
+					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
+						Url:     cfg.AuthServer.URL,
+						Timeout: durationpb.New(time.Duration(cfg.AuthServer.Timeout) * time.Second),
+					},
+				})
+				if err != nil {
+					return nil
+				}
+
+				return c
+			}(),
+		})
+	}
+
+	if cfg.StatsServer.URL != "" {
+		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
+			Config: func() *anypb.Any {
+				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
+					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
+						Url:     cfg.StatsServer.URL,
+						Timeout: durationpb.New(time.Duration(cfg.StatsServer.Timeout) * time.Second),
+					},
+				})
+				if err != nil {
+					return nil
+				}
+
+				return c
+			}(),
+		})
+	}
+
+	return baseListenConfig
+}
+
+func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg config.GatewayConfig) error {
+	if listenerAddr == "" {
+		listenerAddr = ":8080"
+	}
+
 	server, err := listener.NewMux().
-		Register(chat.NewOpenAIChatListenerConfigs(baseListenConfig, lifecycle)).
+		Register(chat.NewOpenAIChatListenerConfigs(newChatListenerConfig(cfg), lifecycle)).
+		Register(image.NewOpenAIImageListenerConfigs(newImageListenerConfig(cfg), lifecycle)).
 		BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err

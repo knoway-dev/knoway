@@ -18,9 +18,6 @@ import (
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/registry/cluster"
-	registryroute "knoway.dev/pkg/registry/route"
-	"knoway.dev/pkg/route"
 	"knoway.dev/pkg/types/openai"
 )
 
@@ -47,10 +44,6 @@ func ClusterToOpenAIModel(cluster *v1alpha4.Cluster) goopenai.Model {
 		Parent:     "",
 	}
 }
-
-var (
-	SkipStreamResponse = errors.New("skip writing stream response") //nolint:errname,stylecheck
-)
 
 func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request object.LLMRequest, streamResp object.LLMStreamResponse, writer http.ResponseWriter) {
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
@@ -116,39 +109,6 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 	}
 }
 
-func (l *OpenAIChatListener) findRoute(ctx context.Context, llmRequest object.LLMRequest) (route.Route, string) {
-	var r route.Route
-	var clusterName string
-
-	// TODO: do route
-	registryroute.ForeachRoute(func(item route.Route) bool {
-		if cn, ok := item.Match(ctx, llmRequest); ok {
-			clusterName = cn
-			r = item
-
-			return false
-		}
-
-		return true
-	})
-
-	return r, clusterName
-}
-
-func (l *OpenAIChatListener) findCluster(ctx context.Context, llmRequest object.LLMRequest) (clusters.Cluster, bool) {
-	r, clusterName := l.findRoute(ctx, llmRequest)
-	if r == nil {
-		return nil, false
-	}
-
-	c, ok := cluster.FindClusterByName(clusterName)
-	if !ok {
-		return nil, false
-	}
-
-	return c, true
-}
-
 func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c clusters.Cluster, writer http.ResponseWriter, request *http.Request, llmRequest object.LLMRequest) (object.LLMResponse, error) {
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
 
@@ -200,8 +160,8 @@ func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c 
 
 		// Ignore, we shouldn't return any error here. Since the stream is already written
 		// to the client, if any error occurred here, it should be logged and ignored.
-		return resp, SkipStreamResponse
+		return resp, openai.SkipStreamResponse
 	}
 
-	return resp, SkipStreamResponse
+	return resp, openai.SkipStreamResponse
 }

@@ -1,0 +1,28 @@
+apiVersion: llm.knoway.dev/v1alpha1
+kind: ImageGenerationBackend
+metadata:
+  labels:
+    app.kubernetes.io/name: knoway
+    app.kubernetes.io/managed-by: kustomize
+  name: imagegenerationbackend-sample
+spec:
+  provider: openai
+  name: sd-3
+  upstream:
+    baseUrl: "https://api.openai.com/v1/images/generations"
+    headers:
+      - key: "Authorization"
+        value: "Bearer sk-or-v1-xxxxxxxxxx"
+    timeout: 300 # ms
+    defaultParams:
+      openai:
+        n: 1
+        quality: 'standard'
+    overrideParams:
+      openai:
+        # upstream model
+        model: "stabilityai/sd-3"
+  filters:
+    - custom:
+        pluginName: "examplePlugin"
+        pluginVersion: "1.0.0"

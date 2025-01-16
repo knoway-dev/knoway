@@ -30,7 +30,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 	"github.com/stoewer/go-strcase"
-	"google.golang.org/protobuf/types/known/anypb"
 	structpb2 "google.golang.org/protobuf/types/known/structpb"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"knoway.dev/api/clusters/v1alpha1"
-	v1alpha12 "knoway.dev/api/filters/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/clusters/manager"
@@ -581,36 +579,13 @@ func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, back
 	var filters []*v1alpha1.ClusterFilter
 
 	for _, fc := range backend.Spec.Filters {
-		var fcConfig *anypb.Any
-
 		switch {
-		case fc.UsageStats != nil:
-			c := &v1alpha12.UsageStatsConfig{
-				StatsServer: &v1alpha12.UsageStatsConfig_StatsServer{
-					Url: fc.UsageStats.Address,
-				},
-			}
-
-			us, err := anypb.New(c)
-			if err != nil {
-				log.Log.Error(err, "Failed to create Any from UsageStatsConfig")
-			} else {
-				fcConfig = us
-			}
-
-			log.Log.Info("Discovered filter during registration of cluster", "type", "UsageStats", "cluster", backend.Name, "modelName", mName, "filter_name", fc.Name)
 		case fc.Custom != nil:
 			// TODO: Implement custom filter
 			log.Log.Info("Discovered filter during registration of cluster", "type", "Custom", "cluster", backend.Name, "modelName", mName)
 		default:
 			// TODO: Implement unknown filter
 			log.Log.Info("Discovered filter during registration of cluster", "type", "Unknown", "cluster", backend.Name, "modelName", mName)
-		}
-
-		if fcConfig != nil {
-			filters = append(filters, &v1alpha1.ClusterFilter{
-				Config: fcConfig,
-			})
 		}
 	}
 

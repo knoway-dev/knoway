@@ -148,6 +148,14 @@ type OpenAIImageGenerationParam struct {
 	// A unique identifier representing your end-user, which can help OpenAI to
 	// monitor and detect abuse.
 	User *string `json:"user,omitempty"`
+
+	// NegativePrompt is a text description of the undesired features of the image(s).
+	NegativePrompt *string `json:"negative_prompt,omitempty"`
+	// Guidance scale is a number value that controls how much the conditional signal
+	// (prompt, negative_prompt, training images, etc.) affects the generation epoch.
+	// In Stable Diffusion, 7.5 is generally used.
+	// For more information, see: https://sander.ai/2022/05/26/guidance.html
+	GuidanceScale *string `json:"guidance_scale,omitempty"`
 }
 
 // ImageGenerationFilter represents the image generation backend filter configuration.

@@ -87,10 +87,21 @@ spec:
                       openai:
                         description: OpenAI model parameters
                         properties:
+                          guidance_scale:
+                            description: |-
+                              Guidance scale is a number value that controls how much the conditional signal
+                              (prompt, negative_prompt, training images, etc.) affects the generation epoch.
+                              In Stable Diffusion, 7.5 is generally used.
+                              For more information, see: https://sander.ai/2022/05/26/guidance.html
+                            type: string
                           model:
                             type: string
                           "n":
                             description: N specifies the number of images to generate
+                            type: string
+                          negative_prompt:
+                            description: NegativePrompt is a text description of the
+                              undesired features of the image(s).
                             type: string
                           prompt:
                             description: A text description of the desired image(s).
@@ -168,10 +179,21 @@ spec:
                       openai:
                         description: OpenAI model parameters
                         properties:
+                          guidance_scale:
+                            description: |-
+                              Guidance scale is a number value that controls how much the conditional signal
+                              (prompt, negative_prompt, training images, etc.) affects the generation epoch.
+                              In Stable Diffusion, 7.5 is generally used.
+                              For more information, see: https://sander.ai/2022/05/26/guidance.html
+                            type: string
                           model:
                             type: string
                           "n":
                             description: N specifies the number of images to generate
+                            type: string
+                          negative_prompt:
+                            description: NegativePrompt is a text description of the
+                              undesired features of the image(s).
                             type: string
                           prompt:
                             description: A text description of the desired image(s).

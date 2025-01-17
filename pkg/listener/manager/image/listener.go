@@ -73,7 +73,7 @@ func (l *OpenAIImageListener) RegisterRoutes(mux *mux.Router) error {
 		listener.WithRejectAfterDrainedWithError(l),
 	)
 
-	mux.HandleFunc("/v1/image/generation", listener.HTTPHandlerFunc(middlewares(l.imageGeneration)))
+	mux.HandleFunc("/v1/images/generations", listener.HTTPHandlerFunc(middlewares(l.imageGeneration)))
 
 	return nil
 }

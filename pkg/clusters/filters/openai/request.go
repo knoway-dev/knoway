@@ -70,7 +70,7 @@ func (f *requestHandler) MarshalUpstreamRequest(ctx context.Context, cluster *v1
 	case object.RequestTypeCompletions:
 		upstreamURL += "/completions"
 	case object.RequestTypeImageGeneration:
-		upstreamURL += "/image/generations"
+		upstreamURL += "/images/generations"
 	default:
 		panic("unknown request type: " + string(llmRequest.GetRequestType()))
 	}

@@ -13,6 +13,7 @@ import (
 
 var StaticClustersConfig = map[string]*clusters.Cluster{
 	"openai/gpt-3.5-turbo": {
+		Type:              clusters.ClusterType_LLM,
 		Name:              "openai/gpt-3.5-turbo",
 		Provider:          "openai",
 		LoadBalancePolicy: clusters.LoadBalancePolicy_ROUND_ROBIN,

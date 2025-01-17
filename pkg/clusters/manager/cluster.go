@@ -31,25 +31,23 @@ type clusterManager struct {
 }
 
 func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) (clusters.Cluster, error) {
-	var conf *v1alpha1.Cluster
+	cluster, ok := clusterProtoMsg.(*v1alpha1.Cluster)
+	if !ok {
+		return nil, fmt.Errorf("invalid config type %T", cluster)
+	}
+
 	var clusterFilters []filters.ClusterFilter
 
-	if cluster, ok := clusterProtoMsg.(*v1alpha1.Cluster); !ok {
-		return nil, fmt.Errorf("invalid config type %T", cluster)
-	} else {
-		conf = cluster
-
-		for _, fc := range cluster.GetFilters() {
-			if f, err := registryfilters.NewClusterFilterWithConfig(fc.GetName(), fc.GetConfig(), lifecycle); err != nil {
-				return nil, err
-			} else {
-				clusterFilters = append(clusterFilters, f)
-			}
+	for _, fc := range cluster.GetFilters() {
+		if f, err := registryfilters.NewClusterFilterWithConfig(fc.GetName(), fc.GetConfig(), lifecycle); err != nil {
+			return nil, err
+		} else {
+			clusterFilters = append(clusterFilters, f)
 		}
 	}
 
 	// check lb
-	switch conf.GetLoadBalancePolicy() {
+	switch cluster.GetLoadBalancePolicy() {
 	case v1alpha1.LoadBalancePolicy_IP_HASH:
 		// TODO: implement
 	case v1alpha1.LoadBalancePolicy_LEAST_CONNECTION:
@@ -78,11 +76,15 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 	clusterFilters = append(clusterFilters, registryfilters.ClusterDefaultFilters(lifecycle)...)
 
 	return &clusterManager{
-		cluster: conf,
+		cluster: cluster,
 		filters: clusterFilters,
 		// NOTICE: lo.Reverse will modify the original slice, so we need to clone it
 		reversedFilters: lo.Reverse(utils.Clone(clusterFilters)),
 	}, nil
+}
+
+func (m *clusterManager) Type() v1alpha1.ClusterType {
+	return m.cluster.GetType()
 }
 
 func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {

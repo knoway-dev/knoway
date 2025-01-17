@@ -3,6 +3,8 @@ package listener
 import (
 	"context"
 
+	"github.com/samber/lo"
+	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/object"
 	registrycluster "knoway.dev/pkg/registry/cluster"
@@ -29,7 +31,7 @@ func FindRoute(ctx context.Context, llmRequest object.LLMRequest) (route.Route, 
 	return r, clusterName
 }
 
-func FindCluster(ctx context.Context, llmRequest object.LLMRequest) (clusters.Cluster, bool) {
+func FindCluster(ctx context.Context, llmRequest object.LLMRequest, expectedTypes []v1alpha1.ClusterType) (clusters.Cluster, bool) {
 	r, clusterName := FindRoute(ctx, llmRequest)
 	if r == nil {
 		return nil, false
@@ -37,6 +39,9 @@ func FindCluster(ctx context.Context, llmRequest object.LLMRequest) (clusters.Cl
 
 	c, ok := registrycluster.FindClusterByName(clusterName)
 	if !ok {
+		return nil, false
+	}
+	if !lo.Contains(expectedTypes, c.Type()) {
 		return nil, false
 	}
 

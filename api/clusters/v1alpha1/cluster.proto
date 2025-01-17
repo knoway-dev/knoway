@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-option go_package = "knoway.dev/api/clusters/v1alpha1";
-
 package knoway.clusters.v1alpha1;
 
 import "google/protobuf/any.proto";
 import "google/protobuf/struct.proto";
+
+option go_package = "knoway.dev/api/clusters/v1alpha1";
 
 message ClusterFilter {
     string name                = 1;
@@ -38,6 +38,12 @@ message Upstream {
     map<string, google.protobuf.Value> overrideParams = 6;
 }
 
+enum ClusterType {
+    CLUSTER_TYPE_UNSPECIFIED = 0;
+    LLM                      = 1;
+    IMAGE_GENERATION         = 2;
+}
+
 message Cluster {
     string name                         = 1;
     LoadBalancePolicy loadBalancePolicy = 2;
@@ -46,4 +52,5 @@ message Cluster {
     repeated ClusterFilter filters      = 5;
     string provider                     = 6;
     int64 created                       = 7;
+    ClusterType type                    = 8;
 }

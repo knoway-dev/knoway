@@ -6,6 +6,7 @@ import (
 
 	"github.com/samber/lo"
 
+	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
@@ -60,7 +61,7 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 		}
 	}
 
-	c, ok := listener.FindCluster(request.Context(), llmRequest)
+	c, ok := listener.FindCluster(request.Context(), llmRequest, []v1alpha1.ClusterType{v1alpha1.ClusterType_LLM})
 	if !ok {
 		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
 	}

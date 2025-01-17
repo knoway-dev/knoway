@@ -590,6 +590,7 @@ func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, back
 	}
 
 	return &v1alpha1.Cluster{
+		Type:     v1alpha1.ClusterType_LLM,
 		Name:     mName,
 		Provider: backend.Spec.Provider,
 		Created:  backend.GetCreationTimestamp().Unix(),

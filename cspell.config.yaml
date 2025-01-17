@@ -36,6 +36,7 @@ words:
   - exhaustive
   - exhaustruct
   - exportloopref
+  - fatcontext
   - filtersv1alpha1
   - finalizer
   - finalizers

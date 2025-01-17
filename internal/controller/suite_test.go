@@ -56,7 +56,7 @@ func TestControllers(t *testing.T) {
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
 
-	ctx, cancel = context.WithCancel(context.TODO())
+	ctx, cancel = context.WithCancel(context.TODO()) //nolint:fatcontext
 
 	var err error
 	err = llmv1alpha1.AddToScheme(scheme.Scheme)
@@ -102,15 +102,18 @@ var _ = AfterSuite(func() {
 // properly set up, run 'make setup-envtest' beforehand.
 func getFirstFoundEnvTestBinaryDir() string {
 	basePath := filepath.Join("..", "..", "bin", "k8s")
+
 	entries, err := os.ReadDir(basePath)
 	if err != nil {
 		logf.Log.Error(err, "Failed to read directory", "path", basePath)
 		return ""
 	}
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			return filepath.Join(basePath, entry.Name())
 		}
 	}
+
 	return ""
 }

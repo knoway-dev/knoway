@@ -9,14 +9,14 @@ spec:
   provider: openai
   name: sd-3
   upstream:
-    baseUrl: "https://api.openai.com/v1/images/generations"
+    baseUrl: "https://api.openai.com/v1"
     headers:
       - key: "Authorization"
         value: "Bearer sk-or-v1-xxxxxxxxxx"
     timeout: 300 # ms
     defaultParams:
       openai:
-        n: 1
+        'n': '1'
         quality: 'standard'
     overrideParams:
       openai:

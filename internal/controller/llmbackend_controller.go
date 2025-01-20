@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
-	"strconv"
 	"strings"
 	"time"
 
@@ -30,8 +29,6 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 	"github.com/stoewer/go-strcase"
-	structpb2 "google.golang.org/protobuf/types/known/structpb"
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -92,7 +89,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				continue
 			}
 
-			log.Log.Error(err, "llmBackend reconcile error", "name", llmBackend.Name, "type", typ)
+			log.Log.Error(err, "LLMBackend reconcile error", "name", llmBackend.Name, "type", typ)
 			setStatusCondition(llmBackend, typ, false, err.Error())
 
 			break
@@ -116,7 +113,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if !reflect.DeepEqual(llmBackend.Status, newBackend.Status) {
 		newBackend.Status = llmBackend.Status
 		if err := r.Status().Update(ctx, newBackend); err != nil {
-			log.Log.Error(err, "update llmBackend status error", "name", llmBackend.GetName())
+			log.Log.Error(err, "update LLMBackend status error", "name", llmBackend.GetName())
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}
@@ -151,13 +148,13 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 	if clusterCfg != nil {
 		err = cluster.UpsertAndRegisterCluster(clusterCfg, r.LifeCycle)
 		if err != nil {
-			log.Log.Error(err, "Failed to upsert llmBackend", "cluster", clusterCfg)
-			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert llmBackend %s: %w", llmBackend.GetName(), err))
+			log.Log.Error(err, "Failed to upsert LLMBackend", "cluster", clusterCfg)
+			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s: %w", llmBackend.GetName(), err))
 		}
 
 		if err = route.RegisterRouteWithConfig(routeCfg); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", mName)
-			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert llmBackend %s route: %w", llmBackend.GetName(), err))
+			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s route: %w", llmBackend.GetName(), err))
 		}
 	}
 
@@ -180,13 +177,13 @@ func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBacken
 		return fmt.Errorf("upstream.baseUrl parse error: %w", err)
 	}
 
-	existingLLMBackendList := &knowaydevv1alpha1.LLMBackendList{}
-	if err := r.Client.List(ctx, existingLLMBackendList); err != nil {
+	allExistingBackend := &knowaydevv1alpha1.LLMBackendList{}
+	if err := r.Client.List(ctx, allExistingBackend); err != nil {
 		return fmt.Errorf("failed to list LLMBackend resources: %w", err)
 	}
 
-	for _, existingLLMBackend := range existingLLMBackendList.Items {
-		if existingLLMBackend.Spec.Name == llmBackend.Spec.Name && existingLLMBackend.Name != llmBackend.Name {
+	for _, existing := range allExistingBackend.Items {
+		if existing.Spec.Name == llmBackend.Spec.Name && existing.Name != llmBackend.Name {
 			return fmt.Errorf("LLMBackend name '%s' must be unique globally", llmBackend.Spec.Name)
 		}
 	}
@@ -211,59 +208,12 @@ func (r *LLMBackendReconciler) reconcileUpstreamHealthy(ctx context.Context, llm
 }
 
 func (r *LLMBackendReconciler) reconcilePhase(_ context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) {
-	llmBackend.Status.Status = knowaydevv1alpha1.Healthy
-	if isDeleted(llmBackend) {
-		llmBackend.Status.Status = knowaydevv1alpha1.Healthy
-		return
-	}
-
-	for _, cond := range llmBackend.Status.Conditions {
-		if cond.Status == metav1.ConditionFalse {
-			llmBackend.Status.Status = knowaydevv1alpha1.Failed
-			return
-		}
-	}
+	reconcilePhase(llmBackend)
 }
 
-func isDeleted(c *knowaydevv1alpha1.LLMBackend) bool {
-	return c.DeletionTimestamp != nil
-}
-
-func setStatusCondition(llmBackend *knowaydevv1alpha1.LLMBackend, typ string, ready bool, message string) {
-	cs := metav1.ConditionFalse
-	if ready {
-		cs = metav1.ConditionTrue
-	}
-
-	index := -1
-	newCond := metav1.Condition{
-		Type:               typ,
-		Reason:             typ,
-		Message:            message,
-		LastTransitionTime: metav1.Time{Time: time.Now()},
-		Status:             cs,
-	}
-
-	for i, cond := range llmBackend.Status.Conditions {
-		if cond.Type == typ {
-			index = i
-			break
-		}
-	}
-	if index == -1 {
-		llmBackend.Status.Conditions = append(llmBackend.Status.Conditions, newCond)
-	} else {
-		old := llmBackend.Status.Conditions[index]
-		if old.Status == newCond.Status && old.Message == newCond.Message {
-			return
-		}
-		llmBackend.Status.Conditions[index] = newCond
-	}
-}
-
-type reconcileHandler struct {
+type reconcileHandler[T runtime.Object] struct {
 	typ        string
-	reconciler func(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error
+	reconciler func(ctx context.Context, backend T) error
 }
 
 const (
@@ -280,8 +230,8 @@ const (
 	condFinalDelete     = "finalDelete"
 )
 
-func (r *LLMBackendReconciler) getReconciles() []reconcileHandler {
-	rhs := []reconcileHandler{
+func (r *LLMBackendReconciler) getReconciles() []reconcileHandler[*knowaydevv1alpha1.LLMBackend] {
+	rhs := []reconcileHandler[*knowaydevv1alpha1.LLMBackend]{
 		{
 			typ:        condConfig,
 			reconciler: r.reconcileConfig,
@@ -299,15 +249,12 @@ func (r *LLMBackendReconciler) getReconciles() []reconcileHandler {
 			reconciler: r.reconcileRegister,
 		},
 	}
-	if reconcilesHook != nil {
-		return reconcilesHook(rhs)
-	}
 
 	return rhs
 }
 
-func (r *LLMBackendReconciler) getDeleteReconciles() []reconcileHandler {
-	rhs := []reconcileHandler{
+func (r *LLMBackendReconciler) getDeleteReconciles() []reconcileHandler[*knowaydevv1alpha1.LLMBackend] {
+	rhs := []reconcileHandler[*knowaydevv1alpha1.LLMBackend]{
 		{
 			typ:        condConfig,
 			reconciler: r.reconcileConfig,
@@ -321,15 +268,9 @@ func (r *LLMBackendReconciler) getDeleteReconciles() []reconcileHandler {
 			reconciler: r.reconcileFinalDelete,
 		},
 	}
-	if reconcilesHook != nil {
-		return reconcilesHook(rhs)
-	}
 
 	return rhs
 }
-
-// just for test
-var reconcilesHook func([]reconcileHandler) []reconcileHandler
 
 func (r *LLMBackendReconciler) reconcileConfig(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
 	if len(llmBackend.Finalizers) == 0 {
@@ -344,14 +285,6 @@ func (r *LLMBackendReconciler) reconcileConfig(ctx context.Context, llmBackend *
 }
 
 const graceDeletePeriod = time.Minute * 10
-
-func shouldForceDelete(llmBackend *knowaydevv1alpha1.LLMBackend) bool {
-	if llmBackend.DeletionTimestamp == nil {
-		return false
-	}
-
-	return llmBackend.DeletionTimestamp.Add(graceDeletePeriod).Before(time.Now())
-}
 
 func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
 	canDelete := true
@@ -368,11 +301,11 @@ func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBack
 
 	llmBackend.Finalizers = nil
 	if err := r.Update(ctx, llmBackend); err != nil {
-		log.Log.Error(err, "update llmBackend finalizer error")
+		log.Log.Error(err, "update LLMBackend finalizer error")
 		return err
 	}
 
-	log.Log.Info("remove llmBackend finalizer", "name", llmBackend.GetName())
+	log.Log.Info("remove LLMBackend finalizer", "name", llmBackend.GetName())
 
 	return nil
 }
@@ -381,143 +314,8 @@ func (r *LLMBackendReconciler) toUpstreamHeaders(ctx context.Context, backend *k
 	if backend == nil {
 		return nil, nil
 	}
-	hs := make([]*v1alpha1.Upstream_Header, 0)
 
-	for _, h := range backend.Spec.Upstream.Headers {
-		if h.Key == "" || h.Value == "" {
-			continue
-		}
-
-		hs = append(hs, &v1alpha1.Upstream_Header{
-			Key:   h.Key,
-			Value: h.Value,
-		})
-	}
-
-	for _, valueFrom := range backend.Spec.Upstream.HeadersFrom {
-		var data map[string]string
-
-		switch valueFrom.RefType {
-		case knowaydevv1alpha1.Secret:
-			secret := &v1.Secret{}
-			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: backend.GetNamespace(), Name: valueFrom.RefName}, secret); err != nil {
-				return nil, fmt.Errorf("failed to get Secret %s: %w", valueFrom.RefName, err)
-			}
-			data = secret.StringData
-		case knowaydevv1alpha1.ConfigMap:
-			configMap := &v1.ConfigMap{}
-			if err := r.Client.Get(ctx, client.ObjectKey{Namespace: backend.GetNamespace(), Name: valueFrom.RefName}, configMap); err != nil {
-				return nil, fmt.Errorf("failed to get ConfigMap %s: %w", valueFrom.RefName, err)
-			}
-			data = configMap.Data
-		default:
-			// noting
-		}
-
-		for key, value := range data {
-			hs = append(hs, &v1alpha1.Upstream_Header{
-				Key:   valueFrom.Prefix + key,
-				Value: value,
-			})
-		}
-	}
-
-	return hs, nil
-}
-
-func processStruct(v interface{}, params map[string]*structpb.Value) error {
-	val := reflect.ValueOf(v)
-
-	// Ensure we have a pointer to a struct
-	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("expected a pointer to struct, got %v", val.Kind())
-	}
-
-	// Get the element and type for iteration
-	elem := val.Elem()
-	typ := elem.Type()
-
-	for i := range make([]int, elem.NumField()) {
-		field := elem.Field(i)
-		structField := typ.Field(i)
-
-		// Handle inline struct fields (embedded fields)
-		if structField.Anonymous {
-			if err := processStruct(field.Addr().Interface(), params); err != nil {
-				return err
-			}
-
-			continue
-		}
-
-		// Extract the JSON tag, skip if there's no tag or it's marked as "-"
-		tag := structField.Tag.Get("json")
-		if tag == "-" {
-			continue
-		}
-
-		// Get the actual JSON key
-		jsonKey := strings.Split(tag, ",")[0]
-
-		// Handle nil pointers
-		if field.Kind() == reflect.Ptr && field.IsNil() {
-			continue
-		}
-
-		var fieldValue interface{}
-		if field.Kind() == reflect.Ptr {
-			// Dereference pointer
-			fieldValue = field.Elem().Interface()
-		} else {
-			fieldValue = field.Interface()
-		}
-
-		// Check if you need to convert to float
-		if isFloatString := structField.Tag.Get("floatString"); isFloatString == "true" {
-			if strVal, ok := fieldValue.(string); ok {
-				if floatVal, err := strconv.ParseFloat(strVal, 64); err == nil {
-					fieldValue = floatVal
-				} else {
-					return fmt.Errorf("failed to convert string to float for field %s: %w", jsonKey, err)
-				}
-			}
-		}
-
-		// Handle nested struct fields
-		if reflect.ValueOf(fieldValue).Kind() == reflect.Struct {
-			// Get the pointer to the nested struct
-			nestedStruct := field
-			if field.Kind() != reflect.Ptr {
-				nestedStruct = field.Addr()
-			}
-
-			nestedParams := make(map[string]*structpb.Value)
-			if err := processStruct(nestedStruct.Interface(), nestedParams); err != nil {
-				return err
-			}
-
-			// Convert nestedParams to *structpb.Struct
-			structValue := &structpb.Struct{
-				Fields: nestedParams,
-			}
-
-			// Convert to *structpb.Value
-			value := structpb2.NewStructValue(structValue)
-			params[jsonKey] = value
-
-			continue
-		}
-
-		// Convert fieldValue to *structpb.Value
-		value, err := structpb2.NewValue(fieldValue)
-		if err != nil {
-			return fmt.Errorf("failed to convert field %s to *structpb.Value: %w", jsonKey, err)
-		}
-
-		params[jsonKey] = value
-	}
-
-	return nil
+	return headerFromSpec(ctx, r.Client, backend.GetNamespace(), backend.Spec.Upstream.Headers, backend.Spec.Upstream.HeadersFrom)
 }
 
 func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[string]*structpb.Value) error {
@@ -539,7 +337,7 @@ func parseModelParams(modelParams *knowaydevv1alpha1.ModelParams, params map[str
 	return nil
 }
 
-func toParams(backed *knowaydevv1alpha1.LLMBackend) (map[string]*structpb.Value, map[string]*structpb.Value, error) {
+func toLLMBackendParams(backed *knowaydevv1alpha1.LLMBackend) (map[string]*structpb.Value, map[string]*structpb.Value, error) {
 	var defaultParams, overrideParams map[string]*structpb.Value
 	if backed == nil {
 		return nil, nil, nil
@@ -570,7 +368,7 @@ func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, back
 		return nil, err
 	}
 
-	defaultParams, overrideParams, err := toParams(backend)
+	defaultParams, overrideParams, err := toLLMBackendParams(backend)
 	if err != nil {
 		return nil, err
 	}

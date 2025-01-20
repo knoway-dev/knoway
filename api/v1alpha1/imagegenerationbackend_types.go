@@ -29,6 +29,8 @@ import (
 //+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.upstream.baseUrl`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
+var _ Backend = (*ImageGenerationBackend)(nil)
+
 // ImageGenerationBackend is the Schema for the imagegenerationbackends API.
 type ImageGenerationBackend struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -36,6 +38,14 @@ type ImageGenerationBackend struct {
 
 	Spec   ImageGenerationBackendSpec   `json:"spec,omitempty"`
 	Status ImageGenerationBackendStatus `json:"status,omitempty"`
+}
+
+func (b *ImageGenerationBackend) GetObjectMeta() metav1.ObjectMeta {
+	return b.ObjectMeta
+}
+
+func (b *ImageGenerationBackend) GetStatus() BackendStatus {
+	return &b.Status
 }
 
 // +kubebuilder:object:root=true
@@ -184,6 +194,8 @@ type ImageGenerationFilterFilterConfig struct {
 	Custom *runtime.RawExtension `json:"custom,omitempty"`
 }
 
+var _ BackendStatus = (*ImageGenerationBackendStatus)(nil)
+
 // ImageGenerationBackendStatus defines the observed state of ImageGenerationBackend.
 type ImageGenerationBackendStatus struct {
 	// Status indicates the health of the backend: Unknown, Healthy, or Failed
@@ -195,4 +207,20 @@ type ImageGenerationBackendStatus struct {
 
 	// Endpoints holds the upstream addresses of the current model (pod IP addresses)
 	Endpoints []string `json:"endpoints,omitempty"`
+}
+
+func (s *ImageGenerationBackendStatus) GetStatus() StatusEnum {
+	return s.Status
+}
+
+func (s *ImageGenerationBackendStatus) SetStatus(status StatusEnum) {
+	s.Status = status
+}
+
+func (s *ImageGenerationBackendStatus) GetConditions() []metav1.Condition {
+	return s.Conditions
+}
+
+func (s *ImageGenerationBackendStatus) SetConditions(conditions []metav1.Condition) {
+	s.Conditions = conditions
 }

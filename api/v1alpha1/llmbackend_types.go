@@ -29,6 +29,8 @@ import (
 //+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.upstream.baseUrl`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
+var _ Backend = (*LLMBackend)(nil)
+
 // LLMBackend is the Schema for the llmbackends API
 type LLMBackend struct {
 	metav1.TypeMeta   `json:",inline"`
@@ -36,6 +38,14 @@ type LLMBackend struct {
 
 	Spec   LLMBackendSpec   `json:"spec,omitempty"`
 	Status LLMBackendStatus `json:"status,omitempty"`
+}
+
+func (b *LLMBackend) GetObjectMeta() metav1.ObjectMeta {
+	return b.ObjectMeta
+}
+
+func (b *LLMBackend) GetStatus() BackendStatus {
+	return &b.Status
 }
 
 // +kubebuilder:object:root=true
@@ -166,6 +176,8 @@ type OpenAIModelNameRewriteConfig struct {
 	ModelName string `json:"modelName,omitempty"`
 }
 
+var _ BackendStatus = (*LLMBackendStatus)(nil)
+
 // LLMBackendStatus defines the observed state of LLMBackend
 type LLMBackendStatus struct {
 	// Status indicates the health of the backend: Unknown, Healthy, or Failed
@@ -177,4 +189,20 @@ type LLMBackendStatus struct {
 
 	// Endpoints holds the upstream addresses of the current model (pod IP addresses)
 	Endpoints []string `json:"endpoints,omitempty"`
+}
+
+func (s *LLMBackendStatus) GetStatus() StatusEnum {
+	return s.Status
+}
+
+func (s *LLMBackendStatus) SetStatus(status StatusEnum) {
+	s.Status = status
+}
+
+func (s *LLMBackendStatus) GetConditions() []metav1.Condition {
+	return s.Conditions
+}
+
+func (s *LLMBackendStatus) SetConditions(conditions []metav1.Condition) {
+	s.Conditions = conditions
 }

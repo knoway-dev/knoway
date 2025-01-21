@@ -18,16 +18,13 @@ package controller
 
 import (
 	"context"
-	"flag"
 	"testing"
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	"knoway.dev/api/v1alpha1"
 
@@ -88,12 +85,6 @@ func TestLLMBackendReconciler_Reconcile(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			copts := zap.Options{
-				Development: true,
-			}
-			copts.BindFlags(flag.CommandLine)
-			ctrl.SetLogger(zap.New(zap.UseFlagOptions(&copts)))
-
 			fakeClient := tt.setupClient(NewFakeClientWithStatus())
 			reconciler := &LLMBackendReconciler{
 				Client: fakeClient,

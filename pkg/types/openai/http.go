@@ -1,4 +1,4 @@
-package chat
+package openai
 
 import (
 	"errors"
@@ -6,8 +6,11 @@ import (
 	"net/http"
 
 	"knoway.dev/pkg/metadata"
-	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
+)
+
+var (
+	SkipStreamResponse = errors.New("skip writing stream response") //nolint:errname,stylecheck
 )
 
 func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, request *http.Request) {
@@ -33,7 +36,7 @@ func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, req
 			return
 		}
 
-		openAIError := openai.NewErrorFromLLMError(err)
+		openAIError := NewErrorFromLLMError(err)
 		if openAIError.FromUpstream {
 			slog.Error("upstream returned an error",
 				"status", openAIError.Status,

@@ -22,18 +22,15 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"knoway.dev/api/v1alpha1"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-func TestLLMBackendReconciler_Reconcile(t *testing.T) {
+func TestImageGenerationBackendReconciler_Reconcile(t *testing.T) {
 	tests := []struct {
 		name        string
 		setupClient func(client.Client) client.Client
@@ -44,19 +41,19 @@ func TestLLMBackendReconciler_Reconcile(t *testing.T) {
 		{
 			name: "Valid resource reconciled",
 			setupClient: func(cl client.Client) client.Client {
-				resource := &v1alpha1.LLMBackend{
+				resource := &v1alpha1.ImageGenerationBackend{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test-model",
 						Namespace: "default",
 					},
-					Spec: v1alpha1.LLMBackendSpec{
+					Spec: v1alpha1.ImageGenerationBackendSpec{
 						ModelName: lo.ToPtr("test-model"),
-						Upstream: v1alpha1.BackendUpstream{
+						Upstream: v1alpha1.ImageGenerationBackendUpstream{
 							BaseURL: "xx/v1",
 						},
 						Filters: nil,
 					},
-					Status: v1alpha1.LLMBackendStatus{},
+					Status: v1alpha1.ImageGenerationBackendStatus{},
 				}
 				err := cl.Create(context.Background(), resource)
 				if err != nil {
@@ -73,7 +70,7 @@ func TestLLMBackendReconciler_Reconcile(t *testing.T) {
 			expectError: false,
 			validate: func(t *testing.T, cl client.Client) {
 				t.Helper()
-				resource := &v1alpha1.LLMBackend{}
+				resource := &v1alpha1.ImageGenerationBackend{}
 				err := cl.Get(context.Background(), client.ObjectKey{
 					Namespace: "default",
 					Name:      "test-model",
@@ -86,7 +83,7 @@ func TestLLMBackendReconciler_Reconcile(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			fakeClient := tt.setupClient(NewFakeClientWithStatus())
-			reconciler := &LLMBackendReconciler{
+			reconciler := &ImageGenerationBackendReconciler{
 				Client: fakeClient,
 			}
 
@@ -102,41 +99,4 @@ func TestLLMBackendReconciler_Reconcile(t *testing.T) {
 			}
 		})
 	}
-}
-
-func NewFakeClientWithStatus() client.Client {
-	return &FakeClientWithStatus{
-		Client: fake.NewClientBuilder().WithScheme(createTestScheme()).Build(),
-	}
-}
-
-type FakeClientWithStatus struct {
-	client.Client
-}
-
-func (f *FakeClientWithStatus) Status() client.StatusWriter {
-	return &FakeStatusWriter{Client: f.Client}
-}
-
-type FakeStatusWriter struct {
-	client.Client
-}
-
-func (f *FakeStatusWriter) Create(ctx context.Context, obj client.Object, subResource client.Object, opts ...client.SubResourceCreateOption) error {
-	panic("implement me")
-}
-
-func (f *FakeStatusWriter) Update(ctx context.Context, obj client.Object, opts ...client.SubResourceUpdateOption) error {
-	return f.Client.Update(ctx, obj)
-}
-
-func (f *FakeStatusWriter) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.SubResourcePatchOption) error {
-	panic("implement me")
-}
-
-func createTestScheme() *runtime.Scheme {
-	scheme := runtime.NewScheme()
-	_ = v1alpha1.AddToScheme(scheme)
-
-	return scheme
 }

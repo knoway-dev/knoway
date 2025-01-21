@@ -1,4 +1,4 @@
-package chat
+package image
 
 import (
 	"context"
@@ -19,11 +19,11 @@ import (
 	"knoway.dev/pkg/utils"
 )
 
-var _ listener.Listener = (*OpenAIChatListener)(nil)
-var _ listener.Drainable = (*OpenAIChatListener)(nil)
+var _ listener.Listener = (*OpenAIImageListener)(nil)
+var _ listener.Drainable = (*OpenAIImageListener)(nil)
 
-type OpenAIChatListener struct {
-	cfg             *v1alpha1.ChatCompletionListener
+type OpenAIImageListener struct {
+	cfg             *v1alpha1.ImageListener
 	filters         filters.RequestFilters
 	reversedFilters filters.RequestFilters
 	cancellable     *listener.CancellableRequestMap
@@ -32,13 +32,13 @@ type OpenAIChatListener struct {
 	drained bool
 }
 
-func NewOpenAIChatListenerConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle) (listener.Listener, error) {
-	c, ok := cfg.(*v1alpha1.ChatCompletionListener)
+func NewOpenAIImageListenerConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle) (listener.Listener, error) {
+	c, ok := cfg.(*v1alpha1.ImageListener)
 	if !ok {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
 
-	l := &OpenAIChatListener{
+	l := &OpenAIImageListener{
 		cfg:         c,
 		cancellable: listener.NewCancellableRequestMap(),
 	}
@@ -61,7 +61,7 @@ func NewOpenAIChatListenerConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle
 	return l, nil
 }
 
-func (l *OpenAIChatListener) RegisterRoutes(mux *mux.Router) error {
+func (l *OpenAIImageListener) RegisterRoutes(mux *mux.Router) error {
 	middlewares := listener.WithMiddlewares(
 		listener.WithCancellable(l.cancellable),
 		listener.WithInitMetadata(),
@@ -73,21 +73,19 @@ func (l *OpenAIChatListener) RegisterRoutes(mux *mux.Router) error {
 		listener.WithRejectAfterDrainedWithError(l),
 	)
 
-	mux.HandleFunc("/v1/chat/completions", listener.HTTPHandlerFunc(middlewares(l.chatCompletions)))
-	mux.HandleFunc("/v1/completions", listener.HTTPHandlerFunc(middlewares(l.completions)))
-	mux.HandleFunc("/v1/models", listener.HTTPHandlerFunc(middlewares(l.listModels)))
+	mux.HandleFunc("/v1/images/generations", listener.HTTPHandlerFunc(middlewares(l.imageGeneration)))
 
 	return nil
 }
 
-func (l *OpenAIChatListener) HasDrained() bool {
+func (l *OpenAIImageListener) HasDrained() bool {
 	l.mutex.RLock()
 	defer l.mutex.RUnlock()
 
 	return l.drained
 }
 
-func (l *OpenAIChatListener) Drain(ctx context.Context) error {
+func (l *OpenAIImageListener) Drain(ctx context.Context) error {
 	l.mutex.Lock()
 	l.drained = true
 	l.mutex.Unlock()

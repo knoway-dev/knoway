@@ -1,40 +1,28 @@
 apiVersion: llm.knoway.dev/v1alpha1
-kind: LLMBackend
+kind: ImageGenerationBackend
 metadata:
   labels:
     app.kubernetes.io/name: knoway
     app.kubernetes.io/managed-by: kustomize
-  name: llmbackend-sample
+  name: imagegenerationbackend-sample
 spec:
-  #  type: public # public | private | ...
   provider: OpenAI
-  modelName: gpt-3.5-turbo
+  name: sd-3
   upstream:
-    baseUrl: "https://openrouter.ai/api/v1"
+    baseUrl: "https://api.openai.com/v1"
     headers:
       - key: "Authorization"
         value: "Bearer sk-or-v1-xxxxxxxxxx"
     timeout: 300 # ms
     defaultParams:
       openai:
-        temperature: "0.5"
-        max_tokens: 100
+        'n': '1'
+        quality: 'standard'
     overrideParams:
       openai:
         # upstream model
-        model: "openai/gpt-3.5-turbo"
+        model: "stabilityai/sd-3"
   filters:
     - custom:
         pluginName: "examplePlugin"
         pluginVersion: "1.0.0"
-# future:
-#  maxToken: 242444
-#  capability:
-#    steam: true
-#    image: true
-#    base64: true
-#status:
-#  conditions:
-#    - config-validator
-#    - endpoint-check
-#    - secret-check

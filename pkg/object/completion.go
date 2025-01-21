@@ -13,6 +13,7 @@ type RequestType string
 const (
 	RequestTypeChatCompletions RequestType = "chat_completions"
 	RequestTypeCompletions     RequestType = "completions"
+	RequestTypeImageGeneration RequestType = "image_generation"
 )
 
 type LLMRequest interface {

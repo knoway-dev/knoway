@@ -70,6 +70,7 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 var _ filters.RequestFilter = (*AuthFilter)(nil)
 var _ filters.OnRequestPreFilter = (*AuthFilter)(nil)
 var _ filters.OnCompletionRequestFilter = (*AuthFilter)(nil)
+var _ filters.OnImageGenerationsRequestFilter = (*AuthFilter)(nil)
 
 type AuthFilter struct {
 	filters.IsRequestFilter
@@ -139,6 +140,39 @@ func (a *AuthFilter) OnRequestPre(ctx context.Context, sourceHTTPRequest *http.R
 }
 
 func (a *AuthFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+	if rMeta.AuthInfo == nil {
+		return filters.NewFailed(errors.New("missing auth info in context"))
+	}
+
+	authInfo := rMeta.AuthInfo
+
+	accessModel := request.GetModel()
+	if accessModel == "" {
+		slog.Debug("auth filter: user model not found", "user", authInfo.GetUserId())
+		return filters.NewFailed(object.NewErrorMissingModel())
+	}
+
+	denied := IsDenied(accessModel, authInfo.GetDenyModels())
+	granted := IsGranted(accessModel, authInfo.GetAllowModels())
+
+	if !CanAccessModelFromValues(denied, granted) {
+		if denied {
+			slog.Debug("auth filter: user access model is denied", "user", authInfo.GetUserId(), "model", accessModel)
+			return filters.NewFailed(object.NewErrorModelAccessDenied(accessModel))
+		}
+		if !granted {
+			slog.Debug("auth filter: user can not access model", "user", authInfo.GetUserId(), "model", accessModel)
+			return filters.NewFailed(object.NewErrorModelNotFoundOrNotAccessible(accessModel))
+		}
+	}
+
+	slog.Debug("auth filter: user authorization succeeds", "user", authInfo.GetUserId(), "allow models", authInfo.GetAllowModels())
+
+	return filters.NewOK()
+}
+
+func (a *AuthFilter) OnImageGenerationsRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
 	if rMeta.AuthInfo == nil {
 		return filters.NewFailed(errors.New("missing auth info in context"))

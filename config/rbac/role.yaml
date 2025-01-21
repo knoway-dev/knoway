@@ -7,6 +7,7 @@ rules:
 - apiGroups:
   - llm.knoway.dev
   resources:
+  - imagegenerationbackends
   - llmbackends
   verbs:
   - create
@@ -19,12 +20,14 @@ rules:
 - apiGroups:
   - llm.knoway.dev
   resources:
+  - imagegenerationbackends/finalizers
   - llmbackends/finalizers
   verbs:
   - update
 - apiGroups:
   - llm.knoway.dev
   resources:
+  - imagegenerationbackends/status
   - llmbackends/status
   verbs:
   - get

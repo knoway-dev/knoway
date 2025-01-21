@@ -18,8 +18,8 @@ spec:
     - jsonPath: .spec.provider
       name: Provider
       type: string
-    - jsonPath: .spec.name
-      name: Name
+    - jsonPath: .spec.modelName
+      name: Model Name
       type: string
     - jsonPath: .spec.upstream.baseUrl
       name: URL
@@ -63,27 +63,19 @@ spec:
                         \ \t\tsetting1: value1\n  \t\tsetting2: value2"
                       type: object
                       x-kubernetes-preserve-unknown-fields: true
-                    modelRewrite:
-                      description: 'ModelRewrite: Model rewrite configuration'
-                      properties:
-                        modelName:
-                          type: string
-                      type: object
                     name:
                       type: string
-                    usageStats:
-                      description: 'UsageStats:  Usage stats configuration'
-                      properties:
-                        address:
-                          type: string
-                      type: object
                   type: object
                 type: array
-              name:
+              modelName:
                 description: ModelName specifies the name of the model
                 type: string
               provider:
                 description: Provider indicates the organization providing the model
+                enum:
+                - OpenAI
+                - vLLM
+                - Ollama
                 type: string
               upstream:
                 description: Upstream contains information about the upstream configuration
@@ -211,9 +203,6 @@ spec:
                     format: int32
                     type: integer
                 type: object
-            required:
-            - name
-            - provider
             type: object
           status:
             description: LLMBackendStatus defines the observed state of LLMBackend

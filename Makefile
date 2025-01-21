@@ -142,7 +142,7 @@ manifests: controller-gen
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd:ignoreUnexportedFields=true \
  	webhook paths="./..." output:crd:artifacts:config=config/crd/bases; \
  	bash ./scripts/copy-crds.sh config/crd/bases/llm.knoway.dev_llmbackends.yaml manifests/knoway/templates
-
+	bash ./scripts/copy-crds.sh config/crd/bases/llm.knoway.dev_imagegenerationbackends.yaml manifests/knoway/templates
 
 .PHONY: generate ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 generate: controller-gen

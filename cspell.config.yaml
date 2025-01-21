@@ -36,6 +36,7 @@ words:
   - exhaustive
   - exhaustruct
   - exportloopref
+  - fatcontext
   - filtersv1alpha1
   - finalizer
   - finalizers
@@ -62,6 +63,8 @@ words:
   - gosimple
   - govet
   - healthz
+  - imagegenerationbackend
+  - imagegenerationbackends
   - ineffassign
   - ireturn
   - jsonpatch
@@ -100,15 +103,18 @@ words:
   - Preflights
   - printcolumn
   - protoutils
+  - ptypes
   - qwen
   - readyz
   - reassign
+  - registrycluster
   - registryfilters
   - registryroute
   - revive
   - samber
   - sashabaranov
   - servicev1alpha1
+  - stabilityai
   - staticcheck
   - stretchr
   - structpb

@@ -1,4 +1,4 @@
-package chat
+package image
 
 import (
 	"log/slog"
@@ -13,8 +13,8 @@ import (
 	"knoway.dev/pkg/types/openai"
 )
 
-func (l *OpenAIChatListener) unmarshalCompletionsRequestToLLMRequest(request *http.Request) (object.LLMRequest, error) {
-	llmRequest, err := openai.NewCompletionsRequest(request)
+func (l *OpenAIImageListener) unmarshalImageGenerationsRequestToImageGenerationRequest(request *http.Request) (object.LLMRequest, error) {
+	llmRequest, err := openai.NewImageGenerationsRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -23,13 +23,10 @@ func (l *OpenAIChatListener) unmarshalCompletionsRequestToLLMRequest(request *ht
 		return nil, openai.NewErrorMissingModel()
 	}
 
-	rMeta := metadata.RequestMetadataFromCtx(request.Context())
-	rMeta.RequestModel = llmRequest.GetModel()
-
 	return llmRequest, nil
 }
 
-func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *http.Request) (any, error) {
+func (l *OpenAIImageListener) imageGeneration(writer http.ResponseWriter, request *http.Request) (any, error) {
 	for _, f := range l.filters.OnRequestPreFilters() {
 		fResult := f.OnRequestPre(request.Context(), request)
 		if fResult.IsFailed() {
@@ -46,7 +43,7 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 		}
 	}()
 
-	llmRequest, err := l.unmarshalCompletionsRequestToLLMRequest(request)
+	llmRequest, err := l.unmarshalImageGenerationsRequestToImageGenerationRequest(request)
 	if err != nil {
 		return nil, err
 	}
@@ -54,24 +51,24 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 	rMeta := metadata.RequestMetadataFromCtx(request.Context())
 	rMeta.RequestModel = llmRequest.GetModel()
 
-	for _, f := range l.filters.OnCompletionRequestFilters() {
-		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
+	for _, f := range l.filters.OnImageGenerationsRequestFilters() {
+		fResult := f.OnImageGenerationsRequest(request.Context(), llmRequest, request)
 		if fResult.IsFailed() {
 			return nil, fResult.Error
 		}
 	}
 
-	c, ok := listener.FindCluster(request.Context(), llmRequest, []v1alpha1.ClusterType{v1alpha1.ClusterType_LLM})
+	c, ok := listener.FindCluster(request.Context(), llmRequest, []v1alpha1.ClusterType{v1alpha1.ClusterType_IMAGE_GENERATION})
 	if !ok {
 		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
 	}
 
-	resp, err = l.clusterDoCompletionsRequest(request.Context(), c, writer, request, llmRequest)
-	if !llmRequest.IsStream() && !lo.IsNil(resp) {
-		for _, f := range l.reversedFilters.OnCompletionResponseFilters() {
-			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
+	resp, err = l.clusterDoImageGenerationRequest(request.Context(), c, writer, request, llmRequest)
+	if !lo.IsNil(resp) {
+		for _, f := range l.reversedFilters.OnImageGenerationsResponseFilters() {
+			fResult := f.OnImageGenerationsResponse(request.Context(), llmRequest, resp)
 			if fResult.IsFailed() {
-				slog.Error("error occurred during invoking of OnCompletionResponse filters", "error", fResult.Error)
+				slog.Error("error occurred during invoking of OnImageGenerationsResponse filters", "error", fResult.Error)
 			}
 		}
 	}

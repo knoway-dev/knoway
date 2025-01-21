@@ -41,13 +41,28 @@ type responseHandler struct {
 func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, req object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
 	contentType := rawResponse.Header.Get("Content-Type")
 
-	switch {
-	case strings.HasPrefix(contentType, "application/json"):
-		return openai.NewChatCompletionResponse(req, rawResponse, reader)
-	case strings.HasPrefix(contentType, "text/event-stream"):
-		return openai.NewChatCompletionStreamResponse(req, rawResponse, reader)
+	switch req.GetRequestType() {
+	case
+		object.RequestTypeChatCompletions,
+		object.RequestTypeCompletions:
+		switch {
+		case strings.HasPrefix(contentType, "application/json"):
+			return openai.NewChatCompletionResponse(req, rawResponse, reader)
+		case strings.HasPrefix(contentType, "text/event-stream"):
+			return openai.NewChatCompletionStreamResponse(req, rawResponse, reader)
+		default:
+			return nil, fmt.Errorf("unsupported content type %s", contentType)
+		}
+	case
+		object.RequestTypeImageGeneration:
+		switch {
+		case strings.HasPrefix(contentType, "application/json"):
+			return openai.NewImageGenerationsResponse(req, rawResponse, reader)
+		default:
+			return nil, fmt.Errorf("unsupported content type %s", contentType)
+		}
 	default:
-		return nil, fmt.Errorf("unsupported content type %s", contentType)
+		return nil, fmt.Errorf("unsupported request type %s", req.GetRequestType())
 	}
 }
 

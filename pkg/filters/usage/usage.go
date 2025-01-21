@@ -66,6 +66,7 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 var _ filters.RequestFilter = (*UsageFilter)(nil)
 var _ filters.OnCompletionResponseFilter = (*UsageFilter)(nil)
 var _ filters.OnCompletionStreamResponseFilter = (*UsageFilter)(nil)
+var _ filters.OnImageGenerationsResponseFilter = (*UsageFilter)(nil)
 
 type UsageFilter struct {
 	filters.IsRequestFilter
@@ -124,6 +125,12 @@ func (f *UsageFilter) OnCompletionStreamResponse(ctx context.Context, request ob
 		return filters.NewOK()
 	}
 
+	f.usageReport(ctx, request, response)
+
+	return filters.NewOK()
+}
+
+func (f *UsageFilter) OnImageGenerationsResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) filters.RequestFilterResult {
 	f.usageReport(ctx, request, response)
 
 	return filters.NewOK()

@@ -18,8 +18,8 @@ spec:
     - jsonPath: .spec.provider
       name: Provider
       type: string
-    - jsonPath: .spec.name
-      name: Name
+    - jsonPath: .spec.modelName
+      name: Model Name
       type: string
     - jsonPath: .spec.upstream.baseUrl
       name: URL
@@ -67,7 +67,7 @@ spec:
                       type: string
                   type: object
                 type: array
-              name:
+              modelName:
                 description: ModelName specifies the name of the model
                 type: string
               provider:
@@ -203,8 +203,6 @@ spec:
                     format: int32
                     type: integer
                 type: object
-            required:
-            - name
             type: object
           status:
             description: LLMBackendStatus defines the observed state of LLMBackend

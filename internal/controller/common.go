@@ -36,14 +36,14 @@ func modelNameOrNamespacedName[B *knowaydevv1alpha1.LLMBackend | *knowaydevv1alp
 		if lo.IsNil(v) {
 			return ""
 		}
-		if v.Spec.Name != "" {
-			return v.Spec.Name
+		if v.Spec.ModelName != nil {
+			return *v.Spec.ModelName
 		}
 
 		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
 	case knowaydevv1alpha1.LLMBackend:
-		if v.Spec.Name != "" {
-			return v.Spec.Name
+		if v.Spec.ModelName != nil {
+			return *v.Spec.ModelName
 		}
 
 		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)

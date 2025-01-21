@@ -19,7 +19,7 @@ spec:
       name: Provider
       type: string
     - jsonPath: .spec.modelName
-      name: Name
+      name: Model Name
       type: string
     - jsonPath: .spec.upstream.baseUrl
       name: URL

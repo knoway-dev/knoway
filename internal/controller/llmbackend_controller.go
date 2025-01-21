@@ -72,7 +72,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log.Log.Info("reconcile LLMBackend modelName", "modelName", llmBackend.Spec.Name)
+	log.Log.Info("reconcile LLMBackend modelName", "modelName", modelNameOrNamespacedName(llmBackend))
 
 	rrs := r.getReconciles()
 	if isDeleted(BackendFromLLMBackend(llmBackend)) {
@@ -123,14 +123,14 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 }
 
 func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
-	mName := llmBackend.Spec.Name
+	modelName := modelNameOrNamespacedName(llmBackend)
 
 	removeBackendFunc := func() {
-		if mName != "" {
+		if modelName != "" {
 			cluster.RemoveCluster(&v1alpha1.Cluster{
-				Name: mName,
+				Name: modelName,
 			})
-			route.RemoveRoute(mName)
+			route.RemoveRoute(modelName)
 		}
 	}
 	if isDeleted(BackendFromLLMBackend(llmBackend)) {
@@ -143,7 +143,7 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
-	routeCfg := route.InitDirectModelRoute(mName)
+	routeCfg := route.InitDirectModelRoute(modelName)
 
 	mulErrs := &multierror.Error{}
 	if clusterCfg != nil {
@@ -154,7 +154,7 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 		}
 
 		if err = route.RegisterRouteWithConfig(routeCfg); err != nil {
-			log.Log.Error(err, "Failed to register route", "route", mName)
+			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s route: %w", llmBackend.GetName(), err))
 		}
 	}
@@ -167,8 +167,8 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 }
 
 func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) error {
-	if llmBackend.Spec.Name == "" {
-		return errors.New("spec.name cannot be empty")
+	if llmBackend.Spec.ModelName != nil && *llmBackend.Spec.ModelName == "" {
+		return errors.New("spec.modelName cannot be empty")
 	}
 	if llmBackend.Spec.Upstream.BaseURL == "" {
 		return errors.New("upstream.baseUrl cannot be empty")
@@ -183,9 +183,11 @@ func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBacken
 		return fmt.Errorf("failed to list LLMBackend resources: %w", err)
 	}
 
+	llmBackendModelName := modelNameOrNamespacedName(llmBackend)
+
 	for _, existing := range allExistingBackend.Items {
-		if existing.Spec.Name == llmBackend.Spec.Name && existing.Name != llmBackend.Name {
-			return fmt.Errorf("LLMBackend name '%s' must be unique globally", llmBackend.Spec.Name)
+		if modelNameOrNamespacedName(existing) == llmBackendModelName && existing.Name != llmBackend.Name {
+			return fmt.Errorf("LLMBackend name '%s' must be unique globally", llmBackendModelName)
 		}
 	}
 
@@ -362,7 +364,7 @@ func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, back
 		return nil, nil
 	}
 
-	mName := backend.Spec.Name
+	modelName := modelNameOrNamespacedName(backend)
 
 	hs, err := r.toUpstreamHeaders(ctx, backend)
 	if err != nil {
@@ -381,16 +383,16 @@ func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, back
 		switch {
 		case fc.Custom != nil:
 			// TODO: Implement custom filter
-			log.Log.Info("Discovered filter during registration of cluster", "type", "Custom", "cluster", backend.Name, "modelName", mName)
+			log.Log.Info("Discovered filter during registration of cluster", "type", "Custom", "cluster", backend.Name, "modelName", modelName)
 		default:
 			// TODO: Implement unknown filter
-			log.Log.Info("Discovered filter during registration of cluster", "type", "Unknown", "cluster", backend.Name, "modelName", mName)
+			log.Log.Info("Discovered filter during registration of cluster", "type", "Unknown", "cluster", backend.Name, "modelName", modelName)
 		}
 	}
 
 	return &v1alpha1.Cluster{
 		Type:     v1alpha1.ClusterType_LLM,
-		Name:     mName,
+		Name:     modelName,
 		Provider: clusters.MapBackendProviderToClusterProvider(backend.Spec.Provider),
 		Created:  backend.GetCreationTimestamp().Unix(),
 

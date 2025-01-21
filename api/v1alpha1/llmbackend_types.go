@@ -25,7 +25,7 @@ import (
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
-//+kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.name`
+//+kubebuilder:printcolumn:name="Model Name",type=string,JSONPath=`.spec.modelName`
 //+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.upstream.baseUrl`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
@@ -54,8 +54,9 @@ func init() {
 // LLMBackendSpec defines the desired state of LLMBackend
 type LLMBackendSpec struct {
 	// ModelName specifies the name of the model
-	// +kubebuilder:validation:Required
-	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +optional
+	ModelName *string `json:"modelName,omitempty"`
 	// Provider indicates the organization providing the model
 	// +kubebuilder:validation:Enum=OpenAI;vLLM;Ollama
 	Provider Provider `json:"provider,omitempty"`

@@ -21,6 +21,7 @@ import (
 	"flag"
 	"testing"
 
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/require"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,7 +53,7 @@ func TestLLMBackendReconciler_Reconcile(t *testing.T) {
 						Namespace: "default",
 					},
 					Spec: v1alpha1.LLMBackendSpec{
-						Name: "test-model",
+						ModelName: lo.ToPtr("test-model"),
 						Upstream: v1alpha1.BackendUpstream{
 							BaseURL: "xx/v1",
 						},

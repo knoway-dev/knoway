@@ -25,7 +25,7 @@ import (
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
-//+kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.modelName`
+//+kubebuilder:printcolumn:name="Model Name",type=string,JSONPath=`.spec.modelName`
 //+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.upstream.baseUrl`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 

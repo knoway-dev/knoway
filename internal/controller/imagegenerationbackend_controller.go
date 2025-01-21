@@ -270,9 +270,11 @@ func (r *ImageGenerationBackendReconciler) reconcileValidator(ctx context.Contex
 		return fmt.Errorf("failed to list ImageGenerationBackend resources: %w", err)
 	}
 
+	imageGenerationBackendModelName := modelNameOrNamespacedName(backend)
+
 	for _, existing := range allExistingBackend.Items {
-		if modelNameOrNamespacedName(existing) == modelNameOrNamespacedName(backend) && existing.Name != backend.Name {
-			return fmt.Errorf("ImageGenerationBackend name '%s' must be unique globally", modelNameOrNamespacedName(backend))
+		if modelNameOrNamespacedName(existing) == imageGenerationBackendModelName && existing.Name != backend.Name {
+			return fmt.Errorf("ImageGenerationBackend name '%s' must be unique globally", imageGenerationBackendModelName)
 		}
 	}
 

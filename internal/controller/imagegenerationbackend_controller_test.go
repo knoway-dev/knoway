@@ -18,67 +18,93 @@ package controller
 
 import (
 	"context"
+	"flag"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
+	"github.com/samber/lo"
+	"github.com/stretchr/testify/require"
+	"knoway.dev/api/v1alpha1"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	llmv1alpha1 "knoway.dev/api/v1alpha1"
 )
 
-var _ = Describe("ImageGenerationBackend Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
-
-		ctx := context.Background()
-
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		imagegenerationbackend := &llmv1alpha1.ImageGenerationBackend{}
-
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind ImageGenerationBackend")
-			err := k8sClient.Get(ctx, typeNamespacedName, imagegenerationbackend)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &llmv1alpha1.ImageGenerationBackend{
+func TestImageGenerationBackendReconciler_Reconcile(t *testing.T) {
+	tests := []struct {
+		name        string
+		setupClient func(client.Client) client.Client
+		request     reconcile.Request
+		expectError bool
+		validate    func(*testing.T, client.Client)
+	}{
+		{
+			name: "Valid resource reconciled",
+			setupClient: func(cl client.Client) client.Client {
+				resource := &v1alpha1.ImageGenerationBackend{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
+						Name:      "test-model",
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: v1alpha1.ImageGenerationBackendSpec{
+						ModelName: lo.ToPtr("test-model"),
+						Upstream: v1alpha1.ImageGenerationBackendUpstream{
+							BaseURL: "xx/v1",
+						},
+						Filters: nil,
+					},
+					Status: v1alpha1.ImageGenerationBackendStatus{},
 				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				err := cl.Create(context.Background(), resource)
+				if err != nil {
+					t.Fatalf("failed to create resource: %v", err)
+				}
+				return cl
+			},
+			request: reconcile.Request{
+				NamespacedName: client.ObjectKey{
+					Namespace: "default",
+					Name:      "test-model",
+				},
+			},
+			expectError: false,
+			validate: func(t *testing.T, cl client.Client) {
+				t.Helper()
+				resource := &v1alpha1.ImageGenerationBackend{}
+				err := cl.Get(context.Background(), client.ObjectKey{
+					Namespace: "default",
+					Name:      "test-model",
+				}, resource)
+				require.NoError(t, err)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			copts := zap.Options{
+				Development: true,
+			}
+			copts.BindFlags(flag.CommandLine)
+			ctrl.SetLogger(zap.New(zap.UseFlagOptions(&copts)))
+
+			fakeClient := tt.setupClient(NewFakeClientWithStatus())
+			reconciler := &ImageGenerationBackendReconciler{
+				Client: fakeClient,
+			}
+
+			_, err := reconciler.Reconcile(context.TODO(), tt.request)
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tt.validate != nil {
+				tt.validate(t, fakeClient)
 			}
 		})
-
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &llmv1alpha1.ImageGenerationBackend{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance ImageGenerationBackend")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &ImageGenerationBackendReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
-		})
-	})
-})
+	}
+}

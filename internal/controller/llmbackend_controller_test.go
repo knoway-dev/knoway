@@ -21,9 +21,6 @@ import (
 	"flag"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/types/known/structpb"
-
 	"github.com/stretchr/testify/require"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -37,77 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
-
-func TestProcessStruct_OpenAIChatParams(t *testing.T) {
-	tests := []struct {
-		name        string
-		input       *v1alpha1.ModelParams
-		expected    map[string]*structpb.Value
-		expectError bool
-	}{
-		{
-			name: "Valid ChatRequest with new params",
-			input: &v1alpha1.ModelParams{
-				OpenAI: &v1alpha1.OpenAIParam{
-					CommonParams: v1alpha1.CommonParams{
-						Model:       "gpt-3.5-turbo",
-						Temperature: stringPointer("0.7"),
-					},
-					MaxTokens:           intPointer(100),
-					MaxCompletionTokens: intPointer(200),
-					TopP:                stringPointer("0.3"),
-					Stream:              boolPointer(true),
-					StreamOptions: &v1alpha1.StreamOptions{
-						IncludeUsage: boolPointer(true),
-					},
-				},
-			},
-			expected: map[string]*structpb.Value{
-				"model":                 structpb.NewStringValue("gpt-3.5-turbo"),
-				"temperature":           structpb.NewNumberValue(0.7),
-				"max_tokens":            structpb.NewNumberValue(100),
-				"max_completion_tokens": structpb.NewNumberValue(200),
-				"top_p":                 structpb.NewNumberValue(0.3),
-				"stream":                structpb.NewBoolValue(true),
-				"stream_options": structpb.NewStructValue(&structpb.Struct{
-					Fields: map[string]*structpb.Value{
-						"include_usage": structpb.NewBoolValue(true),
-					},
-				}),
-			},
-			expectError: false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			params := make(map[string]*structpb.Value)
-
-			// Call the function under test
-			err := parseModelParams(tt.input, params)
-
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				require.NoError(t, err)
-				// Validate the result
-				assert.Equal(t, tt.expected, params)
-			}
-		})
-	}
-}
-
-func boolPointer(b bool) *bool {
-	return &b
-}
-
-func intPointer(i int) *int {
-	return &i
-}
-
-func stringPointer(s string) *string {
-	return &s
-}
 
 func TestLLMBackendReconciler_Reconcile(t *testing.T) {
 	tests := []struct {

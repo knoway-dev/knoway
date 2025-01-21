@@ -1,21 +1,5 @@
 package v1alpha1
 
-import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-type Backend interface {
-	GetObjectMeta() metav1.ObjectMeta
-	GetStatus() BackendStatus
-}
-
-type BackendStatus interface {
-	GetStatus() StatusEnum
-	SetStatus(status StatusEnum)
-	GetConditions() []metav1.Condition
-	SetConditions(conditions []metav1.Condition)
-}
-
 type Header struct {
 	Key   string `json:"key,omitempty"`
 	Value string `json:"value,omitempty"`
@@ -49,4 +33,12 @@ const (
 	Unknown StatusEnum = "Unknown"
 	Healthy StatusEnum = "Healthy"
 	Failed  StatusEnum = "Failed"
+)
+
+type Provider string
+
+const (
+	ProviderOpenAI Provider = "OpenAI"
+	ProviderVLLM   Provider = "vLLM"
+	ProviderOllama Provider = "Ollama"
 )

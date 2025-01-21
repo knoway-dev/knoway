@@ -38,6 +38,7 @@ import (
 	"knoway.dev/api/clusters/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
+	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/route"
@@ -65,43 +66,43 @@ type ImageGenerationBackendReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.4/pkg/reconcile
 func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	llmBackend := &knowaydevv1alpha1.ImageGenerationBackend{}
-	if err := r.Get(ctx, req.NamespacedName, llmBackend); err != nil {
+	imageGenerationBackend := &knowaydevv1alpha1.ImageGenerationBackend{}
+	if err := r.Get(ctx, req.NamespacedName, imageGenerationBackend); err != nil {
 		log.Log.Error(err, "reconcile ImageGenerationBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log.Log.Info("reconcile ImageGenerationBackend modelName", "modelName", llmBackend.Spec.Name)
+	log.Log.Info("reconcile ImageGenerationBackend modelName", "modelName", modelNameOrNamespacedName(imageGenerationBackend))
 
 	rrs := r.getReconciles()
-	if isDeleted(llmBackend) {
+	if isDeleted(BackendFromImageGenerationBackend(imageGenerationBackend)) {
 		rrs = r.getDeleteReconciles()
 	}
 
-	llmBackend.Status.Conditions = nil
+	imageGenerationBackend.Status.Conditions = nil
 
 	for _, rr := range rrs {
 		typ := rr.typ
 
-		err := rr.reconciler(ctx, llmBackend)
+		err := rr.reconciler(ctx, imageGenerationBackend)
 		if err != nil {
-			if isDeleted(llmBackend) && shouldForceDelete(llmBackend) {
+			if isDeleted(BackendFromImageGenerationBackend(imageGenerationBackend)) && shouldForceDelete(BackendFromImageGenerationBackend(imageGenerationBackend)) {
 				continue
 			}
 
-			log.Log.Error(err, "ImageGenerationBackend reconcile error", "name", llmBackend.Name, "type", typ)
-			setStatusCondition(llmBackend, typ, false, err.Error())
+			log.Log.Error(err, "ImageGenerationBackend reconcile error", "name", imageGenerationBackend.Name, "type", typ)
+			setStatusCondition(BackendFromImageGenerationBackend(imageGenerationBackend), typ, false, err.Error())
 
 			break
 		} else {
-			setStatusCondition(llmBackend, typ, true, "")
+			setStatusCondition(BackendFromImageGenerationBackend(imageGenerationBackend), typ, true, "")
 		}
 	}
 
-	r.reconcilePhase(ctx, llmBackend)
+	r.reconcilePhase(ctx, imageGenerationBackend)
 
 	var after time.Duration
-	if llmBackend.Status.Status == knowaydevv1alpha1.Failed {
+	if imageGenerationBackend.Status.Status == knowaydevv1alpha1.Failed {
 		after = 30 * time.Second //nolint:mnd
 	}
 
@@ -110,10 +111,10 @@ func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ct
 		log.Log.Error(err, "reconcile ImageGenerationBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if !reflect.DeepEqual(llmBackend.Status, newBackend.Status) {
-		newBackend.Status = llmBackend.Status
+	if !reflect.DeepEqual(imageGenerationBackend.Status, newBackend.Status) {
+		newBackend.Status = imageGenerationBackend.Status
 		if err := r.Status().Update(ctx, newBackend); err != nil {
-			log.Log.Error(err, "update ImageGenerationBackend status error", "name", llmBackend.GetName())
+			log.Log.Error(err, "update ImageGenerationBackend status error", "name", imageGenerationBackend.GetName())
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}
@@ -122,17 +123,17 @@ func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ct
 }
 
 func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context, backend *knowaydevv1alpha1.ImageGenerationBackend) error {
-	mName := backend.Spec.Name
+	modelName := modelNameOrNamespacedName(backend)
 
 	removeBackendFunc := func() {
-		if mName != "" {
+		if modelName != "" {
 			cluster.RemoveCluster(&v1alpha1.Cluster{
-				Name: mName,
+				Name: modelName,
 			})
-			route.RemoveRoute(mName)
+			route.RemoveRoute(modelName)
 		}
 	}
-	if isDeleted(backend) {
+	if isDeleted(BackendFromImageGenerationBackend(backend)) {
 		removeBackendFunc()
 		return nil
 	}
@@ -142,7 +143,7 @@ func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
-	routeCfg := route.InitDirectModelRoute(mName)
+	routeCfg := route.InitDirectModelRoute(modelName)
 
 	mulErrs := &multierror.Error{}
 	if clusterCfg != nil {
@@ -153,7 +154,7 @@ func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context
 		}
 
 		if err = route.RegisterRouteWithConfig(routeCfg); err != nil {
-			log.Log.Error(err, "Failed to register route", "route", mName)
+			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s route: %w", backend.GetName(), err))
 		}
 	}
@@ -171,7 +172,7 @@ func (r *ImageGenerationBackendReconciler) reconcileUpstreamHealthy(ctx context.
 }
 
 func (r *ImageGenerationBackendReconciler) reconcilePhase(_ context.Context, backend *knowaydevv1alpha1.ImageGenerationBackend) {
-	reconcilePhase(backend)
+	reconcilePhase(BackendFromImageGenerationBackend(backend))
 }
 
 func (r *ImageGenerationBackendReconciler) getReconciles() []reconcileHandler[*knowaydevv1alpha1.ImageGenerationBackend] {
@@ -237,7 +238,7 @@ func (r *ImageGenerationBackendReconciler) reconcileFinalDelete(ctx context.Cont
 		}
 	}
 
-	if !canDelete && !shouldForceDelete(backend) {
+	if !canDelete && !shouldForceDelete(BackendFromImageGenerationBackend(backend)) {
 		return errors.New("have delete condition not ready")
 	}
 
@@ -253,8 +254,8 @@ func (r *ImageGenerationBackendReconciler) reconcileFinalDelete(ctx context.Cont
 }
 
 func (r *ImageGenerationBackendReconciler) reconcileValidator(ctx context.Context, backend *knowaydevv1alpha1.ImageGenerationBackend) error {
-	if backend.Spec.Name == "" {
-		return errors.New("spec.name cannot be empty")
+	if backend.Spec.ModelName != nil && *backend.Spec.ModelName == "" {
+		return errors.New("spec.modelName cannot be empty")
 	}
 	if backend.Spec.Upstream.BaseURL == "" {
 		return errors.New("upstream.baseUrl cannot be empty")
@@ -270,8 +271,8 @@ func (r *ImageGenerationBackendReconciler) reconcileValidator(ctx context.Contex
 	}
 
 	for _, existing := range allExistingBackend.Items {
-		if existing.Spec.Name == backend.Spec.Name && existing.Name != backend.Name {
-			return fmt.Errorf("ImageGenerationBackend name '%s' must be unique globally", backend.Spec.Name)
+		if modelNameOrNamespacedName(existing) == modelNameOrNamespacedName(backend) && existing.Name != backend.Name {
+			return fmt.Errorf("ImageGenerationBackend name '%s' must be unique globally", modelNameOrNamespacedName(backend))
 		}
 	}
 
@@ -340,7 +341,7 @@ func (r *ImageGenerationBackendReconciler) toRegisterClusterConfig(ctx context.C
 		return nil, nil
 	}
 
-	mName := backend.Spec.Name
+	modelName := modelNameOrNamespacedName(backend)
 
 	hs, err := r.toUpstreamHeaders(ctx, backend)
 	if err != nil {
@@ -359,17 +360,17 @@ func (r *ImageGenerationBackendReconciler) toRegisterClusterConfig(ctx context.C
 		switch {
 		case fc.Custom != nil:
 			// TODO: Implement custom filter
-			log.Log.Info("Discovered filter during registration of cluster", "type", "Custom", "cluster", backend.Name, "modelName", mName)
+			log.Log.Info("Discovered filter during registration of cluster", "type", "Custom", "cluster", backend.Name, "modelName", modelName)
 		default:
 			// TODO: Implement unknown filter
-			log.Log.Info("Discovered filter during registration of cluster", "type", "Unknown", "cluster", backend.Name, "modelName", mName)
+			log.Log.Info("Discovered filter during registration of cluster", "type", "Unknown", "cluster", backend.Name, "modelName", modelName)
 		}
 	}
 
 	return &v1alpha1.Cluster{
 		Type:     v1alpha1.ClusterType_IMAGE_GENERATION,
-		Name:     mName,
-		Provider: backend.Spec.Provider,
+		Name:     modelName,
+		Provider: clusters.MapBackendProviderToClusterProvider(backend.Spec.Provider),
 		Created:  backend.GetCreationTimestamp().Unix(),
 
 		// todo configurable to replace hard config

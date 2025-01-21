@@ -7,7 +7,7 @@ metadata:
   name: llmbackend-sample
 spec:
   #  type: public # public | private | ...
-  provider: openai
+  provider: OpenAI
   name: gpt-3.5-turbo
   upstream:
     baseUrl: "https://openrouter.ai/api/v1"

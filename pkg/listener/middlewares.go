@@ -39,7 +39,7 @@ func WithAccessLog(enable bool) Middleware {
 					slog.String("request_model", rMeta.RequestModel),
 					slog.String("response_model", rMeta.ResponseModel),
 					slog.Int("response_status", rMeta.StatusCode),
-					slog.String("upstream_provider", rMeta.UpstreamProvider),
+					slog.String("upstream_provider", rMeta.UpstreamProvider.String()),
 					slog.String("upstream_request_model", rMeta.UpstreamRequestModel),
 					slog.String("upstream_response_model", rMeta.UpstreamResponseModel),
 					slog.Int("upstream_response_status_code", rMeta.UpstreamResponseStatusCode),

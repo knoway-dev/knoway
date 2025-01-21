@@ -15,7 +15,7 @@ var StaticClustersConfig = map[string]*clusters.Cluster{
 	"openai/gpt-3.5-turbo": {
 		Type:              clusters.ClusterType_LLM,
 		Name:              "openai/gpt-3.5-turbo",
-		Provider:          "openai",
+		Provider:          clusters.ClusterProvider_OPEN_AI,
 		LoadBalancePolicy: clusters.LoadBalancePolicy_ROUND_ROBIN,
 		Upstream: &clusters.Upstream{
 			Url: "https://openrouter.ai/api/v1/chat/completions",

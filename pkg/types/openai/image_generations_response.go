@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/utils"
 )
 
 var _ object.LLMResponse = (*ImageGenerationsResponse)(nil)
@@ -63,14 +62,6 @@ func (r *ImageGenerationsResponse) processBytes(bs []byte, response *http.Respon
 
 	r.bodyParsed = body
 
-	r.Model = utils.GetByJSONPath[string](body, "{ .model }")
-	usageMap := utils.GetByJSONPath[map[string]any](body, "{ .usage }")
-
-	r.Usage, err = utils.FromMap[Usage](usageMap)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal usage: %w", err)
-	}
-
 	errorResponse, err := unmarshalErrorResponseFromParsedBody(body, response, bs)
 	if err != nil {
 		return err
@@ -100,15 +91,6 @@ func (r *ImageGenerationsResponse) GetModel() string {
 }
 
 func (r *ImageGenerationsResponse) SetModel(model string) error {
-	if r.Error == nil {
-		var err error
-
-		r.responseBody, r.bodyParsed, err = modifyBytesBodyAndParsed(r.responseBody, NewReplace("/model", model))
-		if err != nil {
-			return err
-		}
-	}
-
 	r.Model = model
 
 	return nil

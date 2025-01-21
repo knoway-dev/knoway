@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	"google.golang.org/protobuf/types/known/structpb"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,19 +18,56 @@ import (
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 )
 
-func isDeleted(backend knowaydevv1alpha1.Backend) bool {
-	return backend.GetObjectMeta().DeletionTimestamp != nil
+func isDeleted(backend Backend) bool {
+	return backend.GetObjectObjectMeta().DeletionTimestamp != nil
 }
 
-func shouldForceDelete(backend knowaydevv1alpha1.Backend) bool {
-	if backend.GetObjectMeta().DeletionTimestamp == nil {
+func shouldForceDelete(backend Backend) bool {
+	if backend.GetObjectObjectMeta().DeletionTimestamp == nil {
 		return false
 	}
 
-	return backend.GetObjectMeta().DeletionTimestamp.Add(graceDeletePeriod).Before(time.Now())
+	return backend.GetObjectObjectMeta().DeletionTimestamp.Add(graceDeletePeriod).Before(time.Now())
 }
 
-func setStatusCondition(backend knowaydevv1alpha1.Backend, typ string, ready bool, message string) {
+func modelNameOrNamespacedName[B *knowaydevv1alpha1.LLMBackend | *knowaydevv1alpha1.ImageGenerationBackend | knowaydevv1alpha1.LLMBackend | knowaydevv1alpha1.ImageGenerationBackend](backend B) string {
+	switch v := any(backend).(type) {
+	case *knowaydevv1alpha1.LLMBackend:
+		if lo.IsNil(v) {
+			return ""
+		}
+		if v.Spec.Name != "" {
+			return v.Spec.Name
+		}
+
+		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
+	case knowaydevv1alpha1.LLMBackend:
+		if v.Spec.Name != "" {
+			return v.Spec.Name
+		}
+
+		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
+	case *knowaydevv1alpha1.ImageGenerationBackend:
+		if lo.IsNil(v) {
+			return ""
+		}
+		if v.Spec.ModelName != nil {
+			return *v.Spec.ModelName
+		}
+
+		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
+	case knowaydevv1alpha1.ImageGenerationBackend:
+		if v.Spec.ModelName != nil {
+			return *v.Spec.ModelName
+		}
+
+		return fmt.Sprintf("%s/%s", v.Namespace, v.Name)
+	default:
+		panic("unknown backend type :" + fmt.Sprintf("%T", backend))
+	}
+}
+
+func setStatusCondition(backend Backend, typ string, ready bool, message string) {
 	cs := metav1.ConditionFalse
 	if ready {
 		cs = metav1.ConditionTrue
@@ -62,7 +100,7 @@ func setStatusCondition(backend knowaydevv1alpha1.Backend, typ string, ready boo
 	}
 }
 
-func reconcilePhase(backend knowaydevv1alpha1.Backend) {
+func reconcilePhase(backend Backend) {
 	backend.GetStatus().SetStatus(knowaydevv1alpha1.Healthy)
 	if isDeleted(backend) {
 		backend.GetStatus().SetStatus(knowaydevv1alpha1.Healthy)

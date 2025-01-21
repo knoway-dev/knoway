@@ -25,11 +25,9 @@ import (
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:name="Provider",type=string,JSONPath=`.spec.provider`
-//+kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.name`
+//+kubebuilder:printcolumn:name="Name",type=string,JSONPath=`.spec.modelName`
 //+kubebuilder:printcolumn:name="URL",type=string,JSONPath=`.spec.upstream.baseUrl`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
-
-var _ Backend = (*ImageGenerationBackend)(nil)
 
 // ImageGenerationBackend is the Schema for the imagegenerationbackends API.
 type ImageGenerationBackend struct {
@@ -38,14 +36,6 @@ type ImageGenerationBackend struct {
 
 	Spec   ImageGenerationBackendSpec   `json:"spec,omitempty"`
 	Status ImageGenerationBackendStatus `json:"status,omitempty"`
-}
-
-func (b *ImageGenerationBackend) GetObjectMeta() metav1.ObjectMeta {
-	return b.ObjectMeta
-}
-
-func (b *ImageGenerationBackend) GetStatus() BackendStatus {
-	return &b.Status
 }
 
 // +kubebuilder:object:root=true
@@ -64,11 +54,12 @@ func init() {
 // ImageGenerationBackendSpec defines the desired state of ImageGenerationBackend.
 type ImageGenerationBackendSpec struct {
 	// ModelName specifies the name of the model
-	// +kubebuilder:validation:Required
-	Name string `json:"name,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +optional
+	ModelName *string `json:"modelName,omitempty"`
 	// Provider indicates the organization providing the model
-	// +kubebuilder:validation:Required
-	Provider string `json:"provider,omitempty"`
+	// +kubebuilder:validation:Enum=OpenAI,vLLM,Ollama
+	Provider Provider `json:"provider,omitempty"`
 	// Upstream contains information about the upstream configuration
 	Upstream ImageGenerationBackendUpstream `json:"upstream,omitempty"`
 	// Filters are applied to the model's requests
@@ -194,8 +185,6 @@ type ImageGenerationFilterFilterConfig struct {
 	Custom *runtime.RawExtension `json:"custom,omitempty"`
 }
 
-var _ BackendStatus = (*ImageGenerationBackendStatus)(nil)
-
 // ImageGenerationBackendStatus defines the observed state of ImageGenerationBackend.
 type ImageGenerationBackendStatus struct {
 	// Status indicates the health of the backend: Unknown, Healthy, or Failed
@@ -207,20 +196,4 @@ type ImageGenerationBackendStatus struct {
 
 	// Endpoints holds the upstream addresses of the current model (pod IP addresses)
 	Endpoints []string `json:"endpoints,omitempty"`
-}
-
-func (s *ImageGenerationBackendStatus) GetStatus() StatusEnum {
-	return s.Status
-}
-
-func (s *ImageGenerationBackendStatus) SetStatus(status StatusEnum) {
-	s.Status = status
-}
-
-func (s *ImageGenerationBackendStatus) GetConditions() []metav1.Condition {
-	return s.Conditions
-}
-
-func (s *ImageGenerationBackendStatus) SetConditions(conditions []metav1.Condition) {
-	s.Conditions = conditions
 }

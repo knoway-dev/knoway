@@ -7,6 +7,7 @@ import (
 
 	"github.com/samber/mo"
 
+	"knoway.dev/api/clusters/v1alpha1"
 	v1alpha12 "knoway.dev/api/service/v1alpha1"
 	"knoway.dev/pkg/object"
 )
@@ -33,10 +34,10 @@ type RequestMetadata struct {
 	AuthInfo          *v1alpha12.APIKeyAuthResponse // Set in AuthFilter
 
 	// Upstream related metadata
-	UpstreamProvider             string                 // Set in Cluster Manager
-	UpstreamResponseStatusCode   int                    // Set in Cluster Manager
-	UpstreamResponseHeader       mo.Option[http.Header] // Set in Cluster Manager
-	UpstreamResponseErrorMessage string                 // Set in Cluster Manager
+	UpstreamProvider             v1alpha1.ClusterProvider // Set in Cluster Manager
+	UpstreamResponseStatusCode   int                      // Set in Cluster Manager
+	UpstreamResponseHeader       mo.Option[http.Header]   // Set in Cluster Manager
+	UpstreamResponseErrorMessage string                   // Set in Cluster Manager
 	// UpstreamRequestModel is the model name that the gateway will send to
 	// upstream provider, generally the same as how Cluster overrides `model`
 	// parameter in the request payload.

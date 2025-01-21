@@ -67,20 +67,10 @@ func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, req object.
 }
 
 func (f *responseHandler) ResponseModifier(ctx context.Context, cluster *v1alpha12.Cluster, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {
-	switch request.GetRequestType() {
-	case
-		object.RequestTypeChatCompletions,
-		object.RequestTypeCompletions:
-		err := response.SetModel(cluster.GetName())
-		if err != nil {
-			return response, err
-		}
-
-		return response, nil
-	case
-		object.RequestTypeImageGeneration:
-		return response, nil
-	default:
-		return response, nil
+	err := response.SetModel(cluster.GetName())
+	if err != nil {
+		return response, err
 	}
+
+	return response, nil
 }

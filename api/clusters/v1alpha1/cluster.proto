@@ -44,13 +44,20 @@ enum ClusterType {
     IMAGE_GENERATION         = 2;
 }
 
+enum ClusterProvider {
+    CLUSTER_PROVIDER_UNSPECIFIED = 0;
+    OPEN_AI                      = 1;
+    VLLM                         = 2;
+    OLLAMA                       = 3;
+}
+
 message Cluster {
     string name                         = 1;
     LoadBalancePolicy loadBalancePolicy = 2;
     Upstream upstream                   = 3;
     TLSConfig tlsConfig                 = 4;
     repeated ClusterFilter filters      = 5;
-    string provider                     = 6;
+    ClusterProvider provider            = 6;
     int64 created                       = 7;
     ClusterType type                    = 8;
 }

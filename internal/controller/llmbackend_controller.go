@@ -38,6 +38,7 @@ import (
 	"knoway.dev/api/clusters/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
+	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/route"
@@ -74,7 +75,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	log.Log.Info("reconcile LLMBackend modelName", "modelName", llmBackend.Spec.Name)
 
 	rrs := r.getReconciles()
-	if isDeleted(llmBackend) {
+	if isDeleted(BackendFromLLMBackend(llmBackend)) {
 		rrs = r.getDeleteReconciles()
 	}
 
@@ -85,16 +86,16 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		err := rr.reconciler(ctx, llmBackend)
 		if err != nil {
-			if isDeleted(llmBackend) && shouldForceDelete(llmBackend) {
+			if isDeleted(BackendFromLLMBackend(llmBackend)) && shouldForceDelete(BackendFromLLMBackend(llmBackend)) {
 				continue
 			}
 
 			log.Log.Error(err, "LLMBackend reconcile error", "name", llmBackend.Name, "type", typ)
-			setStatusCondition(llmBackend, typ, false, err.Error())
+			setStatusCondition(BackendFromLLMBackend(llmBackend), typ, false, err.Error())
 
 			break
 		} else {
-			setStatusCondition(llmBackend, typ, true, "")
+			setStatusCondition(BackendFromLLMBackend(llmBackend), typ, true, "")
 		}
 	}
 
@@ -132,7 +133,7 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 			route.RemoveRoute(mName)
 		}
 	}
-	if isDeleted(llmBackend) {
+	if isDeleted(BackendFromLLMBackend(llmBackend)) {
 		removeBackendFunc()
 		return nil
 	}
@@ -208,7 +209,7 @@ func (r *LLMBackendReconciler) reconcileUpstreamHealthy(ctx context.Context, llm
 }
 
 func (r *LLMBackendReconciler) reconcilePhase(_ context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) {
-	reconcilePhase(llmBackend)
+	reconcilePhase(BackendFromLLMBackend(llmBackend))
 }
 
 type reconcileHandler[T runtime.Object] struct {
@@ -295,7 +296,7 @@ func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBack
 		}
 	}
 
-	if !canDelete && !shouldForceDelete(llmBackend) {
+	if !canDelete && !shouldForceDelete(BackendFromLLMBackend(llmBackend)) {
 		return errors.New("have delete condition not ready")
 	}
 
@@ -390,7 +391,7 @@ func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, back
 	return &v1alpha1.Cluster{
 		Type:     v1alpha1.ClusterType_LLM,
 		Name:     mName,
-		Provider: backend.Spec.Provider,
+		Provider: clusters.MapBackendProviderToClusterProvider(backend.Spec.Provider),
 		Created:  backend.GetCreationTimestamp().Unix(),
 
 		// todo configurable to replace hard config

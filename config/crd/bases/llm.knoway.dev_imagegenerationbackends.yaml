@@ -18,7 +18,7 @@ spec:
     - jsonPath: .spec.provider
       name: Provider
       type: string
-    - jsonPath: .spec.name
+    - jsonPath: .spec.modelName
       name: Name
       type: string
     - jsonPath: .spec.upstream.baseUrl
@@ -69,11 +69,15 @@ spec:
                       type: string
                   type: object
                 type: array
-              name:
+              modelName:
                 description: ModelName specifies the name of the model
                 type: string
               provider:
                 description: Provider indicates the organization providing the model
+                enum:
+                - OpenAI
+                - vLLM
+                - Ollama
                 type: string
               upstream:
                 description: Upstream contains information about the upstream configuration
@@ -235,9 +239,6 @@ spec:
                     format: int32
                     type: integer
                 type: object
-            required:
-            - name
-            - provider
             type: object
           status:
             description: ImageGenerationBackendStatus defines the observed state of

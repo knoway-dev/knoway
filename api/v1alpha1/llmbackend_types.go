@@ -57,7 +57,7 @@ type LLMBackendSpec struct {
 	// +kubebuilder:validation:Required
 	Name string `json:"name,omitempty"`
 	// Provider indicates the organization providing the model
-	// +kubebuilder:validation:Enum=OpenAI,vLLM,Ollama
+	// +kubebuilder:validation:Enum=OpenAI;vLLM;Ollama
 	Provider Provider `json:"provider,omitempty"`
 	// Upstream contains information about the upstream configuration
 	Upstream BackendUpstream `json:"upstream,omitempty"`

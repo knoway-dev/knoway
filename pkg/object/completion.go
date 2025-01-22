@@ -11,9 +11,9 @@ import (
 type RequestType string
 
 const (
-	RequestTypeChatCompletions RequestType = "chat_completions"
-	RequestTypeCompletions     RequestType = "completions"
-	RequestTypeImageGeneration RequestType = "image_generation"
+	RequestTypeChatCompletions  RequestType = "chat_completions"
+	RequestTypeCompletions      RequestType = "completions"
+	RequestTypeImageGenerations RequestType = "image_generations"
 )
 
 type LLMRequest interface {
@@ -78,10 +78,16 @@ type LLMChunkResponse interface {
 	ToServerSentEvent() (*sse.Event, error)
 }
 
+type ImageGenerationsUsageImage interface {
+	GetWidth() uint64
+	GetHeight() uint64
+}
+
 type LLMUsage interface {
 	GetTotalTokens() uint64
 	GetCompletionTokens() uint64
 	GetPromptTokens() uint64
+	GetOutputImages() []ImageGenerationsUsageImage
 }
 
 var _ LLMUsage = (*DefaultLLMUsage)(nil)
@@ -98,4 +104,8 @@ func (u DefaultLLMUsage) GetCompletionTokens() uint64 {
 
 func (u DefaultLLMUsage) GetTotalTokens() uint64 {
 	return 0
+}
+
+func (u DefaultLLMUsage) GetOutputImages() []ImageGenerationsUsageImage {
+	return make([]ImageGenerationsUsageImage, 0)
 }

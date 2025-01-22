@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-option go_package = "knoway.dev/api/service/v1alpha1";
-
 package knoway.service.v1alpha1;
+
+option go_package = "knoway.dev/api/service/v1alpha1";
 
 message UsageReportRequest {
     string api_key_id = 1;
@@ -13,9 +13,16 @@ message UsageReportRequest {
     // request to, such as "kebe-mnist".
     string upstream_model_name = 3;
 
+    message UsageImage {
+        uint64 width  = 1;
+        uint64 height = 2;
+    }
+
     message Usage {
-        uint64 input_tokens  = 1;
-        uint64 output_tokens = 2;
+        uint64 input_tokens               = 1;
+        uint64 output_tokens              = 2;
+        repeated UsageImage input_images  = 3;
+        repeated UsageImage output_images = 4;
     }
     Usage usage = 4;
 
@@ -35,5 +42,5 @@ message UsageReportResponse {
 }
 
 service UsageStatsService {
-    rpc UsageReport(UsageReportRequest) returns (UsageReportResponse) {};
+    rpc UsageReport(UsageReportRequest) returns (UsageReportResponse) {}
 }

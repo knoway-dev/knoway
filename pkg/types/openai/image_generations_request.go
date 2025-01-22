@@ -107,5 +107,5 @@ func (r *ImageGenerationsRequest) SetOverrideParams(params map[string]*structpb.
 }
 
 func (r *ImageGenerationsRequest) GetRequestType() object.RequestType {
-	return object.RequestTypeImageGeneration
+	return object.RequestTypeImageGenerations
 }

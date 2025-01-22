@@ -135,6 +135,7 @@ words:
   - utilruntime
   - varnamelen
   - vllm
+  - webp
   - whitespace
   - wrapcheck
   - wsl

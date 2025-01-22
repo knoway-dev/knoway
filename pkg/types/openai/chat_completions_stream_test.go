@@ -261,7 +261,7 @@ func TestChatCompletionStreamChunk_ToServerSentEvent(t *testing.T) {
 
 func TestChatCompletionStreamResponse_GetUsage(t *testing.T) {
 	stream := &ChatCompletionStreamResponse{
-		Usage: &ChatCompletionsUsage{
+		Usage: &Usage{
 			PromptTokens:     10,
 			CompletionTokens: 20,
 			TotalTokens:      30,

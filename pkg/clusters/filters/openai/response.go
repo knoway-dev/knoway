@@ -54,10 +54,10 @@ func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, req object.
 			return nil, fmt.Errorf("unsupported content type %s", contentType)
 		}
 	case
-		object.RequestTypeImageGenerations:
+		object.RequestTypeImageGeneration:
 		switch {
 		case strings.HasPrefix(contentType, "application/json"):
-			return openai.NewImageGenerationsResponse(ctx, req, rawResponse, reader)
+			return openai.NewImageGenerationsResponse(req, rawResponse, reader)
 		default:
 			return nil, fmt.Errorf("unsupported content type %s", contentType)
 		}

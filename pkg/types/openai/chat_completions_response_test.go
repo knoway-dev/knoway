@@ -15,7 +15,7 @@ import (
 )
 
 func TestUsage(t *testing.T) {
-	u := &Usage{
+	u := &ChatCompletionsUsage{
 		TotalTokens:      1,
 		CompletionTokens: 2,
 		PromptTokens:     3,
@@ -33,7 +33,7 @@ func TestNewChatCompletionResponse(t *testing.T) {
 		statusCode    int
 		expectError   bool
 		expectedModel string
-		expectedUsage *Usage
+		expectedUsage *ChatCompletionsUsage
 		expectedError *ErrorResponse
 	}{
 		{
@@ -48,7 +48,7 @@ func TestNewChatCompletionResponse(t *testing.T) {
             }`,
 			statusCode:    200,
 			expectedModel: "gpt-4",
-			expectedUsage: &Usage{
+			expectedUsage: &ChatCompletionsUsage{
 				PromptTokens:     10,
 				CompletionTokens: 20,
 				TotalTokens:      30,
@@ -156,7 +156,7 @@ func TestNewChatCompletionResponse(t *testing.T) {
 }
 
 func TestChatCompletionsResponse_Usage(t *testing.T) {
-	usage := &Usage{
+	usage := &ChatCompletionsUsage{
 		TotalTokens:      30,
 		CompletionTokens: 20,
 		PromptTokens:     10,

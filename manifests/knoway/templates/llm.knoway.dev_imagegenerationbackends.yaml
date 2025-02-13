@@ -69,6 +69,19 @@ spec:
                       type: string
                   type: object
                 type: array
+              meteringPolicy:
+                description: MeteringPolicy contains configurations about how to count
+                  the usage of the model
+                properties:
+                  sizeFrom:
+                    description: SizeFromInput indicates whether the size of the generated
+                      image is determined by the input parameters.
+                    enum:
+                    - Input
+                    - Output
+                    - Greatest
+                    type: string
+                type: object
               modelName:
                 description: ModelName specifies the name of the model
                 type: string

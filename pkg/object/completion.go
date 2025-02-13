@@ -11,9 +11,9 @@ import (
 type RequestType string
 
 const (
-	RequestTypeChatCompletions RequestType = "chat_completions"
-	RequestTypeCompletions     RequestType = "completions"
-	RequestTypeImageGeneration RequestType = "image_generation"
+	RequestTypeChatCompletions  RequestType = "chat_completions"
+	RequestTypeCompletions      RequestType = "completions"
+	RequestTypeImageGenerations RequestType = "image_generations"
 )
 
 type LLMRequest interface {
@@ -78,24 +78,43 @@ type LLMChunkResponse interface {
 	ToServerSentEvent() (*sse.Event, error)
 }
 
+type ImageGenerationsUsageImage interface {
+	GetWidth() uint64
+	GetHeight() uint64
+	GetStyle() string
+	GetQuality() string
+}
+
 type LLMUsage interface {
+	isLLMUsage()
+}
+
+type LLMTokensUsage interface {
+	LLMUsage
+
 	GetTotalTokens() uint64
 	GetCompletionTokens() uint64
 	GetPromptTokens() uint64
 }
 
-var _ LLMUsage = (*DefaultLLMUsage)(nil)
-
-type DefaultLLMUsage struct{}
-
-func (u DefaultLLMUsage) GetPromptTokens() uint64 {
-	return 0
+func AsLLMTokensUsage(u LLMUsage) (LLMTokensUsage, bool) {
+	t, ok := u.(LLMTokensUsage)
+	return t, ok
 }
 
-func (u DefaultLLMUsage) GetCompletionTokens() uint64 {
-	return 0
+type LLMImagesUsage interface {
+	LLMUsage
+
+	GetOutputImages() []ImageGenerationsUsageImage
 }
 
-func (u DefaultLLMUsage) GetTotalTokens() uint64 {
-	return 0
+func AsLLMImagesUsage(u LLMUsage) (LLMImagesUsage, bool) {
+	t, ok := u.(LLMImagesUsage)
+	return t, ok
 }
+
+var _ LLMUsage = (*IsLLMUsage)(nil)
+
+type IsLLMUsage struct{}
+
+func (IsLLMUsage) isLLMUsage() {}

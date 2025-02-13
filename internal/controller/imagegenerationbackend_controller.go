@@ -369,6 +369,12 @@ func (r *ImageGenerationBackendReconciler) toRegisterClusterConfig(ctx context.C
 		}
 	}
 
+	// usage
+	var sizeFrom *v1alpha1.ClusterMeteringPolicy_SizeFrom
+	if backend.Spec.MeteringPolicy != nil && backend.Spec.MeteringPolicy.SizeFrom != nil {
+		sizeFrom = clusters.MapBackendSizeFromClusterSizeFrom(backend.Spec.MeteringPolicy.SizeFrom)
+	}
+
 	return &v1alpha1.Cluster{
 		Type:     v1alpha1.ClusterType_IMAGE_GENERATION,
 		Name:     modelName,
@@ -385,7 +391,11 @@ func (r *ImageGenerationBackendReconciler) toRegisterClusterConfig(ctx context.C
 			DefaultParams:  defaultParams,
 			OverrideParams: overrideParams,
 		},
+
 		Filters: filters,
+		MeteringPolicy: &v1alpha1.ClusterMeteringPolicy{
+			SizeFrom: sizeFrom,
+		},
 	}, nil
 }
 

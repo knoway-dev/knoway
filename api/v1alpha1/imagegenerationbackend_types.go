@@ -64,6 +64,10 @@ type ImageGenerationBackendSpec struct {
 	Upstream ImageGenerationBackendUpstream `json:"upstream,omitempty"`
 	// Filters are applied to the model's requests
 	Filters []ImageGenerationFilter `json:"filters,omitempty"`
+	// MeteringPolicy contains configurations about how to count the usage of the model
+	// +kubebuilder:validation:Optional
+	// +optional
+	MeteringPolicy *ImageGenerationMeteringPolicy `json:"meteringPolicy,omitempty"`
 }
 
 // BackendUpstream defines the upstream server configuration.
@@ -183,6 +187,41 @@ type ImageGenerationFilterFilterConfig struct {
 	// +kubebuilder:validation:OneOf
 	// +optional
 	Custom *runtime.RawExtension `json:"custom,omitempty"`
+}
+
+// This enum may also be used for LLMBackend to track down token spent
+type SizeFrom string
+
+const (
+	// For image generation, the size of the generated image is determined by the input parameters.
+	//
+	// For example, even if the output image is 1024x1024, as long as the input parameter specified
+	// 256x256, the size of the generated image will be account as 256x256.
+	SizeFromInput SizeFrom = "Input"
+	// For image generation, the size of the generated image is determined by the output image.
+	// This is done by parsing through the actual generated image file header by using Golang's std
+	// library to determine the size of the image.
+	//
+	// For example, no matter what the input specified, if the output image is 1024x1024, the size of
+	// the generated image will be account as 1024x1024.
+	SizeFromOutput SizeFrom = "Output"
+	// For image generation, the size of the generated image is determined by the greatest size of the
+	// input parameters and output image resolution.
+	//
+	// For example, if the input parameter specified 256x256 and the output image is 1024x1024, the
+	// size of the generated image will be account as 1024x1024. On the other hand, if the input
+	// parameter specified 1024x1024 and the output image is 256x256, the size of the generated image
+	// will be account as 1024x1024.
+	SizeFromGreatest SizeFrom = "Greatest"
+)
+
+type ImageGenerationMeteringPolicy struct {
+	// SizeFromInput indicates whether the size of the generated image is determined by the input parameters.
+	//
+	// +kubebuilder:validation:Enum=Input;Output;Greatest
+	// +kubebuilder:validation:Optional
+	// +optional
+	SizeFrom *SizeFrom `json:"sizeFrom,omitempty"`
 }
 
 // ImageGenerationBackendStatus defines the observed state of ImageGenerationBackend.

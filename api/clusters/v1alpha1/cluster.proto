@@ -51,13 +51,48 @@ enum ClusterProvider {
     OLLAMA                       = 3;
 }
 
+message ClusterMeteringPolicy {
+    enum SizeFrom {
+        SIZE_FROM_UNSPECIFIED = 0;
+        // For image generation, the size of the generated image is determined
+        // by the input parameters.
+        //
+        // For example, even if the output image is 1024x1024, as long as the
+        // input parameter specified 256x256, the size of the generated image
+        // will be account as 256x256.
+        SIZE_FROM_INPUT = 1;
+        // For image generation, the size of the generated image is determined
+        // by the output image. This is done by parsing through the actual
+        // generated image file header by using Golang's std library to
+        // determine the size of the image.
+        //
+        // For example, no matter what the input specified, if the output image
+        // is 1024x1024, the size of the generated image will be account as
+        // 1024x1024.
+        SIZE_FROM_OUTPUT = 2;
+        // For image generation, the size of the generated image is determined
+        // by the greatest size of the input parameters and output image
+        // resolution.
+        //
+        // For example, if the input parameter specified 256x256 and the output
+        // image is 1024x1024, the size of the generated image will be account
+        // as 1024x1024. On the other hand, if the input parameter specified
+        // 1024x1024 and the output image is 256x256, the size of the generated
+        // image will be account as 1024x1024.
+        SIZE_FROM_GREATEST = 3;
+    }
+
+    optional SizeFrom sizeFrom = 1;
+}
+
 message Cluster {
-    string name                         = 1;
-    LoadBalancePolicy loadBalancePolicy = 2;
-    Upstream upstream                   = 3;
-    TLSConfig tlsConfig                 = 4;
-    repeated ClusterFilter filters      = 5;
-    ClusterProvider provider            = 6;
-    int64 created                       = 7;
-    ClusterType type                    = 8;
+    string name                          = 1;
+    LoadBalancePolicy loadBalancePolicy  = 2;
+    Upstream upstream                    = 3;
+    TLSConfig tlsConfig                  = 4;
+    repeated ClusterFilter filters       = 5;
+    ClusterProvider provider             = 6;
+    int64 created                        = 7;
+    ClusterType type                     = 8;
+    ClusterMeteringPolicy meteringPolicy = 9;
 }

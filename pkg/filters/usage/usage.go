@@ -96,22 +96,74 @@ func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest
 	ctx, cancel := context.WithTimeout(context.TODO(), f.config.GetStatsServer().GetTimeout().AsDuration())
 	defer cancel()
 
-	_, err := f.usageClient.UsageReport(ctx, &service.UsageReportRequest{
-		ApiKeyId:          apiKeyID,
-		UserModelName:     request.GetModel(),
-		UpstreamModelName: response.GetModel(),
-		Usage: &service.UsageReportRequest_Usage{
-			InputTokens:  usage.GetPromptTokens(),
-			OutputTokens: usage.GetCompletionTokens(),
-		},
-		Mode: service.UsageReportRequest_MODE_PER_REQUEST,
-	})
-	if err != nil {
-		slog.Warn("failed to report usage", "error", err)
-		return
-	}
+	switch request.GetRequestType() {
+	case
+		object.RequestTypeChatCompletions,
+		object.RequestTypeCompletions:
+		tokensUsage, ok := object.AsLLMTokensUsage(usage)
+		if !ok {
+			slog.Warn("failed to cast usage to LLMUsageTokens")
+			break
+		}
 
-	slog.Info("report usage", "model", request.GetModel(), "input_tokens", usage.GetPromptTokens(), "output_tokens", usage.GetCompletionTokens())
+		_, err := f.usageClient.UsageReport(ctx, &service.UsageReportRequest{
+			ApiKeyId:          apiKeyID,
+			UserModelName:     request.GetModel(),
+			UpstreamModelName: response.GetModel(),
+			Usage: &service.UsageReportRequest_Usage{
+				InputTokens:  tokensUsage.GetPromptTokens(),
+				OutputTokens: tokensUsage.GetCompletionTokens(),
+			},
+			Mode: service.UsageReportRequest_MODE_PER_REQUEST,
+		})
+		if err != nil {
+			slog.Warn("failed to report usage", slog.Any("error", err))
+			return
+		}
+
+		slog.Info("report usage",
+			slog.String("model", request.GetModel()),
+			slog.Uint64("input_tokens", tokensUsage.GetPromptTokens()),
+			slog.Uint64("output_tokens", tokensUsage.GetCompletionTokens()),
+		)
+	case
+		object.RequestTypeImageGenerations:
+		imagesUsage, ok := object.AsLLMImagesUsage(usage)
+		if !ok {
+			slog.Warn("failed to cast usage to LLMUsageImage")
+			break
+		}
+		if len(imagesUsage.GetOutputImages()) == 0 {
+			break
+		}
+
+		usageImage := &service.UsageReportRequest_UsageImage{
+			Width:   imagesUsage.GetOutputImages()[0].GetWidth(),
+			Height:  imagesUsage.GetOutputImages()[0].GetHeight(),
+			Numbers: uint64(len(imagesUsage.GetOutputImages())), // REVIEW: what if n != len(imagesUsage.GetOutputImages()),
+			Style:   imagesUsage.GetOutputImages()[0].GetStyle(),
+			Quality: imagesUsage.GetOutputImages()[0].GetQuality(),
+		}
+
+		_, err := f.usageClient.UsageReport(ctx, &service.UsageReportRequest{
+			ApiKeyId:          apiKeyID,
+			UserModelName:     request.GetModel(),
+			UpstreamModelName: response.GetModel(),
+			Usage:             &service.UsageReportRequest_Usage{OutputImages: usageImage},
+			Mode:              service.UsageReportRequest_MODE_PER_REQUEST,
+		})
+		if err != nil {
+			slog.Warn("failed to report usage", slog.Any("error", err))
+			return
+		}
+
+		slog.Info("report usage",
+			slog.String("model", request.GetModel()),
+			slog.Uint64("output_images", usageImage.GetNumbers()),
+			slog.Uint64("width", usageImage.GetWidth()),
+			slog.Uint64("height", usageImage.GetHeight()),
+		)
+	}
 }
 
 func (f *UsageFilter) OnCompletionResponse(ctx context.Context, request object.LLMRequest, response object.LLMResponse) filters.RequestFilterResult {

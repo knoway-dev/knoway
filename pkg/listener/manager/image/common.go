@@ -23,7 +23,7 @@ func (l *OpenAIImageListener) clusterDoImageGenerationRequest(ctx context.Contex
 
 	// For non-streaming responses, usage should be set here
 	if !lo.IsNil(resp.GetUsage()) {
-		rMeta.LLMUpstreamUsage = mo.Some(resp.GetUsage())
+		rMeta.LLMUpstreamImagesUsage = mo.Some(lo.Must(object.AsLLMImagesUsage(resp.GetUsage())))
 	}
 
 	err = c.DoUpstreamResponseComplete(request.Context(), llmRequest, resp)

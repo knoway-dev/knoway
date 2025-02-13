@@ -95,7 +95,7 @@ func (l *OpenAIChatListener) pipeCompletionsStream(ctx context.Context, request 
 			continue
 		}
 		if chunk.IsUsage() && !lo.IsNil(chunk.GetUsage()) {
-			rMeta.LLMUpstreamUsage = mo.Some(chunk.GetUsage())
+			rMeta.LLMUpstreamTokensUsage = mo.Some(lo.Must(object.AsLLMTokensUsage(chunk.GetUsage())))
 		}
 		if chunk.IsFirst() {
 			rMeta.UpstreamFirstValidChunkAt = time.Now()
@@ -120,7 +120,7 @@ func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c 
 
 	// For non-streaming responses, usage should be set here
 	if !resp.IsStream() && !lo.IsNil(resp.GetUsage()) {
-		rMeta.LLMUpstreamUsage = mo.Some(resp.GetUsage())
+		rMeta.LLMUpstreamTokensUsage = mo.Some(lo.Must(object.AsLLMTokensUsage(resp.GetUsage())))
 	}
 
 	if resp.GetError() != nil || !resp.IsStream() {
@@ -150,7 +150,7 @@ func (l *OpenAIChatListener) clusterDoCompletionsRequest(ctx context.Context, c 
 
 	// For streaming responses, usage should be set after the stream is done
 	if !lo.IsNil(resp.GetUsage()) {
-		rMeta.LLMUpstreamUsage = mo.Some(resp.GetUsage())
+		rMeta.LLMUpstreamTokensUsage = mo.Some(lo.Must(object.AsLLMTokensUsage(resp.GetUsage())))
 	}
 
 	// REVIEW: better way to compose the in and out actions?

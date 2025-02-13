@@ -38,7 +38,7 @@ type responseHandler struct {
 	clusterfilters.ClusterFilter
 }
 
-func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, req object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
+func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, cluster *v1alpha12.Cluster, req object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
 	contentType := rawResponse.Header.Get("Content-Type")
 
 	switch req.GetRequestType() {
@@ -54,10 +54,12 @@ func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, req object.
 			return nil, fmt.Errorf("unsupported content type %s", contentType)
 		}
 	case
-		object.RequestTypeImageGeneration:
+		object.RequestTypeImageGenerations:
 		switch {
 		case strings.HasPrefix(contentType, "application/json"):
-			return openai.NewImageGenerationsResponse(req, rawResponse, reader)
+			return openai.NewImageGenerationsResponse(ctx, req, rawResponse, reader,
+				openai.NewImageGenerationsResponseWithUsage(cluster.GetMeteringPolicy()),
+			)
 		default:
 			return nil, fmt.Errorf("unsupported content type %s", contentType)
 		}

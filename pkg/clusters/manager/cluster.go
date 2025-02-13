@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+	"github.com/samber/lo/mutable"
 	"github.com/samber/mo"
 	"google.golang.org/protobuf/proto"
 
@@ -74,12 +75,14 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 
 	// Add default filters
 	clusterFilters = append(clusterFilters, registryfilters.ClusterDefaultFilters(lifecycle)...)
+	reversedClusterFilters := utils.Clone(clusterFilters)
+	// NOTICE: mutable.Reverse will modify the original slice, so we need to clone it
+	mutable.Reverse(reversedClusterFilters)
 
 	return &clusterManager{
-		cluster: cluster,
-		filters: clusterFilters,
-		// NOTICE: lo.Reverse will modify the original slice, so we need to clone it
-		reversedFilters: lo.Reverse(utils.Clone(clusterFilters)),
+		cluster:         cluster,
+		filters:         clusterFilters,
+		reversedFilters: reversedClusterFilters,
 	}, nil
 }
 
@@ -122,7 +125,7 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 
 	var llmResp object.LLMResponse
 
-	llmResp, err = m.reversedFilters.ForEachResponseUnmarshaller(ctx, llmReq, rawResp, buffer, llmResp)
+	llmResp, err = m.reversedFilters.ForEachResponseUnmarshaller(ctx, m.cluster, llmReq, rawResp, buffer, llmResp)
 	if err != nil {
 		return nil, object.LLMErrorOrInternalError(err)
 	}

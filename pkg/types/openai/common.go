@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"strings"
 
 	jsonpatch "github.com/evanphx/json-patch/v5"
 
@@ -138,4 +140,36 @@ func unmarshalErrorResponseFromParsedBody(body map[string]any, response *http.Re
 	}
 
 	return nil, nil
+}
+
+func parseImageGenerationsSizeString(str *string) (*ImageGenerationsRequestSize, error) {
+	if str == nil {
+		return nil, nil
+	}
+	if *str == "" {
+		return nil, NewErrorBadRequest().WithMessage("empty size string")
+	}
+
+	sizeStrings := strings.Split(*str, "x")
+	if len(sizeStrings) < 2 { //nolint:mnd
+		return nil, NewErrorBadRequest().WithMessage("invalid `" + *str + "` in \"size\" value")
+	}
+	if len(sizeStrings) > 2 { //nolint:mnd
+		return nil, NewErrorBadRequest().WithMessage("invalid `" + *str + "` in \"size\" value: too many parts")
+	}
+
+	width, err := strconv.ParseUint(sizeStrings[0], 10, 64)
+	if err != nil {
+		return nil, NewErrorBadRequest().WithMessage("invalid width `" + sizeStrings[0] + "` in \"size\" value `" + *str + "`")
+	}
+
+	height, err := strconv.ParseUint(sizeStrings[1], 10, 64)
+	if err != nil {
+		return nil, NewErrorBadRequest().WithMessage("invalid height `" + sizeStrings[1] + "` in \"size\" value `" + *str + "`")
+	}
+
+	return &ImageGenerationsRequestSize{
+		Width:  width,
+		Height: height,
+	}, nil
 }

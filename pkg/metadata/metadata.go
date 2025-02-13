@@ -58,7 +58,8 @@ type RequestMetadata struct {
 	UpstreamFirstValidChunkAt time.Time // Set in Listener
 
 	// Overall usage consumption
-	LLMUpstreamUsage mo.Option[object.LLMUsage]
+	LLMUpstreamTokensUsage mo.Option[object.LLMTokensUsage]
+	LLMUpstreamImagesUsage mo.Option[object.LLMImagesUsage]
 }
 
 // RequestMetadataFromCtx retrieves RequestMetadata from context

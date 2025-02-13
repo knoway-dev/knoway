@@ -99,6 +99,16 @@ func (e *ErrorResponse) WithCause(err error) *ErrorResponse {
 	return e
 }
 
+func (e *ErrorResponse) WithMessage(message string) *ErrorResponse {
+	if e.ErrorBody == nil {
+		e.ErrorBody = NewErrorInternalError().ErrorBody
+	}
+
+	e.ErrorBody.Message = message
+
+	return e
+}
+
 func (e *ErrorResponse) WithCausef(format string, args ...interface{}) *ErrorResponse {
 	e.WithCause(fmt.Errorf(format, args...)) //nolint:errcheck
 

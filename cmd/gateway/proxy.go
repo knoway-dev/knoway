@@ -50,6 +50,19 @@ func newChatListenerConfig(cfg config.GatewayConfig) *v1alpha1.ChatCompletionLis
 		})
 	}
 
+	baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
+		Name: "rate-limit",
+		Config: func() *anypb.Any {
+			c, err := anypb.New(&v1alpha2.RateLimitConfig{})
+
+			if err != nil {
+				return nil
+			}
+
+			return c
+		}(),
+	})
+
 	if cfg.StatsServer.URL != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
 			Config: func() *anypb.Any {
@@ -100,6 +113,19 @@ func newImageListenerConfig(cfg config.GatewayConfig) *v1alpha1.ImageListener {
 			}(),
 		})
 	}
+
+	baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
+		Name: "rate-limit",
+		Config: func() *anypb.Any {
+			c, err := anypb.New(&v1alpha2.RateLimitConfig{})
+
+			if err != nil {
+				return nil
+			}
+
+			return c
+		}(),
+	})
 
 	if cfg.StatsServer.URL != "" {
 		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{

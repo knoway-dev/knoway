@@ -3,6 +3,8 @@ package config
 import (
 	"fmt"
 
+	"knoway.dev/pkg/filters/ratelimit"
+
 	"google.golang.org/protobuf/types/known/anypb"
 
 	filtersv1alpha1 "knoway.dev/api/filters/v1alpha1"
@@ -37,6 +39,7 @@ func ClusterDefaultFilters(lifecycle bootkit.LifeCycle) []clusterfilters.Cluster
 
 func init() {
 	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.APIKeyAuthConfig{})] = auth.NewWithConfig
+	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.RateLimitConfig{})] = ratelimit.NewWithConfig
 	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.UsageStatsConfig{})] = usage.NewWithConfig
 
 	// internal base Filters

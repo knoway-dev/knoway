@@ -39,9 +39,15 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 			continue
 		}
 
-		if request.GetModel() == exactMatch {
-			return m.cfg.GetClusterName(), true
+		if request.GetModel() != exactMatch {
+			continue
 		}
+		if len(m.cfg.GetTargets()) == 0 {
+			continue
+		}
+
+		// TODO: should use load balancing algorithm to select on target
+		return m.cfg.GetTargets()[0].GetDestination().GetBackend(), true
 	}
 
 	return "", false

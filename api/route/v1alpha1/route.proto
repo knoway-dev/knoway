@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-option go_package = "knoway.dev/api/route/v1alpha1";
-
 package knoway.route.v1alpha1;
 
 import "google/protobuf/any.proto";
+
+option go_package = "knoway.dev/api/route/v1alpha1";
 
 message RouteFilter {
     string name                = 1;
@@ -23,9 +23,29 @@ message Match {
     StringMatch message = 2;
 }
 
+message RouteDestination {
+    string namespace      = 1;
+    string backend        = 2;
+    optional int32 weight = 3;
+}
+
+message RouteTarget {
+    RouteDestination destination = 1;
+}
+
+// See also:
+// Supported load balancers — envoy 1.34.0-dev-e3a97f documentation
+// https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers#arch-overview-load-balancing-types
+enum LoadBalancePolicy {
+    LOAD_BALANCE_POLICY_UNSPECIFIED   = 0;
+    LOAD_BALANCE_POLICY_ROUND_ROBIN   = 1;
+    LOAD_BALANCE_POLICY_LEAST_REQUEST = 2;
+}
+
 message Route {
-    string name                  = 1;
-    repeated Match matches       = 2;
-    string clusterName           = 3;
-    repeated RouteFilter filters = 4;
+    string name                           = 1;
+    repeated Match matches                = 2;
+    repeated RouteFilter filters          = 3;
+    LoadBalancePolicy load_balance_policy = 4;
+    repeated RouteTarget targets          = 5;
 }

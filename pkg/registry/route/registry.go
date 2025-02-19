@@ -4,11 +4,11 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/samber/lo"
-
 	"knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/route"
 	"knoway.dev/pkg/route/manager"
+
+	"github.com/samber/lo"
 )
 
 var (

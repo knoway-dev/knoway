@@ -43,6 +43,7 @@ func WithAccessLog(enable bool) Middleware {
 					slog.String("upstream_request_model", rMeta.UpstreamRequestModel),
 					slog.String("upstream_response_model", rMeta.UpstreamResponseModel),
 					slog.Int("upstream_response_status_code", rMeta.UpstreamResponseStatusCode),
+					slog.String("destination_cluster", rMeta.DestinationCluster),
 				}
 
 				if rMeta.LLMUpstreamTokensUsage.IsPresent() {

@@ -29,6 +29,8 @@ type RequestMetadata struct {
 	StatusCode   int
 	ErrorMessage string
 
+	DestinationCluster string // Set in LoadBalancerFilter
+
 	// Auth related metadata
 	EnabledAuthFilter bool                          // Set in AuthFilter
 	AuthInfo          *v1alpha12.APIKeyAuthResponse // Set in AuthFilter

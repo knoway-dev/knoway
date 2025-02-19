@@ -8,31 +8,21 @@ import (
 
 	"knoway.dev/config"
 
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
+	"k8s.io/client-go/kubernetes/scheme"
+
 	"knoway.dev/internal/controller"
 	"knoway.dev/pkg/bootkit"
 )
 
 var (
-	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 )
-
-func init() {
-	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
-	utilruntime.Must(knowaydevv1alpha1.AddToScheme(scheme))
-	// +kubebuilder:scaffold:scheme
-}
 
 func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, metricsAddr, probeAddr string, cfg config.ControllerConfig) error {
 	if metricsAddr == "" {
@@ -71,7 +61,7 @@ func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, metricsAd
 	})
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme: scheme,
+		Scheme: scheme.Scheme,
 		Metrics: metricsserver.Options{
 			BindAddress:   metricsAddr,
 			SecureServing: cfg.SecureMetrics,

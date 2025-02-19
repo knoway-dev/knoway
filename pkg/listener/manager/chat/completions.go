@@ -4,10 +4,10 @@ import (
 	"log/slog"
 	"net/http"
 
+	registrycluster "knoway.dev/pkg/registry/cluster"
+
 	"github.com/samber/lo"
 
-	"knoway.dev/api/clusters/v1alpha1"
-	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/types/openai"
@@ -61,7 +61,7 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 		}
 	}
 
-	c, ok := listener.FindCluster(request.Context(), llmRequest, []v1alpha1.ClusterType{v1alpha1.ClusterType_LLM})
+	c, ok := registrycluster.FindClusterByName(rMeta.DestinationCluster)
 	if !ok {
 		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
 	}

@@ -32,9 +32,27 @@ type Log struct {
 }
 
 type GatewayConfig struct {
-	AuthServer  AuthServer  `yaml:"auth_server" json:"auth_server"`
-	StatsServer StatsServer `yaml:"stats_server" json:"stats_server"`
-	Log         *Log        `yaml:"log,omitempty" json:"log,omitempty"`
+	AuthServer  AuthServer    `yaml:"auth_server" json:"auth_server"`
+	StatsServer StatsServer   `yaml:"stats_server" json:"stats_server"`
+	Log         *Log          `yaml:"log,omitempty" json:"log,omitempty"`
+	Policy      GatewayPolicy `yaml:"policy" json:"policy,omitempty"`
+}
+
+type RateLimit struct {
+	Enabled bool `yaml:"enabled" json:"enabled,omitempty"`
+	// Strategy for rate limiting, valid values are:
+	// - USER: Limit by user
+	// - API_KEY: Limit by API key
+	// - API_KEY_AND_USER: Limit by both API key and user
+	BaseOn string `yaml:"base_on" json:"base_on,omitempty"`
+	// Maximum number of requests allowed within the interval
+	Count int32 `yaml:"count" json:"count,omitempty"`
+	// Time window in seconds for rate limiting
+	Interval int64 `yaml:"interval" json:"interval,omitempty"`
+}
+
+type GatewayPolicy struct {
+	RateLimit RateLimit `yaml:"rate_limit" json:"rate_limit,omitempty"`
 }
 
 type Config struct {

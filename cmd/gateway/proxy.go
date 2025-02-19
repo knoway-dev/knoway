@@ -20,11 +20,64 @@ import (
 	"knoway.dev/pkg/listener/manager/image"
 )
 
+func createListenerFilter(name string, config *anypb.Any) *v1alpha1.ListenerFilter {
+	return &v1alpha1.ListenerFilter{
+		Name:   name,
+		Config: config,
+	}
+}
+
+func createAuthFilter(url string, timeout int64) *v1alpha1.ListenerFilter {
+	c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
+		AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
+			Url:     url,
+			Timeout: durationpb.New(time.Duration(timeout) * time.Second),
+		},
+	})
+	if err != nil {
+		return nil
+	}
+	return createListenerFilter("api-key-auth", c)
+}
+
+func createRateLimitFilter(policy config.RateLimit) *v1alpha1.ListenerFilter {
+	baseOn := v1alpha2.RateLimitConfig_USER
+	if val, ok := v1alpha2.RateLimitConfig_Strategy_value[policy.BaseOn]; ok {
+		baseOn = v1alpha2.RateLimitConfig_Strategy(val)
+	}
+
+	c, err := anypb.New(&v1alpha2.RateLimitConfig{
+		DefaultPolicy: &v1alpha2.RateLimitConfig_Policy{
+			BaseOn:   baseOn,
+			Count:    policy.Count,
+			Internal: policy.Interval,
+		},
+	})
+	if err != nil {
+		return nil
+	}
+	return createListenerFilter("rate-limit", c)
+}
+
+func createStatsFilter(url string, timeout int64) *v1alpha1.ListenerFilter {
+	c, err := anypb.New(&v1alpha2.UsageStatsConfig{
+		StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
+			Url:     url,
+			Timeout: durationpb.New(time.Duration(timeout) * time.Second),
+		},
+	})
+	if err != nil {
+		return nil
+	}
+	return createListenerFilter("", c)
+}
+
 func newChatListenerConfig(cfg config.GatewayConfig) *v1alpha1.ChatCompletionListener {
 	baseListenConfig := &v1alpha1.ChatCompletionListener{
 		Name:    "openai-chat",
 		Filters: []*v1alpha1.ListenerFilter{},
 	}
+
 	if cfg.Log.AccessLog != nil {
 		baseListenConfig.AccessLog = &v1alpha1.Log{
 			Enable: cfg.Log.AccessLog.Enabled,
@@ -32,53 +85,21 @@ func newChatListenerConfig(cfg config.GatewayConfig) *v1alpha1.ChatCompletionLis
 	}
 
 	if cfg.AuthServer.URL != "" {
-		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-			Name: "api-key-auth",
-			Config: func() *anypb.Any {
-				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
-					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url:     cfg.AuthServer.URL,
-						Timeout: durationpb.New(time.Duration(cfg.AuthServer.Timeout) * time.Second),
-					},
-				})
-				if err != nil {
-					return nil
-				}
-
-				return c
-			}(),
-		})
+		if filter := createAuthFilter(cfg.AuthServer.URL, cfg.AuthServer.Timeout); filter != nil {
+			baseListenConfig.Filters = append(baseListenConfig.Filters, filter)
+		}
 	}
 
-	baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-		Name: "rate-limit",
-		Config: func() *anypb.Any {
-			c, err := anypb.New(&v1alpha2.RateLimitConfig{})
-
-			if err != nil {
-				return nil
-			}
-
-			return c
-		}(),
-	})
+	if cfg.Policy.RateLimit.Enabled {
+		if filter := createRateLimitFilter(cfg.Policy.RateLimit); filter != nil {
+			baseListenConfig.Filters = append(baseListenConfig.Filters, filter)
+		}
+	}
 
 	if cfg.StatsServer.URL != "" {
-		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-			Config: func() *anypb.Any {
-				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
-					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url:     cfg.StatsServer.URL,
-						Timeout: durationpb.New(time.Duration(cfg.StatsServer.Timeout) * time.Second),
-					},
-				})
-				if err != nil {
-					return nil
-				}
-
-				return c
-			}(),
-		})
+		if filter := createStatsFilter(cfg.StatsServer.URL, cfg.StatsServer.Timeout); filter != nil {
+			baseListenConfig.Filters = append(baseListenConfig.Filters, filter)
+		}
 	}
 
 	return baseListenConfig
@@ -89,6 +110,7 @@ func newImageListenerConfig(cfg config.GatewayConfig) *v1alpha1.ImageListener {
 		Name:    "openai-image",
 		Filters: []*v1alpha1.ListenerFilter{},
 	}
+
 	if cfg.Log.AccessLog != nil {
 		baseListenConfig.AccessLog = &v1alpha1.Log{
 			Enable: cfg.Log.AccessLog.Enabled,
@@ -96,53 +118,21 @@ func newImageListenerConfig(cfg config.GatewayConfig) *v1alpha1.ImageListener {
 	}
 
 	if cfg.AuthServer.URL != "" {
-		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-			Name: "api-key-auth",
-			Config: func() *anypb.Any {
-				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
-					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url:     cfg.AuthServer.URL,
-						Timeout: durationpb.New(time.Duration(cfg.AuthServer.Timeout) * time.Second),
-					},
-				})
-				if err != nil {
-					return nil
-				}
-
-				return c
-			}(),
-		})
+		if filter := createAuthFilter(cfg.AuthServer.URL, cfg.AuthServer.Timeout); filter != nil {
+			baseListenConfig.Filters = append(baseListenConfig.Filters, filter)
+		}
 	}
 
-	baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-		Name: "rate-limit",
-		Config: func() *anypb.Any {
-			c, err := anypb.New(&v1alpha2.RateLimitConfig{})
-
-			if err != nil {
-				return nil
-			}
-
-			return c
-		}(),
-	})
+	if cfg.Policy.RateLimit.Enabled {
+		if filter := createRateLimitFilter(cfg.Policy.RateLimit); filter != nil {
+			baseListenConfig.Filters = append(baseListenConfig.Filters, filter)
+		}
+	}
 
 	if cfg.StatsServer.URL != "" {
-		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-			Config: func() *anypb.Any {
-				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
-					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url:     cfg.StatsServer.URL,
-						Timeout: durationpb.New(time.Duration(cfg.StatsServer.Timeout) * time.Second),
-					},
-				})
-				if err != nil {
-					return nil
-				}
-
-				return c
-			}(),
-		})
+		if filter := createStatsFilter(cfg.StatsServer.URL, cfg.StatsServer.Timeout); filter != nil {
+			baseListenConfig.Filters = append(baseListenConfig.Filters, filter)
+		}
 	}
 
 	return baseListenConfig
@@ -156,7 +146,10 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 	server, err := listener.NewMux().
 		Register(chat.NewOpenAIChatListenerConfigs(newChatListenerConfig(cfg), lifecycle)).
 		Register(image.NewOpenAIImageListenerConfigs(newImageListenerConfig(cfg), lifecycle)).
-		BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})
+		BuildServer(&http.Server{
+			Addr:        listenerAddr,
+			ReadTimeout: time.Minute,
+		})
 	if err != nil {
 		return err
 	}
@@ -170,23 +163,19 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 		OnStart: func(ctx context.Context) error {
 			slog.Info("Starting gateway ...", "addr", ln.Addr().String())
 
-			err := server.Serve(ln)
-			if err != nil && err != http.ErrServerClosed {
+			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 				return err
 			}
-
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			slog.Info("Stopping gateway ...")
 
-			err = server.Shutdown(ctx)
-			if err != nil {
+			if err := server.Shutdown(ctx); err != nil {
 				return err
 			}
 
 			slog.Info("Gateway stopped gracefully.")
-
 			return nil
 		},
 	})

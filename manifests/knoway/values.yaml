@@ -41,6 +41,14 @@ config:
   log:
     access_log:
       enabled: true
+  policy:
+    rate_limit:
+      enabled: true
+      # valid values: USER | API_KEY | API_KEY_AND_USER
+      base_on: USER
+      count: 50
+      # Time window in seconds for rate limiting
+      interval: 10
 
 gateway:
   image:

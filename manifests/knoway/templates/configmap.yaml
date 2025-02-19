@@ -17,3 +17,4 @@ data:
         timeout: {{ .Values.config.stats_server.timeout }}
       log:
         access_log: {{- toYaml .Values.config.log.access_log | nindent 10 }}
+      policy: {{- toYaml .Values.config.policy | nindent 8 }}

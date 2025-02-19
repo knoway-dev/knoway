@@ -28,8 +28,8 @@ message OpenAIResponseHandlerConfig {}
 // Start of Selection
 message RateLimitConfig {
     enum Strategy {
-        API_KEY          = 0;
-        USER             = 1;
+        USER             = 0;
+        API_KEY          = 1;
         API_KEY_AND_USER = 2;
     }
 

@@ -1,0 +1,9 @@
+apiVersion: llm.knoway.dev/v1alpha1
+kind: ModelRoute
+metadata:
+  labels:
+    app.kubernetes.io/name: knoway
+    app.kubernetes.io/managed-by: kustomize
+  name: modelroute-sample
+spec:
+  # TODO(user): Add fields here

@@ -1,0 +1,126 @@
+/*
+Copyright 2024.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package v1alpha1
+
+import (
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+type ModelRouteRateLimitBasedOn string
+
+const (
+	ModelRouteRateLimitBasedOnClientIP      ModelRouteRateLimitBasedOn = "ClientIP"
+	ModelRouteRateLimitBasedOnAPIKey        ModelRouteRateLimitBasedOn = "APIKey"
+	ModelRouteRateLimitBasedOnUser          ModelRouteRateLimitBasedOn = "User"
+	ModelRouteRateLimitBasedOnAPIKeyAndUser ModelRouteRateLimitBasedOn = "APIKeyAndUser"
+)
+
+type ModelRouteRateLimit struct {
+	BasedOn  ModelRouteRateLimitBasedOn `json:"basedOn"`
+	Count    int                        `json:"count"`
+	Interval time.Duration              `json:"interval"`
+}
+
+// See also:
+// Supported load balancers — envoy 1.34.0-dev-e3a97f documentation
+// https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/upstream/load_balancing/load_balancers#arch-overview-load-balancing-types
+type LoadBalancePolicy string
+
+const (
+	LoadBalancePolicyWeightedRoundRobin   LoadBalancePolicy = "WeightedRoundRobin"
+	LoadBalancePolicyWeightedLeastRequest LoadBalancePolicy = "WeightedLeastRequest"
+)
+
+type ModelRouteRouteTargetDestination struct {
+	// Namespace of the backend to lookup for
+	// +kubebuilder:validation:Required
+	Namespace string `json:"namespace"`
+	// Backend that the route target points to
+	// +kubebuilder:validation:Required
+	Backend string `json:"backend"`
+	// Weight of the target, only used in WeightedRoundRobin and WeightedLeastRequest
+	// +kubebuilder:validation:Optional
+	// +optional
+	Weight *int `json:"weight"`
+}
+
+type ModelRouteRouteTarget struct {
+	// Destination specifies the destination of the route target
+	Destination ModelRouteRouteTargetDestination `json:"destination"`
+}
+
+type ModelRouteRouteFallback struct {
+	// Order specifies the order of the fallback
+	// +kubebuilder:validation:Optional
+	// +optional
+	Order []string `json:"order"`
+}
+
+type ModelRouteRoute struct {
+	// LoadBalancePolicy specifies the load balancing policy to use
+	// +kubebuilder:validation:Enum=WeightedRoundRobin;WeightedLeastRequest
+	LoadBalancePolicy LoadBalancePolicy `json:"mode"`
+	// Targets specifies the targets of the route
+	// +kubebuilder:validation:Required
+	Targets []ModelRouteRouteTarget `json:"targets"`
+}
+
+// ModelRouteSpec defines the desired state of ModelRoute.
+type ModelRouteSpec struct {
+	ModelName string `json:"modelName"`
+	// Rate limit policy
+	// +kubebuilder:validation:Optional
+	// +optional
+	RateLimit *ModelRouteRateLimit `json:"rateLimit"`
+	// Route policy
+	// +kubebuilder:validation:Optional
+	// +optional
+	Route *ModelRouteRoute `json:"route"`
+}
+
+// ModelRouteStatus defines the observed state of ModelRoute.
+type ModelRouteStatus struct {
+	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
+}
+
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+
+// ModelRoute is the Schema for the modelroutes API.
+type ModelRoute struct {
+	metav1.TypeMeta   `json:",inline"`
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec   ModelRouteSpec   `json:"spec,omitempty"`
+	Status ModelRouteStatus `json:"status,omitempty"`
+}
+
+// +kubebuilder:object:root=true
+
+// ModelRouteList contains a list of ModelRoute.
+type ModelRouteList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata,omitempty"`
+	Items           []ModelRoute `json:"items"`
+}
+
+func init() {
+	SchemeBuilder.Register(&ModelRoute{}, &ModelRouteList{})
+}

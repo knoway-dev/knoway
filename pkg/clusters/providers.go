@@ -1,13 +1,23 @@
 package clusters
 
 import (
+	"github.com/samber/lo"
+
 	"knoway.dev/api/clusters/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 )
 
 var (
-	mapClusterProviderBackendProvider = map[v1alpha1.ClusterProvider]knowaydevv1alpha1.Provider{}
-	mapBackendProviderClusterProvider = map[knowaydevv1alpha1.Provider]v1alpha1.ClusterProvider{}
+	mapClusterProviderBackendProvider = map[v1alpha1.ClusterProvider]knowaydevv1alpha1.Provider{
+		v1alpha1.ClusterProvider_OPEN_AI: knowaydevv1alpha1.ProviderOpenAI,
+		v1alpha1.ClusterProvider_VLLM:    knowaydevv1alpha1.ProviderVLLM,
+		v1alpha1.ClusterProvider_OLLAMA:  knowaydevv1alpha1.ProviderOllama,
+	}
+	mapBackendProviderClusterProvider = map[knowaydevv1alpha1.Provider]v1alpha1.ClusterProvider{
+		knowaydevv1alpha1.ProviderOpenAI: v1alpha1.ClusterProvider_OPEN_AI,
+		knowaydevv1alpha1.ProviderVLLM:   v1alpha1.ClusterProvider_VLLM,
+		knowaydevv1alpha1.ProviderOllama: v1alpha1.ClusterProvider_OLLAMA,
+	}
 )
 
 func MapClusterProviderToBackendProvider(provider v1alpha1.ClusterProvider) knowaydevv1alpha1.Provider {
@@ -16,4 +26,29 @@ func MapClusterProviderToBackendProvider(provider v1alpha1.ClusterProvider) know
 
 func MapBackendProviderToClusterProvider(provider knowaydevv1alpha1.Provider) v1alpha1.ClusterProvider {
 	return mapBackendProviderClusterProvider[provider]
+}
+
+var (
+	mapClusterSizeFromBackendSizeFrom = map[knowaydevv1alpha1.SizeFrom]v1alpha1.ClusterMeteringPolicy_SizeFrom{
+		knowaydevv1alpha1.SizeFromInput:    v1alpha1.ClusterMeteringPolicy_SIZE_FROM_INPUT,
+		knowaydevv1alpha1.SizeFromOutput:   v1alpha1.ClusterMeteringPolicy_SIZE_FROM_OUTPUT,
+		knowaydevv1alpha1.SizeFromGreatest: v1alpha1.ClusterMeteringPolicy_SIZE_FROM_GREATEST,
+	}
+	mapBackendSizeFromClusterSizeFrom = map[v1alpha1.ClusterMeteringPolicy_SizeFrom]knowaydevv1alpha1.SizeFrom{}
+)
+
+func MapClusterSizeFromBackendSizeFrom(sizeFrom *v1alpha1.ClusterMeteringPolicy_SizeFrom) *knowaydevv1alpha1.SizeFrom {
+	if sizeFrom == nil {
+		return nil
+	}
+
+	return lo.ToPtr(mapBackendSizeFromClusterSizeFrom[*sizeFrom])
+}
+
+func MapBackendSizeFromClusterSizeFrom(sizeFrom *knowaydevv1alpha1.SizeFrom) *v1alpha1.ClusterMeteringPolicy_SizeFrom {
+	if sizeFrom == nil {
+		return nil
+	}
+
+	return lo.ToPtr(mapClusterSizeFromBackendSizeFrom[*sizeFrom])
 }

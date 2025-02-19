@@ -43,8 +43,18 @@ func WithAccessLog(enable bool) Middleware {
 					slog.String("upstream_request_model", rMeta.UpstreamRequestModel),
 					slog.String("upstream_response_model", rMeta.UpstreamResponseModel),
 					slog.Int("upstream_response_status_code", rMeta.UpstreamResponseStatusCode),
-					slog.Uint64("llm_usage_prompt_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetPromptTokens()),
-					slog.Uint64("llm_usage_completion_tokens", rMeta.LLMUpstreamUsage.OrElse(object.DefaultLLMUsage{}).GetCompletionTokens()),
+				}
+
+				if rMeta.LLMUpstreamTokensUsage.IsPresent() {
+					attrs = append(attrs,
+						slog.Uint64("llm_usage_prompt_tokens", rMeta.LLMUpstreamTokensUsage.MustGet().GetPromptTokens()),
+						slog.Uint64("llm_usage_completion_tokens", rMeta.LLMUpstreamTokensUsage.MustGet().GetCompletionTokens()),
+					)
+				}
+				if rMeta.LLMUpstreamImagesUsage.IsPresent() {
+					attrs = append(attrs,
+						slog.Uint64("llm_usage_images", uint64(len(rMeta.LLMUpstreamImagesUsage.MustGet().GetOutputImages()))),
+					)
 				}
 
 				if !rMeta.UpstreamRespondAt.IsZero() {

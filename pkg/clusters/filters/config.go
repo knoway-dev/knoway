@@ -62,7 +62,7 @@ type ClusterFilterResponseUnmarshaller interface {
 	// UnmarshalResponseBody is an optional method that allows the filter to modify the response body
 	// before it is sent to the client. If pre is not nil, it contains the body of the previous filter in
 	// the chain.
-	UnmarshalResponseBody(ctx context.Context, request object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error)
+	UnmarshalResponseBody(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error)
 }
 
 type ClusterFilterResponseModifier interface {
@@ -150,11 +150,11 @@ func (c ClusterFilters) ResponseUnmarshallers() []ClusterFilterResponseUnmarshal
 	return utils.TypeAssertFrom[ClusterFilter, ClusterFilterResponseUnmarshaller](c)
 }
 
-func (c ClusterFilters) ForEachResponseUnmarshaller(ctx context.Context, request object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
+func (c ClusterFilters) ForEachResponseUnmarshaller(ctx context.Context, cluster *v1alpha1.Cluster, request object.LLMRequest, rawResponse *http.Response, reader *bufio.Reader, pre object.LLMResponse) (object.LLMResponse, error) {
 	for _, f := range c.ResponseUnmarshallers() {
 		var err error
 
-		pre, err = f.UnmarshalResponseBody(ctx, request, rawResponse, reader, pre)
+		pre, err = f.UnmarshalResponseBody(ctx, cluster, request, rawResponse, reader, pre)
 		if err != nil {
 			return nil, err
 		}

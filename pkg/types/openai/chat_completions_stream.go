@@ -17,8 +17,8 @@ import (
 var _ object.LLMChunkResponse = (*ChatCompletionStreamChunk)(nil)
 
 type ChatCompletionStreamChunk struct {
-	Model string `json:"model"`
-	Usage *Usage `json:"usage,omitempty"`
+	Model string                `json:"model"`
+	Usage *ChatCompletionsUsage `json:"usage,omitempty"`
 
 	response     object.LLMStreamResponse
 	responseBody json.RawMessage
@@ -75,7 +75,7 @@ func NewUsageChatCompletionStreamChunk(streamResp *ChatCompletionStreamResponse,
 	usageMap := utils.GetByJSONPath[map[string]any](resp.bodyParsed, "{ .usage }")
 	model := utils.GetByJSONPath[string](resp.bodyParsed, "{ .model }")
 
-	resp.Usage, err = utils.FromMap[Usage](usageMap)
+	resp.Usage, err = utils.FromMap[ChatCompletionsUsage](usageMap)
 	if err != nil {
 		return NewEmptyChatCompletionStreamChunk(streamResp), err
 	}
@@ -189,9 +189,9 @@ var (
 var _ object.LLMStreamResponse = (*ChatCompletionStreamResponse)(nil)
 
 type ChatCompletionStreamResponse struct {
-	Model string         `json:"model"`
-	Usage *Usage         `json:"usage,omitempty"`
-	Error *ErrorResponse `json:"error,omitempty"`
+	Model string                `json:"model"`
+	Usage *ChatCompletionsUsage `json:"usage,omitempty"`
+	Error *ErrorResponse        `json:"error,omitempty"`
 
 	reader           *bufio.Reader
 	request          object.LLMRequest

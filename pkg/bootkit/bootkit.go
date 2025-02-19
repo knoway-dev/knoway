@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/samber/lo"
+	"github.com/samber/lo/mutable"
 
 	"knoway.dev/pkg/utils"
 )
@@ -123,7 +123,10 @@ func callStopHooks(ctx context.Context, hooks []lifeCycler) error {
 	wg := sync.WaitGroup{}
 	errChan := make(chan error)
 
-	for _, hook := range lo.Reverse(utils.Clone(hooks)) {
+	reversed := utils.Clone(hooks)
+	mutable.Reverse(reversed)
+
+	for _, hook := range reversed {
 		wg.Add(1)
 
 		go func() {

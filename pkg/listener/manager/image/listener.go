@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/mux"
-	"github.com/samber/lo"
+	"github.com/samber/lo/mutable"
 	"google.golang.org/protobuf/proto"
 
 	"knoway.dev/api/listeners/v1alpha1"
@@ -56,7 +56,8 @@ func NewOpenAIImageListenerConfigs(cfg proto.Message, lifecycle bootkit.LifeCycl
 		l.filters = append(l.filters, f)
 	}
 
-	l.reversedFilters = lo.Reverse(utils.Clone(l.filters))
+	l.reversedFilters = utils.Clone(l.filters)
+	mutable.Reverse(l.reversedFilters)
 
 	return l, nil
 }

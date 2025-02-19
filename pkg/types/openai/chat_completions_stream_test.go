@@ -10,6 +10,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"knoway.dev/pkg/object"
 )
 
 func TestNewChatCompletionStreamChunk(t *testing.T) {
@@ -261,7 +263,7 @@ func TestChatCompletionStreamChunk_ToServerSentEvent(t *testing.T) {
 
 func TestChatCompletionStreamResponse_GetUsage(t *testing.T) {
 	stream := &ChatCompletionStreamResponse{
-		Usage: &Usage{
+		Usage: &ChatCompletionsUsage{
 			PromptTokens:     10,
 			CompletionTokens: 20,
 			TotalTokens:      30,
@@ -270,7 +272,11 @@ func TestChatCompletionStreamResponse_GetUsage(t *testing.T) {
 
 	usage := stream.GetUsage()
 	assert.NotNil(t, usage)
-	assert.Equal(t, uint64(10), usage.GetPromptTokens())
-	assert.Equal(t, uint64(20), usage.GetCompletionTokens())
-	assert.Equal(t, uint64(30), usage.GetTotalTokens())
+
+	tokenUsage, ok := object.AsLLMTokensUsage(usage)
+	require.True(t, ok)
+
+	assert.Equal(t, uint64(10), tokenUsage.GetPromptTokens())
+	assert.Equal(t, uint64(20), tokenUsage.GetCompletionTokens())
+	assert.Equal(t, uint64(30), tokenUsage.GetTotalTokens())
 }

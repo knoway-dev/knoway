@@ -4,6 +4,7 @@
 resources:
 - bases/llm.knoway.dev_llmbackends.yaml
 - bases/llm.knoway.dev_imagegenerationbackends.yaml
+- bases/llm.knoway.dev_modelroutes.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

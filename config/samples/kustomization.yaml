@@ -2,4 +2,5 @@
 resources:
 - llm_v1alpha1_llmbackend.yaml
 - llm_v1alpha1_imagegenerationbackend.yaml
+- llm_v1alpha1_modelroute.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

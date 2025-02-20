@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"reflect"
 	"strings"
 	"time"
 
@@ -66,43 +65,43 @@ type LLMBackendReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.18.2/pkg/reconcile
 func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	llmBackend := &knowaydevv1alpha1.LLMBackend{}
-	if err := r.Get(ctx, req.NamespacedName, llmBackend); err != nil {
+	currentBackend := &knowaydevv1alpha1.LLMBackend{}
+	if err := r.Get(ctx, req.NamespacedName, currentBackend); err != nil {
 		log.Log.Error(err, "reconcile LLMBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log.Log.Info("reconcile LLMBackend modelName", "modelName", modelNameOrNamespacedName(llmBackend))
+	log.Log.Info("reconcile LLMBackend modelName", "modelName", modelNameOrNamespacedName(currentBackend))
 
 	rrs := r.getReconciles()
-	if isDeleted(BackendFromLLMBackend(llmBackend)) {
+	if isDeleted(BackendFromLLMBackend(currentBackend)) {
 		rrs = r.getDeleteReconciles()
 	}
 
-	llmBackend.Status.Conditions = nil
+	currentBackend.Status.Conditions = nil
 
 	for _, rr := range rrs {
 		typ := rr.typ
 
-		err := rr.reconciler(ctx, llmBackend)
+		err := rr.reconciler(ctx, currentBackend)
 		if err != nil {
-			if isDeleted(BackendFromLLMBackend(llmBackend)) && shouldForceDelete(BackendFromLLMBackend(llmBackend)) {
+			if isDeleted(BackendFromLLMBackend(currentBackend)) && shouldForceDelete(BackendFromLLMBackend(currentBackend)) {
 				continue
 			}
 
-			log.Log.Error(err, "LLMBackend reconcile error", "name", llmBackend.Name, "type", typ)
-			setStatusCondition(BackendFromLLMBackend(llmBackend), typ, false, err.Error())
+			log.Log.Error(err, "LLMBackend reconcile error", "name", currentBackend.Name, "type", typ)
+			setStatusCondition(BackendFromLLMBackend(currentBackend), typ, false, err.Error())
 
 			break
 		} else {
-			setStatusCondition(BackendFromLLMBackend(llmBackend), typ, true, "")
+			setStatusCondition(BackendFromLLMBackend(currentBackend), typ, true, "")
 		}
 	}
 
-	r.reconcilePhase(ctx, llmBackend)
+	r.reconcilePhase(ctx, currentBackend)
 
 	var after time.Duration
-	if llmBackend.Status.Status == knowaydevv1alpha1.Failed {
+	if currentBackend.Status.Status == knowaydevv1alpha1.Failed {
 		after = 30 * time.Second //nolint:mnd
 	}
 
@@ -111,10 +110,10 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		log.Log.Error(err, "reconcile LLMBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if !reflect.DeepEqual(llmBackend.Status, newBackend.Status) {
-		newBackend.Status = llmBackend.Status
+	if !statusEqual(BackendFromLLMBackend(currentBackend), BackendFromLLMBackend(newBackend)) {
+		newBackend.Status = currentBackend.Status
 		if err := r.Status().Update(ctx, newBackend); err != nil {
-			log.Log.Error(err, "update LLMBackend status error", "name", llmBackend.GetName())
+			log.Log.Error(err, "update LLMBackend status error", "name", currentBackend.GetName())
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}

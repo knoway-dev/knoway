@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"reflect"
 	"strings"
 	"time"
 
@@ -66,43 +65,43 @@ type ImageGenerationBackendReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.4/pkg/reconcile
 func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	imageGenerationBackend := &knowaydevv1alpha1.ImageGenerationBackend{}
-	if err := r.Get(ctx, req.NamespacedName, imageGenerationBackend); err != nil {
+	currentBackend := &knowaydevv1alpha1.ImageGenerationBackend{}
+	if err := r.Get(ctx, req.NamespacedName, currentBackend); err != nil {
 		log.Log.Error(err, "reconcile ImageGenerationBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	log.Log.Info("reconcile ImageGenerationBackend modelName", "modelName", modelNameOrNamespacedName(imageGenerationBackend))
+	log.Log.Info("reconcile ImageGenerationBackend modelName", "modelName", modelNameOrNamespacedName(currentBackend))
 
 	rrs := r.getReconciles()
-	if isDeleted(BackendFromImageGenerationBackend(imageGenerationBackend)) {
+	if isDeleted(BackendFromImageGenerationBackend(currentBackend)) {
 		rrs = r.getDeleteReconciles()
 	}
 
-	imageGenerationBackend.Status.Conditions = nil
+	currentBackend.Status.Conditions = nil
 
 	for _, rr := range rrs {
 		typ := rr.typ
 
-		err := rr.reconciler(ctx, imageGenerationBackend)
+		err := rr.reconciler(ctx, currentBackend)
 		if err != nil {
-			if isDeleted(BackendFromImageGenerationBackend(imageGenerationBackend)) && shouldForceDelete(BackendFromImageGenerationBackend(imageGenerationBackend)) {
+			if isDeleted(BackendFromImageGenerationBackend(currentBackend)) && shouldForceDelete(BackendFromImageGenerationBackend(currentBackend)) {
 				continue
 			}
 
-			log.Log.Error(err, "ImageGenerationBackend reconcile error", "name", imageGenerationBackend.Name, "type", typ)
-			setStatusCondition(BackendFromImageGenerationBackend(imageGenerationBackend), typ, false, err.Error())
+			log.Log.Error(err, "ImageGenerationBackend reconcile error", "name", currentBackend.Name, "type", typ)
+			setStatusCondition(BackendFromImageGenerationBackend(currentBackend), typ, false, err.Error())
 
 			break
 		} else {
-			setStatusCondition(BackendFromImageGenerationBackend(imageGenerationBackend), typ, true, "")
+			setStatusCondition(BackendFromImageGenerationBackend(currentBackend), typ, true, "")
 		}
 	}
 
-	r.reconcilePhase(ctx, imageGenerationBackend)
+	r.reconcilePhase(ctx, currentBackend)
 
 	var after time.Duration
-	if imageGenerationBackend.Status.Status == knowaydevv1alpha1.Failed {
+	if currentBackend.Status.Status == knowaydevv1alpha1.Failed {
 		after = 30 * time.Second //nolint:mnd
 	}
 
@@ -111,10 +110,10 @@ func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ct
 		log.Log.Error(err, "reconcile ImageGenerationBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if !reflect.DeepEqual(imageGenerationBackend.Status, newBackend.Status) {
-		newBackend.Status = imageGenerationBackend.Status
+	if !statusEqual(BackendFromImageGenerationBackend(currentBackend), BackendFromImageGenerationBackend(newBackend)) {
+		newBackend.Status = currentBackend.Status
 		if err := r.Status().Update(ctx, newBackend); err != nil {
-			log.Log.Error(err, "update ImageGenerationBackend status error", "name", imageGenerationBackend.GetName())
+			log.Log.Error(err, "update ImageGenerationBackend status error", "name", currentBackend.GetName())
 			return ctrl.Result{}, client.IgnoreNotFound(err)
 		}
 	}

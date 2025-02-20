@@ -29,8 +29,14 @@ func InitDirectModelRoute(modelName string) *v1alpha1.Route {
 				},
 			},
 		},
-		ClusterName: modelName,
-		Filters:     nil, // todo future
+		Targets: []*v1alpha1.RouteTarget{
+			{
+				Destination: &v1alpha1.RouteDestination{
+					Backend: modelName,
+				},
+			},
+		},
+		Filters: nil, // todo future
 	}
 }
 

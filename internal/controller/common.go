@@ -67,6 +67,26 @@ func modelNameOrNamespacedName[B *knowaydevv1alpha1.LLMBackend | *knowaydevv1alp
 	}
 }
 
+func statusEqual(b1, b2 Backend) bool {
+	status1 := b1.GetStatus()
+	status2 := b2.GetStatus()
+
+	if len(status1.GetConditions()) != len(status2.GetConditions()) {
+		return false
+	}
+
+	for i := range status1.GetConditions() {
+		cond1 := status1.GetConditions()[i]
+		cond2 := status2.GetConditions()[i]
+
+		if cond1.Type != cond2.Type || cond1.Status != cond2.Status || cond1.Reason != cond2.Reason || cond1.Message != cond2.Message {
+			return false
+		}
+	}
+
+	return status1.GetStatus() == status2.GetStatus()
+}
+
 func setStatusCondition(backend Backend, typ string, ready bool, message string) {
 	cs := metav1.ConditionFalse
 	if ready {

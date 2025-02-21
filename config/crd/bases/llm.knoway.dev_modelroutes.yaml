@@ -44,21 +44,27 @@ spec:
               rateLimit:
                 description: Rate limit policy
                 properties:
+                  apiKeyWhitelist:
+                    description: Whitelist of API keys that are exempt from rate limiting
+                    items:
+                      type: string
+                    type: array
                   basedOn:
                     type: string
-                  count:
-                    type: integer
-                  interval:
-                    description: |-
-                      A Duration represents the elapsed time between two instants
-                      as an int64 nanosecond count. The representation limits the
-                      largest representable duration to approximately 290 years.
+                  duration:
+                    description: Default duration is 5m
                     format: int64
                     type: integer
-                required:
-                - basedOn
-                - count
-                - interval
+                  limit:
+                    description: |-
+                      Number of requests allowed in the duration window
+                      If set to 0, rate limiting will be disabled
+                    type: integer
+                  userWhitelist:
+                    description: Whitelist of users that are exempt from rate limiting
+                    items:
+                      type: string
+                    type: array
                 type: object
               route:
                 description: Route policy

@@ -7,13 +7,12 @@ import (
 	"net/http"
 	"time"
 
-	"knoway.dev/config"
-
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
+	"knoway.dev/config"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/listener/manager/chat"
@@ -37,25 +36,16 @@ func createAuthFilter(url string, timeout int64) *v1alpha1.ListenerFilter {
 	if err != nil {
 		return nil
 	}
+
 	return createListenerFilter("api-key-auth", c)
 }
 
-func createRateLimitFilter(policy config.RateLimit) *v1alpha1.ListenerFilter {
-	baseOn := v1alpha2.RateLimitConfig_USER
-	if val, ok := v1alpha2.RateLimitConfig_Strategy_value[policy.BaseOn]; ok {
-		baseOn = v1alpha2.RateLimitConfig_Strategy(val)
-	}
-
-	c, err := anypb.New(&v1alpha2.RateLimitConfig{
-		DefaultPolicy: &v1alpha2.RateLimitConfig_Policy{
-			BaseOn:   baseOn,
-			Count:    policy.Count,
-			Internal: policy.Interval,
-		},
-	})
+func createRateLimitFilter() *v1alpha1.ListenerFilter {
+	c, err := anypb.New(&v1alpha2.RateLimitConfig{})
 	if err != nil {
 		return nil
 	}
+
 	return createListenerFilter("rate-limit", c)
 }
 
@@ -69,7 +59,8 @@ func createStatsFilter(url string, timeout int64) *v1alpha1.ListenerFilter {
 	if err != nil {
 		return nil
 	}
-	return createListenerFilter("", c)
+
+	return createListenerFilter("stats-usage", c)
 }
 
 func newChatListenerConfig(cfg config.GatewayConfig) *v1alpha1.ChatCompletionListener {
@@ -91,7 +82,7 @@ func newChatListenerConfig(cfg config.GatewayConfig) *v1alpha1.ChatCompletionLis
 	}
 
 	if cfg.Policy.RateLimit.Enabled {
-		if filter := createRateLimitFilter(cfg.Policy.RateLimit); filter != nil {
+		if filter := createRateLimitFilter(); filter != nil {
 			baseListenConfig.Filters = append(baseListenConfig.Filters, filter)
 		}
 	}
@@ -124,7 +115,7 @@ func newImageListenerConfig(cfg config.GatewayConfig) *v1alpha1.ImageListener {
 	}
 
 	if cfg.Policy.RateLimit.Enabled {
-		if filter := createRateLimitFilter(cfg.Policy.RateLimit); filter != nil {
+		if filter := createRateLimitFilter(); filter != nil {
 			baseListenConfig.Filters = append(baseListenConfig.Filters, filter)
 		}
 	}

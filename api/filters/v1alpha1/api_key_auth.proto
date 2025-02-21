@@ -24,19 +24,3 @@ message UsageStatsConfig {
 
 message OpenAIRequestHandlerConfig {}
 message OpenAIResponseHandlerConfig {}
-
-// Start of Selection
-message RateLimitConfig {
-    enum Strategy {
-        USER             = 0;
-        API_KEY          = 1;
-        API_KEY_AND_USER = 2;
-    }
-
-    message Policy {
-        Strategy baseOn = 1;
-        int32 count     = 2;
-        int64 internal  = 3;
-    }
-    Policy defaultPolicy = 1;
-}

@@ -30,16 +30,25 @@ import (
 type ModelRouteRateLimitBasedOn string
 
 const (
-	ModelRouteRateLimitBasedOnClientIP      ModelRouteRateLimitBasedOn = "ClientIP"
-	ModelRouteRateLimitBasedOnAPIKey        ModelRouteRateLimitBasedOn = "APIKey"
-	ModelRouteRateLimitBasedOnUser          ModelRouteRateLimitBasedOn = "User"
-	ModelRouteRateLimitBasedOnAPIKeyAndUser ModelRouteRateLimitBasedOn = "APIKeyAndUser"
+	// ModelRouteRateLimitBasedOnAPIKey indicates rate limiting based on API key
+	ModelRouteRateLimitBasedOnAPIKey ModelRouteRateLimitBasedOn = "APIKey"
+	// ModelRouteRateLimitBasedOnUser indicates rate limiting based on user identity
+	ModelRouteRateLimitBasedOnUser ModelRouteRateLimitBasedOn = "User"
 )
 
 type ModelRouteRateLimit struct {
-	BasedOn  ModelRouteRateLimitBasedOn `json:"basedOn"`
-	Count    int                        `json:"count"`
-	Interval time.Duration              `json:"interval"`
+	BasedOn ModelRouteRateLimitBasedOn `json:"basedOn,omitempty"`
+	// Number of requests allowed in the duration window
+	// If set to 0, rate limiting will be disabled
+	Limit int `json:"limit,omitempty"`
+	// Default duration is 5m
+	Duration time.Duration `json:"duration,omitempty"`
+	// Whitelist of API keys that are exempt from rate limiting
+	// +optional
+	APIKeyWhitelist []string `json:"apiKeyWhitelist,omitempty"`
+	// Whitelist of users that are exempt from rate limiting
+	// +optional
+	UserWhitelist []string `json:"userWhitelist,omitempty"`
 }
 
 // See also:

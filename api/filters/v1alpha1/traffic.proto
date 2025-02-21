@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package knoway.filters.v1alpha1;
+
+option go_package = "knoway.dev/api/filters/v1alpha1";
+
+// RateLimitConfig defines rate limiting configuration
+message RateLimitConfig {}

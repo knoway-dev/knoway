@@ -6,19 +6,20 @@ import (
 	"knoway.dev/pkg/filters/lbfilter/loadbanlance"
 
 	"knoway.dev/api/route/v1alpha1"
+	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/route"
 )
 
 type routeManager struct {
-	cfg *v1alpha1.Route
+	cfg *routev1alpha1.Route
 	// filters []filters.RequestFilter
 	route.Route
 	lb    loadbanlance.LoadBalancer
 	nsMap map[string]string
 }
 
-func NewWithConfig(cfg *v1alpha1.Route) (route.Route, error) {
+func NewWithConfig(cfg *routev1alpha1.Route) (route.Route, error) {
 	rm := &routeManager{
 		cfg:   cfg,
 		lb:    loadbanlance.New(cfg),
@@ -96,4 +97,12 @@ func buildBackendNsMap(cfg *v1alpha1.Route) map[string]string {
 	}
 
 	return nsMap
+}
+
+func (m *routeManager) GetRouteConfig() *routev1alpha1.Route {
+	if m == nil || m.cfg == nil {
+		return nil
+	}
+
+	return m.cfg
 }

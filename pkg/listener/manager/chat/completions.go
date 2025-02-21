@@ -51,6 +51,11 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 
 	rMeta := metadata.RequestMetadataFromCtx(request.Context())
 	rMeta.RequestModel = llmRequest.GetModel()
+	findRoute, _ := listener.FindRoute(request.Context(), llmRequest)
+
+	if findRoute.GetRouteConfig() != nil {
+		rMeta.MatchRoute = findRoute.GetRouteConfig()
+	}
 
 	for _, f := range l.filters.OnCompletionRequestFilters() {
 		fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)

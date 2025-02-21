@@ -48,6 +48,11 @@ func (l *OpenAIImageListener) imageGeneration(writer http.ResponseWriter, reques
 
 	rMeta := metadata.RequestMetadataFromCtx(request.Context())
 	rMeta.RequestModel = llmRequest.GetModel()
+	findRoute, _ := listener.FindRoute(request.Context(), llmRequest)
+
+	if findRoute.GetRouteConfig() != nil {
+		rMeta.MatchRoute = findRoute.GetRouteConfig()
+	}
 
 	for _, f := range l.filters.OnImageGenerationsRequestFilters() {
 		fResult := f.OnImageGenerationsRequest(request.Context(), llmRequest, request)

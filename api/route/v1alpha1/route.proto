@@ -3,6 +3,7 @@ syntax = "proto3";
 package knoway.route.v1alpha1;
 
 import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
 
 option go_package = "knoway.dev/api/route/v1alpha1";
 
@@ -48,4 +49,18 @@ message Route {
     repeated RouteFilter filters          = 3;
     LoadBalancePolicy load_balance_policy = 4;
     repeated RouteTarget targets          = 5;
+    RateLimitPolicy rate_limit_policy     = 6;
+}
+
+enum RateLimitBaseOn {
+    USER    = 0;
+    API_KEY = 1;
+}
+
+message RateLimitPolicy {
+    RateLimitBaseOn baseOn            = 1;
+    int32 limit                       = 2;
+    google.protobuf.Duration duration = 3;
+    repeated string api_key_whitelist = 4;
+    repeated string user_whitelist    = 5;
 }

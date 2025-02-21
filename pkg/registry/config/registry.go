@@ -3,8 +3,6 @@ package config
 import (
 	"fmt"
 
-	"knoway.dev/pkg/filters/ratelimit"
-
 	"google.golang.org/protobuf/types/known/anypb"
 
 	filtersv1alpha1 "knoway.dev/api/filters/v1alpha1"
@@ -13,6 +11,7 @@ import (
 	"knoway.dev/pkg/clusters/filters/openai"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/filters/auth"
+	"knoway.dev/pkg/filters/ratelimit"
 	"knoway.dev/pkg/filters/usage"
 	"knoway.dev/pkg/protoutils"
 )

@@ -22,55 +22,6 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-type RateLimitConfig_Strategy int32
-
-const (
-	RateLimitConfig_USER             RateLimitConfig_Strategy = 0
-	RateLimitConfig_API_KEY          RateLimitConfig_Strategy = 1
-	RateLimitConfig_API_KEY_AND_USER RateLimitConfig_Strategy = 2
-)
-
-// Enum value maps for RateLimitConfig_Strategy.
-var (
-	RateLimitConfig_Strategy_name = map[int32]string{
-		0: "USER",
-		1: "API_KEY",
-		2: "API_KEY_AND_USER",
-	}
-	RateLimitConfig_Strategy_value = map[string]int32{
-		"USER":             0,
-		"API_KEY":          1,
-		"API_KEY_AND_USER": 2,
-	}
-)
-
-func (x RateLimitConfig_Strategy) Enum() *RateLimitConfig_Strategy {
-	p := new(RateLimitConfig_Strategy)
-	*p = x
-	return p
-}
-
-func (x RateLimitConfig_Strategy) String() string {
-	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
-}
-
-func (RateLimitConfig_Strategy) Descriptor() protoreflect.EnumDescriptor {
-	return file_filters_v1alpha1_api_key_auth_proto_enumTypes[0].Descriptor()
-}
-
-func (RateLimitConfig_Strategy) Type() protoreflect.EnumType {
-	return &file_filters_v1alpha1_api_key_auth_proto_enumTypes[0]
-}
-
-func (x RateLimitConfig_Strategy) Number() protoreflect.EnumNumber {
-	return protoreflect.EnumNumber(x)
-}
-
-// Deprecated: Use RateLimitConfig_Strategy.Descriptor instead.
-func (RateLimitConfig_Strategy) EnumDescriptor() ([]byte, []int) {
-	return file_filters_v1alpha1_api_key_auth_proto_rawDescGZIP(), []int{4, 0}
-}
-
 type APIKeyAuthConfig struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -241,54 +192,6 @@ func (*OpenAIResponseHandlerConfig) Descriptor() ([]byte, []int) {
 	return file_filters_v1alpha1_api_key_auth_proto_rawDescGZIP(), []int{3}
 }
 
-// Start of Selection
-type RateLimitConfig struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	DefaultPolicy *RateLimitConfig_Policy `protobuf:"bytes,1,opt,name=defaultPolicy,proto3" json:"defaultPolicy,omitempty"`
-}
-
-func (x *RateLimitConfig) Reset() {
-	*x = RateLimitConfig{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[4]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RateLimitConfig) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RateLimitConfig) ProtoMessage() {}
-
-func (x *RateLimitConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[4]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RateLimitConfig.ProtoReflect.Descriptor instead.
-func (*RateLimitConfig) Descriptor() ([]byte, []int) {
-	return file_filters_v1alpha1_api_key_auth_proto_rawDescGZIP(), []int{4}
-}
-
-func (x *RateLimitConfig) GetDefaultPolicy() *RateLimitConfig_Policy {
-	if x != nil {
-		return x.DefaultPolicy
-	}
-	return nil
-}
-
 type APIKeyAuthConfig_AuthServer struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -301,7 +204,7 @@ type APIKeyAuthConfig_AuthServer struct {
 func (x *APIKeyAuthConfig_AuthServer) Reset() {
 	*x = APIKeyAuthConfig_AuthServer{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[5]
+		mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[4]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -314,7 +217,7 @@ func (x *APIKeyAuthConfig_AuthServer) String() string {
 func (*APIKeyAuthConfig_AuthServer) ProtoMessage() {}
 
 func (x *APIKeyAuthConfig_AuthServer) ProtoReflect() protoreflect.Message {
-	mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[5]
+	mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[4]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -356,7 +259,7 @@ type UsageStatsConfig_StatsServer struct {
 func (x *UsageStatsConfig_StatsServer) Reset() {
 	*x = UsageStatsConfig_StatsServer{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[6]
+		mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[5]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -369,7 +272,7 @@ func (x *UsageStatsConfig_StatsServer) String() string {
 func (*UsageStatsConfig_StatsServer) ProtoMessage() {}
 
 func (x *UsageStatsConfig_StatsServer) ProtoReflect() protoreflect.Message {
-	mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[6]
+	mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[5]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -397,69 +300,6 @@ func (x *UsageStatsConfig_StatsServer) GetTimeout() *duration.Duration {
 		return x.Timeout
 	}
 	return nil
-}
-
-type RateLimitConfig_Policy struct {
-	state         protoimpl.MessageState
-	sizeCache     protoimpl.SizeCache
-	unknownFields protoimpl.UnknownFields
-
-	BaseOn   RateLimitConfig_Strategy `protobuf:"varint,1,opt,name=baseOn,proto3,enum=knoway.filters.v1alpha1.RateLimitConfig_Strategy" json:"baseOn,omitempty"`
-	Count    int32                    `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
-	Internal int64                    `protobuf:"varint,3,opt,name=internal,proto3" json:"internal,omitempty"`
-}
-
-func (x *RateLimitConfig_Policy) Reset() {
-	*x = RateLimitConfig_Policy{}
-	if protoimpl.UnsafeEnabled {
-		mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[7]
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		ms.StoreMessageInfo(mi)
-	}
-}
-
-func (x *RateLimitConfig_Policy) String() string {
-	return protoimpl.X.MessageStringOf(x)
-}
-
-func (*RateLimitConfig_Policy) ProtoMessage() {}
-
-func (x *RateLimitConfig_Policy) ProtoReflect() protoreflect.Message {
-	mi := &file_filters_v1alpha1_api_key_auth_proto_msgTypes[7]
-	if protoimpl.UnsafeEnabled && x != nil {
-		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
-		if ms.LoadMessageInfo() == nil {
-			ms.StoreMessageInfo(mi)
-		}
-		return ms
-	}
-	return mi.MessageOf(x)
-}
-
-// Deprecated: Use RateLimitConfig_Policy.ProtoReflect.Descriptor instead.
-func (*RateLimitConfig_Policy) Descriptor() ([]byte, []int) {
-	return file_filters_v1alpha1_api_key_auth_proto_rawDescGZIP(), []int{4, 0}
-}
-
-func (x *RateLimitConfig_Policy) GetBaseOn() RateLimitConfig_Strategy {
-	if x != nil {
-		return x.BaseOn
-	}
-	return RateLimitConfig_USER
-}
-
-func (x *RateLimitConfig_Policy) GetCount() int32 {
-	if x != nil {
-		return x.Count
-	}
-	return 0
-}
-
-func (x *RateLimitConfig_Policy) GetInternal() int64 {
-	if x != nil {
-		return x.Internal
-	}
-	return 0
 }
 
 var File_filters_v1alpha1_api_key_auth_proto protoreflect.FileDescriptor
@@ -499,28 +339,9 @@ var file_filters_v1alpha1_api_key_auth_proto_rawDesc = []byte{
 	0x71, 0x75, 0x65, 0x73, 0x74, 0x48, 0x61, 0x6e, 0x64, 0x6c, 0x65, 0x72, 0x43, 0x6f, 0x6e, 0x66,
 	0x69, 0x67, 0x22, 0x1d, 0x0a, 0x1b, 0x4f, 0x70, 0x65, 0x6e, 0x41, 0x49, 0x52, 0x65, 0x73, 0x70,
 	0x6f, 0x6e, 0x73, 0x65, 0x48, 0x61, 0x6e, 0x64, 0x6c, 0x65, 0x72, 0x43, 0x6f, 0x6e, 0x66, 0x69,
-	0x67, 0x22, 0xa9, 0x02, 0x0a, 0x0f, 0x52, 0x61, 0x74, 0x65, 0x4c, 0x69, 0x6d, 0x69, 0x74, 0x43,
-	0x6f, 0x6e, 0x66, 0x69, 0x67, 0x12, 0x55, 0x0a, 0x0d, 0x64, 0x65, 0x66, 0x61, 0x75, 0x6c, 0x74,
-	0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x2f, 0x2e, 0x6b,
-	0x6e, 0x6f, 0x77, 0x61, 0x79, 0x2e, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x73, 0x2e, 0x76, 0x31,
-	0x61, 0x6c, 0x70, 0x68, 0x61, 0x31, 0x2e, 0x52, 0x61, 0x74, 0x65, 0x4c, 0x69, 0x6d, 0x69, 0x74,
-	0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x2e, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x52, 0x0d, 0x64,
-	0x65, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x1a, 0x85, 0x01, 0x0a,
-	0x06, 0x50, 0x6f, 0x6c, 0x69, 0x63, 0x79, 0x12, 0x49, 0x0a, 0x06, 0x62, 0x61, 0x73, 0x65, 0x4f,
-	0x6e, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x31, 0x2e, 0x6b, 0x6e, 0x6f, 0x77, 0x61, 0x79,
-	0x2e, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x73, 0x2e, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61,
-	0x31, 0x2e, 0x52, 0x61, 0x74, 0x65, 0x4c, 0x69, 0x6d, 0x69, 0x74, 0x43, 0x6f, 0x6e, 0x66, 0x69,
-	0x67, 0x2e, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79, 0x52, 0x06, 0x62, 0x61, 0x73, 0x65,
-	0x4f, 0x6e, 0x12, 0x14, 0x0a, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x05, 0x52, 0x05, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x12, 0x1a, 0x0a, 0x08, 0x69, 0x6e, 0x74, 0x65,
-	0x72, 0x6e, 0x61, 0x6c, 0x18, 0x03, 0x20, 0x01, 0x28, 0x03, 0x52, 0x08, 0x69, 0x6e, 0x74, 0x65,
-	0x72, 0x6e, 0x61, 0x6c, 0x22, 0x37, 0x0a, 0x08, 0x53, 0x74, 0x72, 0x61, 0x74, 0x65, 0x67, 0x79,
-	0x12, 0x08, 0x0a, 0x04, 0x55, 0x53, 0x45, 0x52, 0x10, 0x00, 0x12, 0x0b, 0x0a, 0x07, 0x41, 0x50,
-	0x49, 0x5f, 0x4b, 0x45, 0x59, 0x10, 0x01, 0x12, 0x14, 0x0a, 0x10, 0x41, 0x50, 0x49, 0x5f, 0x4b,
-	0x45, 0x59, 0x5f, 0x41, 0x4e, 0x44, 0x5f, 0x55, 0x53, 0x45, 0x52, 0x10, 0x02, 0x42, 0x21, 0x5a,
-	0x1f, 0x6b, 0x6e, 0x6f, 0x77, 0x61, 0x79, 0x2e, 0x64, 0x65, 0x76, 0x2f, 0x61, 0x70, 0x69, 0x2f,
-	0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c, 0x70, 0x68, 0x61, 0x31,
-	0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x67, 0x42, 0x21, 0x5a, 0x1f, 0x6b, 0x6e, 0x6f, 0x77, 0x61, 0x79, 0x2e, 0x64, 0x65, 0x76, 0x2f,
+	0x61, 0x70, 0x69, 0x2f, 0x66, 0x69, 0x6c, 0x74, 0x65, 0x72, 0x73, 0x2f, 0x76, 0x31, 0x61, 0x6c,
+	0x70, 0x68, 0x61, 0x31, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
 }
 
 var (
@@ -535,32 +356,26 @@ func file_filters_v1alpha1_api_key_auth_proto_rawDescGZIP() []byte {
 	return file_filters_v1alpha1_api_key_auth_proto_rawDescData
 }
 
-var file_filters_v1alpha1_api_key_auth_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_filters_v1alpha1_api_key_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_filters_v1alpha1_api_key_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_filters_v1alpha1_api_key_auth_proto_goTypes = []interface{}{
-	(RateLimitConfig_Strategy)(0),        // 0: knoway.filters.v1alpha1.RateLimitConfig.Strategy
-	(*APIKeyAuthConfig)(nil),             // 1: knoway.filters.v1alpha1.APIKeyAuthConfig
-	(*UsageStatsConfig)(nil),             // 2: knoway.filters.v1alpha1.UsageStatsConfig
-	(*OpenAIRequestHandlerConfig)(nil),   // 3: knoway.filters.v1alpha1.OpenAIRequestHandlerConfig
-	(*OpenAIResponseHandlerConfig)(nil),  // 4: knoway.filters.v1alpha1.OpenAIResponseHandlerConfig
-	(*RateLimitConfig)(nil),              // 5: knoway.filters.v1alpha1.RateLimitConfig
-	(*APIKeyAuthConfig_AuthServer)(nil),  // 6: knoway.filters.v1alpha1.APIKeyAuthConfig.AuthServer
-	(*UsageStatsConfig_StatsServer)(nil), // 7: knoway.filters.v1alpha1.UsageStatsConfig.StatsServer
-	(*RateLimitConfig_Policy)(nil),       // 8: knoway.filters.v1alpha1.RateLimitConfig.Policy
-	(*duration.Duration)(nil),            // 9: google.protobuf.Duration
+	(*APIKeyAuthConfig)(nil),             // 0: knoway.filters.v1alpha1.APIKeyAuthConfig
+	(*UsageStatsConfig)(nil),             // 1: knoway.filters.v1alpha1.UsageStatsConfig
+	(*OpenAIRequestHandlerConfig)(nil),   // 2: knoway.filters.v1alpha1.OpenAIRequestHandlerConfig
+	(*OpenAIResponseHandlerConfig)(nil),  // 3: knoway.filters.v1alpha1.OpenAIResponseHandlerConfig
+	(*APIKeyAuthConfig_AuthServer)(nil),  // 4: knoway.filters.v1alpha1.APIKeyAuthConfig.AuthServer
+	(*UsageStatsConfig_StatsServer)(nil), // 5: knoway.filters.v1alpha1.UsageStatsConfig.StatsServer
+	(*duration.Duration)(nil),            // 6: google.protobuf.Duration
 }
 var file_filters_v1alpha1_api_key_auth_proto_depIdxs = []int32{
-	6, // 0: knoway.filters.v1alpha1.APIKeyAuthConfig.auth_server:type_name -> knoway.filters.v1alpha1.APIKeyAuthConfig.AuthServer
-	7, // 1: knoway.filters.v1alpha1.UsageStatsConfig.stats_server:type_name -> knoway.filters.v1alpha1.UsageStatsConfig.StatsServer
-	8, // 2: knoway.filters.v1alpha1.RateLimitConfig.defaultPolicy:type_name -> knoway.filters.v1alpha1.RateLimitConfig.Policy
-	9, // 3: knoway.filters.v1alpha1.APIKeyAuthConfig.AuthServer.timeout:type_name -> google.protobuf.Duration
-	9, // 4: knoway.filters.v1alpha1.UsageStatsConfig.StatsServer.timeout:type_name -> google.protobuf.Duration
-	0, // 5: knoway.filters.v1alpha1.RateLimitConfig.Policy.baseOn:type_name -> knoway.filters.v1alpha1.RateLimitConfig.Strategy
-	6, // [6:6] is the sub-list for method output_type
-	6, // [6:6] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	4, // 0: knoway.filters.v1alpha1.APIKeyAuthConfig.auth_server:type_name -> knoway.filters.v1alpha1.APIKeyAuthConfig.AuthServer
+	5, // 1: knoway.filters.v1alpha1.UsageStatsConfig.stats_server:type_name -> knoway.filters.v1alpha1.UsageStatsConfig.StatsServer
+	6, // 2: knoway.filters.v1alpha1.APIKeyAuthConfig.AuthServer.timeout:type_name -> google.protobuf.Duration
+	6, // 3: knoway.filters.v1alpha1.UsageStatsConfig.StatsServer.timeout:type_name -> google.protobuf.Duration
+	4, // [4:4] is the sub-list for method output_type
+	4, // [4:4] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_filters_v1alpha1_api_key_auth_proto_init() }
@@ -618,18 +433,6 @@ func file_filters_v1alpha1_api_key_auth_proto_init() {
 			}
 		}
 		file_filters_v1alpha1_api_key_auth_proto_msgTypes[4].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RateLimitConfig); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_filters_v1alpha1_api_key_auth_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*APIKeyAuthConfig_AuthServer); i {
 			case 0:
 				return &v.state
@@ -641,20 +444,8 @@ func file_filters_v1alpha1_api_key_auth_proto_init() {
 				return nil
 			}
 		}
-		file_filters_v1alpha1_api_key_auth_proto_msgTypes[6].Exporter = func(v interface{}, i int) interface{} {
+		file_filters_v1alpha1_api_key_auth_proto_msgTypes[5].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*UsageStatsConfig_StatsServer); i {
-			case 0:
-				return &v.state
-			case 1:
-				return &v.sizeCache
-			case 2:
-				return &v.unknownFields
-			default:
-				return nil
-			}
-		}
-		file_filters_v1alpha1_api_key_auth_proto_msgTypes[7].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RateLimitConfig_Policy); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -671,14 +462,13 @@ func file_filters_v1alpha1_api_key_auth_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_filters_v1alpha1_api_key_auth_proto_rawDesc,
-			NumEnums:      1,
-			NumMessages:   8,
+			NumEnums:      0,
+			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_filters_v1alpha1_api_key_auth_proto_goTypes,
 		DependencyIndexes: file_filters_v1alpha1_api_key_auth_proto_depIdxs,
-		EnumInfos:         file_filters_v1alpha1_api_key_auth_proto_enumTypes,
 		MessageInfos:      file_filters_v1alpha1_api_key_auth_proto_msgTypes,
 	}.Build()
 	File_filters_v1alpha1_api_key_auth_proto = out.File

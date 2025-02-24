@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/samber/mo"
 	"google.golang.org/protobuf/types/known/anypb"
 
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/bootkit"
+	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
@@ -50,7 +52,7 @@ func (l *LBFilter) OnCompletionRequest(ctx context.Context, request object.LLMRe
 
 	// set destination cluster to context
 	req := metadata.RequestMetadataFromCtx(ctx)
-	req.DestinationCluster = c
+	req.SelectedCluster = mo.Some(c)
 
 	return filters.NewOK()
 }
@@ -73,20 +75,20 @@ func findRoute(ctx context.Context, llmRequest object.LLMRequest) (route.Route, 
 	return r, clusterName
 }
 
-func findCluster(ctx context.Context, llmRequest object.LLMRequest, expectedType v1alpha1.ClusterType) (string, bool) {
+func findCluster(ctx context.Context, llmRequest object.LLMRequest, expectedType v1alpha1.ClusterType) (clusters.Cluster, bool) {
 	r, clusterName := findRoute(ctx, llmRequest)
 	if r == nil {
-		return "", false
+		return nil, false
 	}
 
 	c, ok := registrycluster.FindClusterByName(clusterName)
 	if !ok {
-		return "", false
+		return nil, false
 	}
 
 	if expectedType != c.Type() {
-		return "", false
+		return nil, false
 	}
 
-	return clusterName, true
+	return c, true
 }

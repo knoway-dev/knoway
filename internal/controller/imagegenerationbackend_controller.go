@@ -37,7 +37,6 @@ import (
 	"knoway.dev/api/clusters/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/route"
@@ -372,13 +371,13 @@ func (r *ImageGenerationBackendReconciler) toRegisterClusterConfig(ctx context.C
 	// usage
 	var sizeFrom *v1alpha1.ClusterMeteringPolicy_SizeFrom
 	if backend.Spec.MeteringPolicy != nil && backend.Spec.MeteringPolicy.SizeFrom != nil {
-		sizeFrom = clusters.MapBackendSizeFromClusterSizeFrom(backend.Spec.MeteringPolicy.SizeFrom)
+		sizeFrom = MapBackendSizeFromClusterSizeFrom(backend.Spec.MeteringPolicy.SizeFrom)
 	}
 
 	return &v1alpha1.Cluster{
 		Type:     v1alpha1.ClusterType_IMAGE_GENERATION,
 		Name:     modelName,
-		Provider: clusters.MapBackendProviderToClusterProvider(backend.Spec.Provider),
+		Provider: MapBackendProviderToClusterProvider(backend.Spec.Provider),
 		Created:  backend.GetCreationTimestamp().Unix(),
 
 		// todo configurable to replace hard config

@@ -2,18 +2,10 @@ package manager
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
-
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"knoway.dev/pkg/filters/lbfilter/loadbanlance"
 
-	"knoway.dev/pkg/clients"
-	"knoway.dev/pkg/clients/gvr"
-
 	"knoway.dev/api/route/v1alpha1"
-	llmv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/route"
 )
@@ -73,14 +65,10 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 		}
 
 		if backend := m.lb.Next(request); backend != "" {
-			modelName := m.modelFromLlmBackend(backend)
-			if modelName != "" {
-				slog.Debug("found model route", "model", modelName, "backend", backend)
-				clusterName = modelName
-				found = true
+			clusterName = backend
+			found = true
 
-				break
-			}
+			break
 		}
 	}
 
@@ -89,31 +77,6 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 
 func isModelRouteConfiguration(cfg *v1alpha1.Route) bool {
 	return cfg.GetLoadBalancePolicy() != v1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED && len(cfg.GetTargets()) != 0
-}
-
-func (m *routeManager) modelFromLlmBackend(backend string) string {
-	client, err := clients.GetClients().DynamicClient()
-	if err != nil {
-		slog.Error("failed to get dynamic client", "err", err.Error())
-		return ""
-	}
-
-	utd, err := client.Resource(gvr.From(&llmv1alpha1.LLMBackend{})).Namespace(m.nsMap[backend]).Get(context.Background(), backend, metav1.GetOptions{})
-	if err != nil {
-		slog.Error("failed to get model route", "backend", backend, "err", err.Error())
-		return ""
-	}
-
-	llmBackend, err := clients.FromUnstructured[llmv1alpha1.LLMBackend](utd)
-	if err != nil {
-		slog.Error("failed to convert unstructured to LLMBackend", "err", err.Error())
-		return ""
-	}
-	if llmBackend.Spec.ModelName != nil {
-		return *llmBackend.Spec.ModelName
-	}
-
-	return fmt.Sprintf("%s/%s", llmBackend.Namespace, llmBackend.Name)
 }
 
 func buildBackendNsMap(cfg *v1alpha1.Route) map[string]string {

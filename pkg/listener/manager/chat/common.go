@@ -37,7 +37,7 @@ func ClusterToOpenAIModel(c *v1alpha4.Cluster) goopenai.Model {
 		ID:        c.GetName(),
 		// The object type, which is always "model".
 		Object:  "model",
-		OwnedBy: string(clusters.MapClusterProviderToBackendProvider(c.GetProvider())),
+		OwnedBy: c.GetProvider().String(),
 		// todo
 		Permission: nil,
 		Root:       "",

@@ -90,6 +90,10 @@ func (m *clusterManager) Type() v1alpha1.ClusterType {
 	return m.cluster.GetType()
 }
 
+func (m *clusterManager) Config() *v1alpha1.Cluster {
+	return m.cluster
+}
+
 func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
 	var err error
 

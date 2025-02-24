@@ -116,6 +116,7 @@ func (s *ImageGenerationBackendStatus) SetConditions(conditions []metav1.Conditi
 
 func getBackendFromNamespacedName(ctx context.Context, kubeClient client.Client, namespacedName types.NamespacedName) (Backend, error) {
 	var llmBackend knowaydevv1alpha1.LLMBackend
+
 	err := kubeClient.Get(ctx, namespacedName, &llmBackend)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err
@@ -125,6 +126,7 @@ func getBackendFromNamespacedName(ctx context.Context, kubeClient client.Client,
 	}
 
 	var imageGenerationBackend knowaydevv1alpha1.ImageGenerationBackend
+
 	err = kubeClient.Get(ctx, namespacedName, &imageGenerationBackend)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return nil, err

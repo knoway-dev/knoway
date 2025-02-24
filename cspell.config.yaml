@@ -13,6 +13,7 @@ words:
   - bufconn
   - bufnet
   - Causef
+  - clientcmd
   - clientgoscheme
   - clusterfilters
   - containedctx
@@ -74,6 +75,7 @@ words:
   - knoway
   - knowaydevv1alpha1
   - kubebuilder
+  - kubeconfig
   - listenerfilters
   - lll
   - llmbackend

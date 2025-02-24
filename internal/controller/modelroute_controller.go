@@ -320,6 +320,14 @@ func (r *ModelRouteReconciler) reconcileValidator(ctx context.Context, modelRout
 				return fmt.Errorf("spec.route.targets[%d].destination.weight cannot be less than 0", index)
 			}
 		}
+
+		if !(lo.EveryBy(modelRoute.Spec.Route.Targets, func(target llmv1alpha1.ModelRouteRouteTarget) bool {
+			return target.Destination.Weight == nil
+		}) || lo.EveryBy(modelRoute.Spec.Route.Targets, func(target llmv1alpha1.ModelRouteRouteTarget) bool {
+			return target.Destination.Weight != nil && *target.Destination.Weight >= 0
+		})) {
+			return errors.New("spec.route.targets.[].destination.weight must be either all set or all unset")
+		}
 	}
 
 	allExistingBackend := &llmv1alpha1.ModelRouteList{}
@@ -353,11 +361,13 @@ func (r *ModelRouteReconciler) reconcileValidator(ctx context.Context, modelRout
 
 func (r *ModelRouteReconciler) getModelRouteTargets(modelRoute *llmv1alpha1.ModelRoute) []*routev1alpha1.RouteTarget {
 	if modelRoute.Spec.Route != nil && len(modelRoute.Spec.Route.Targets) != 0 {
+		areAllWeightsUnset := true
 		targets := make([]*routev1alpha1.RouteTarget, 0, len(modelRoute.Spec.Route.Targets))
 
 		for _, target := range modelRoute.Spec.Route.Targets {
 			var weight *int32
 			if target.Destination.Weight != nil {
+				areAllWeightsUnset = false
 				weight = lo.ToPtr(int32(lo.FromPtr(target.Destination.Weight)))
 			}
 
@@ -367,6 +377,12 @@ func (r *ModelRouteReconciler) getModelRouteTargets(modelRoute *llmv1alpha1.Mode
 					Backend:   target.Destination.Backend,
 					Weight:    weight,
 				},
+			})
+		}
+
+		if areAllWeightsUnset {
+			lo.ForEach(targets, func(target *routev1alpha1.RouteTarget, _ int) {
+				target.Destination.Weight = lo.ToPtr(int32(1))
 			})
 		}
 
@@ -409,6 +425,11 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 
 	modelName := modelRoute.Spec.ModelName
 
+	loadBalancePolicy := routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED
+	if modelRoute.Spec.Route != nil {
+		loadBalancePolicy = MapModelRouteLoadBalancePolicyModelRouteLoadBalancePolicy(modelRoute.Spec.Route.LoadBalancePolicy)
+	}
+
 	return &routev1alpha1.Route{
 		Name: modelName,
 		Matches: []*routev1alpha1.Match{
@@ -420,8 +441,9 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 				},
 			},
 		},
-		Targets: r.mapModelRouteTargetsToBackends(r.getModelRouteTargets(modelRoute), mBackends),
-		Filters: nil, // todo future
+		LoadBalancePolicy: loadBalancePolicy,
+		Targets:           r.mapModelRouteTargetsToBackends(r.getModelRouteTargets(modelRoute), mBackends),
+		Filters:           nil, // todo future
 	}
 }
 

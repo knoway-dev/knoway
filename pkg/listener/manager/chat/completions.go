@@ -4,8 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	registrycluster "knoway.dev/pkg/registry/cluster"
-
 	"github.com/samber/lo"
 
 	"knoway.dev/pkg/metadata"
@@ -61,12 +59,11 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 		}
 	}
 
-	c, ok := registrycluster.FindClusterByName(rMeta.DestinationCluster)
-	if !ok {
+	if rMeta.SelectedCluster.IsAbsent() {
 		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
 	}
 
-	resp, err = l.clusterDoCompletionsRequest(request.Context(), c, writer, request, llmRequest)
+	resp, err = l.clusterDoCompletionsRequest(request.Context(), rMeta.SelectedCluster.MustGet(), writer, request, llmRequest)
 	if !llmRequest.IsStream() && !lo.IsNil(resp) {
 		for _, f := range l.reversedFilters.OnCompletionResponseFilters() {
 			fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)

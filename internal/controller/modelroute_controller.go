@@ -423,7 +423,7 @@ func (r *ModelRouteReconciler) buildRateLimitPolicy(rateLimit *llmv1alpha1.Model
 	policy := &routev1alpha1.RateLimitPolicy{
 		BaseOn:   MapModelRouteRateLimitBaseOnModelRouteRateLimitBaseOn(rateLimit.BasedOn),
 		Limit:    int32(rateLimit.Limit),
-		Duration: durationpb.New(rateLimit.Duration),
+		Duration: durationpb.New(time.Duration(rateLimit.Duration) * time.Second),
 	}
 
 	if len(rateLimit.AdvanceLimits) > 0 {
@@ -442,7 +442,7 @@ func (r *ModelRouteReconciler) buildRateLimitPolicy(rateLimit *llmv1alpha1.Model
 			policy.AdvanceLimits = append(policy.AdvanceLimits, &routev1alpha1.RateLimitAdvanceLimit{
 				Objects:  objects,
 				Limit:    int32(advanceLimit.Limit),
-				Duration: durationpb.New(advanceLimit.Duration),
+				Duration: durationpb.New(time.Duration(rateLimit.Duration) * time.Second),
 			})
 		}
 	}

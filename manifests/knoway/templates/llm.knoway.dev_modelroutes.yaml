@@ -49,7 +49,8 @@ spec:
                     items:
                       properties:
                         duration:
-                          description: Duration window for rate limiting
+                          description: Default duration is 300 seconds, with the unit
+                            being seconds
                           format: int64
                           type: integer
                         limit:
@@ -81,7 +82,8 @@ spec:
                   basedOn:
                     type: string
                   duration:
-                    description: Default duration is 5m
+                    description: Default duration is 300 seconds, with the unit being
+                      seconds
                     format: int64
                     type: integer
                   limit:

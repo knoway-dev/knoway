@@ -49,7 +49,7 @@ type ModelRouteRateLimitAdvanceLimit struct {
 	// Number of requests allowed in the duration window
 	// If set to 0, rate limiting will be disabled
 	Limit int `json:"limit,omitempty"`
-	// Duration window for rate limiting
+	// Default duration is 300 seconds, with the unit being seconds
 	Duration time.Duration `json:"duration,omitempty"`
 }
 
@@ -62,7 +62,7 @@ type ModelRouteRateLimitAdvanceLimit struct {
 //
 //	basedOn: "APIKey"      # Base rate limit applies to all API keys
 //	limit: 10              # Allow 10 requests
-//	duration: 1m           # Per minute
+//	duration: 300          # 300s
 //	advanceLimits:         # Advanced rules for specific cases
 //	  - objects:
 //	      - baseOn: "User"     # Match specific user
@@ -78,8 +78,8 @@ type ModelRouteRateLimit struct {
 	// Number of requests allowed in the duration window
 	// If set to 0, rate limiting will be disabled
 	Limit int `json:"limit,omitempty"`
-	// Default duration is 5m
-	Duration time.Duration `json:"duration,omitempty"`
+	// Default duration is 300 seconds, with the unit being seconds
+	Duration int64 `json:"duration,omitempty"`
 	// Advanced rate limiting rules
 	// +optional
 	AdvanceLimits []ModelRouteRateLimitAdvanceLimit `json:"advanceLimits,omitempty"`

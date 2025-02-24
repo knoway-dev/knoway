@@ -2,7 +2,7 @@ debug: true
 controller:
   secure_metrics: false
   enable_http2: false
-
+kubeConfig: ""
 gateway:
   auth_server:
     url: ''

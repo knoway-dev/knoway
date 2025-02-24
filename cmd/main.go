@@ -23,17 +23,29 @@ import (
 	"os"
 	"time"
 
-	"knoway.dev/cmd/gateway"
-	"knoway.dev/config"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
+	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
+
+	"knoway.dev/cmd/gateway"
 	"knoway.dev/cmd/server"
+	"knoway.dev/config"
 	"knoway.dev/pkg/bootkit"
+	"knoway.dev/pkg/clients"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	// +kubebuilder:scaffold:imports
 )
+
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(clientgoscheme.Scheme))
+
+	utilruntime.Must(knowaydevv1alpha1.AddToScheme(clientgoscheme.Scheme))
+	// +kubebuilder:scaffold:scheme
+}
 
 func main() {
 	var metricsAddr string
@@ -67,6 +79,8 @@ func main() {
 
 	// development static server
 	devStaticServer := false
+
+	clients.InitClients(cfg)
 
 	if devStaticServer {
 		app.Add(func(_ context.Context, lifeCycle bootkit.LifeCycle) error {

@@ -74,7 +74,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	log.Log.Info("reconcile LLMBackend modelName", "modelName", modelNameOrNamespacedName(currentBackend))
 
 	rrs := r.getReconciles()
-	if isDeleted(BackendFromLLMBackend(currentBackend)) {
+	if isBackendDeleted(BackendFromLLMBackend(currentBackend)) {
 		rrs = r.getDeleteReconciles()
 	}
 
@@ -85,7 +85,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		err := rr.reconciler(ctx, currentBackend)
 		if err != nil {
-			if isDeleted(BackendFromLLMBackend(currentBackend)) && shouldForceDelete(BackendFromLLMBackend(currentBackend)) {
+			if isBackendDeleted(BackendFromLLMBackend(currentBackend)) && shouldForceDeleteBackend(BackendFromLLMBackend(currentBackend)) {
 				continue
 			}
 
@@ -110,7 +110,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		log.Log.Error(err, "reconcile LLMBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if !statusEqual(BackendFromLLMBackend(currentBackend), BackendFromLLMBackend(newBackend)) {
+	if !statusEqual[knowaydevv1alpha1.StatusEnum](BackendFromLLMBackend(currentBackend).GetStatus(), BackendFromLLMBackend(newBackend).GetStatus()) {
 		newBackend.Status = currentBackend.Status
 		if err := r.Status().Update(ctx, newBackend); err != nil {
 			log.Log.Error(err, "update LLMBackend status error", "name", currentBackend.GetName())
@@ -132,7 +132,7 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 			route.RemoveRoute(modelName)
 		}
 	}
-	if isDeleted(BackendFromLLMBackend(llmBackend)) {
+	if isBackendDeleted(BackendFromLLMBackend(llmBackend)) {
 		removeBackendFunc()
 		return nil
 	}
@@ -210,7 +210,7 @@ func (r *LLMBackendReconciler) reconcileUpstreamHealthy(ctx context.Context, llm
 }
 
 func (r *LLMBackendReconciler) reconcilePhase(_ context.Context, llmBackend *knowaydevv1alpha1.LLMBackend) {
-	reconcilePhase(BackendFromLLMBackend(llmBackend))
+	reconcileBackendPhase(BackendFromLLMBackend(llmBackend))
 }
 
 type reconcileHandler[T runtime.Object] struct {
@@ -225,11 +225,12 @@ const (
 )
 
 const (
-	condConfig          = "config"
-	condValidator       = "validator"
-	condUpstreamHealthy = "upstreamHealthy"
-	condRegister        = "register"
-	condFinalDelete     = "finalDelete"
+	condConfig             = "config"
+	condValidator          = "validator"
+	condUpstreamHealthy    = "upstreamHealthy"
+	condDestinationHealthy = "destinationHealthy"
+	condRegister           = "register"
+	condFinalDelete        = "finalDelete"
 )
 
 func (r *LLMBackendReconciler) getReconciles() []reconcileHandler[*knowaydevv1alpha1.LLMBackend] {
@@ -297,7 +298,7 @@ func (r *LLMBackendReconciler) reconcileFinalDelete(ctx context.Context, llmBack
 		}
 	}
 
-	if !canDelete && !shouldForceDelete(BackendFromLLMBackend(llmBackend)) {
+	if !canDelete && !shouldForceDeleteBackend(BackendFromLLMBackend(llmBackend)) {
 		return errors.New("have delete condition not ready")
 	}
 

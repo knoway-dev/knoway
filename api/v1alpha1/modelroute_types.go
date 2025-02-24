@@ -22,6 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+//+kubebuilder:object:root=true
+//+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:name="Model Name",type=string,JSONPath=`.spec.modelName`
+//+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
+
 type ModelRouteRateLimitBasedOn string
 
 const (
@@ -75,7 +80,7 @@ type ModelRouteRouteFallback struct {
 type ModelRouteRoute struct {
 	// LoadBalancePolicy specifies the load balancing policy to use
 	// +kubebuilder:validation:Enum=WeightedRoundRobin;WeightedLeastRequest
-	LoadBalancePolicy LoadBalancePolicy `json:"mode"`
+	LoadBalancePolicy LoadBalancePolicy `json:"loadBalancePolicy"`
 	// Targets specifies the targets of the route
 	// +kubebuilder:validation:Required
 	Targets []ModelRouteRouteTarget `json:"targets"`
@@ -94,10 +99,24 @@ type ModelRouteSpec struct {
 	Route *ModelRouteRoute `json:"route"`
 }
 
+type ModelRouteStatusTarget struct {
+	Namespace string     `json:"namespace"`
+	Backend   string     `json:"backend"`
+	ModelName string     `json:"modelName"`
+	Status    StatusEnum `json:"status"`
+}
+
 // ModelRouteStatus defines the observed state of ModelRoute.
 type ModelRouteStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Status indicates the health of the ModelRoute CR: Unknown, Healthy, or Failed
+	// +kubebuilder:validation:Enum=Unknown;Healthy;Failed
+	Status StatusEnum `json:"status,omitempty"`
+
+	// Conditions represent the current conditions of the backend
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
+
+	// Targets represents the targets of the model route
+	Targets []ModelRouteStatusTarget `json:"targets,omitempty"`
 }
 
 // +kubebuilder:object:root=true

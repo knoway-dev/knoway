@@ -1,21 +1,21 @@
 package controller
 
 import (
+	"context"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 )
 
 type Backend interface {
+	GetType() knowaydevv1alpha1.BackendType
 	GetObjectObjectMeta() metav1.ObjectMeta
-	GetStatus() BackendStatus
-}
-
-type BackendStatus interface {
-	GetStatus() knowaydevv1alpha1.StatusEnum
-	SetStatus(status knowaydevv1alpha1.StatusEnum)
-	GetConditions() []metav1.Condition
-	SetConditions(conditions []metav1.Condition)
+	GetStatus() Statusable[knowaydevv1alpha1.StatusEnum]
+	GetModelName() string
 }
 
 var _ Backend = (*LLMBackend)(nil)
@@ -24,12 +24,20 @@ type LLMBackend struct {
 	*knowaydevv1alpha1.LLMBackend
 }
 
+func (b *LLMBackend) GetType() knowaydevv1alpha1.BackendType {
+	return knowaydevv1alpha1.BackendTypeLLM
+}
+
 func (b *LLMBackend) GetObjectObjectMeta() metav1.ObjectMeta {
 	return b.LLMBackend.ObjectMeta
 }
 
-func (b *LLMBackend) GetStatus() BackendStatus {
+func (b *LLMBackend) GetStatus() Statusable[knowaydevv1alpha1.StatusEnum] {
 	return &LLMBackendStatus{LLMBackendStatus: &b.Status}
+}
+
+func (b *LLMBackend) GetModelName() string {
+	return modelNameOrNamespacedName(b.LLMBackend)
 }
 
 func BackendFromLLMBackend(llmBackend *knowaydevv1alpha1.LLMBackend) Backend {
@@ -64,12 +72,20 @@ type ImageGenerationBackend struct {
 	*knowaydevv1alpha1.ImageGenerationBackend
 }
 
+func (b *ImageGenerationBackend) GetType() knowaydevv1alpha1.BackendType {
+	return knowaydevv1alpha1.BackendTypeImageGeneration
+}
+
 func (b *ImageGenerationBackend) GetObjectObjectMeta() metav1.ObjectMeta {
 	return b.ImageGenerationBackend.ObjectMeta
 }
 
-func (b *ImageGenerationBackend) GetStatus() BackendStatus {
+func (b *ImageGenerationBackend) GetStatus() Statusable[knowaydevv1alpha1.StatusEnum] {
 	return &ImageGenerationBackendStatus{ImageGenerationBackendStatus: &b.Status}
+}
+
+func (b *ImageGenerationBackend) GetModelName() string {
+	return modelNameOrNamespacedName(b.ImageGenerationBackend)
 }
 
 func BackendFromImageGenerationBackend(imageGenerationBackend *knowaydevv1alpha1.ImageGenerationBackend) Backend {
@@ -96,4 +112,26 @@ func (s *ImageGenerationBackendStatus) GetConditions() []metav1.Condition {
 
 func (s *ImageGenerationBackendStatus) SetConditions(conditions []metav1.Condition) {
 	s.Conditions = conditions
+}
+
+func getBackendFromNamespacedName(ctx context.Context, kubeClient client.Client, namespacedName types.NamespacedName) (Backend, error) {
+	var llmBackend knowaydevv1alpha1.LLMBackend
+	err := kubeClient.Get(ctx, namespacedName, &llmBackend)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if err == nil {
+		return BackendFromLLMBackend(&llmBackend), nil
+	}
+
+	var imageGenerationBackend knowaydevv1alpha1.ImageGenerationBackend
+	err = kubeClient.Get(ctx, namespacedName, &imageGenerationBackend)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if err == nil {
+		return BackendFromImageGenerationBackend(&imageGenerationBackend), nil
+	}
+
+	return nil, nil
 }

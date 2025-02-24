@@ -18,16 +18,28 @@ import (
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 )
 
-func isDeleted(backend Backend) bool {
+func isBackendDeleted(backend Backend) bool {
 	return backend.GetObjectObjectMeta().DeletionTimestamp != nil
 }
 
-func shouldForceDelete(backend Backend) bool {
+func shouldForceDeleteBackend(backend Backend) bool {
 	if backend.GetObjectObjectMeta().DeletionTimestamp == nil {
 		return false
 	}
 
 	return backend.GetObjectObjectMeta().DeletionTimestamp.Add(graceDeletePeriod).Before(time.Now())
+}
+
+func isModelRouteDeleted(modelRoute *knowaydevv1alpha1.ModelRoute) bool {
+	return modelRoute.ObjectMeta.GetDeletionTimestamp() != nil
+}
+
+func shouldForceDeleteModelRoute(modelRoute *knowaydevv1alpha1.ModelRoute) bool {
+	if modelRoute.ObjectMeta.GetDeletionTimestamp() == nil {
+		return false
+	}
+
+	return modelRoute.ObjectMeta.GetDeletionTimestamp().Add(graceDeletePeriod).Before(time.Now())
 }
 
 func modelNameOrNamespacedName[B *knowaydevv1alpha1.LLMBackend | *knowaydevv1alpha1.ImageGenerationBackend | knowaydevv1alpha1.LLMBackend | knowaydevv1alpha1.ImageGenerationBackend](backend B) string {
@@ -67,10 +79,7 @@ func modelNameOrNamespacedName[B *knowaydevv1alpha1.LLMBackend | *knowaydevv1alp
 	}
 }
 
-func statusEqual(b1, b2 Backend) bool {
-	status1 := b1.GetStatus()
-	status2 := b2.GetStatus()
-
+func statusEqual[S comparable](status1, status2 Statusable[S]) bool {
 	if len(status1.GetConditions()) != len(status2.GetConditions()) {
 		return false
 	}
@@ -85,6 +94,27 @@ func statusEqual(b1, b2 Backend) bool {
 	}
 
 	return status1.GetStatus() == status2.GetStatus()
+}
+
+func routeStatusEqual[S comparable](status1, status2 RouteStatusable[S]) bool {
+	if !statusEqual(status1, status2) {
+		return false
+	}
+
+	if len(status1.GetTargetsStatus()) != len(status2.GetTargetsStatus()) {
+		return false
+	}
+
+	for i := range status1.GetTargetsStatus() {
+		target1 := status1.GetTargetsStatus()[i]
+		target2 := status2.GetTargetsStatus()[i]
+
+		if target1.Namespace != target2.Namespace || target1.Backend != target2.Backend || target1.ModelName != target2.ModelName || target1.Status != target2.Status {
+			return false
+		}
+	}
+
+	return true
 }
 
 func setStatusCondition(backend Backend, typ string, ready bool, message string) {
@@ -120,9 +150,42 @@ func setStatusCondition(backend Backend, typ string, ready bool, message string)
 	}
 }
 
-func reconcilePhase(backend Backend) {
+func setModelRouteStatusCondition(modelRoute *knowaydevv1alpha1.ModelRoute, typ string, ready bool, message string) {
+	cs := metav1.ConditionFalse
+	if ready {
+		cs = metav1.ConditionTrue
+	}
+
+	index := -1
+	newCond := metav1.Condition{
+		Type:               typ,
+		Reason:             typ,
+		Message:            message,
+		LastTransitionTime: metav1.Time{Time: time.Now()},
+		Status:             cs,
+	}
+
+	for i, cond := range modelRoute.Status.Conditions {
+		if cond.Type == typ {
+			index = i
+			break
+		}
+	}
+	if index == -1 {
+		modelRoute.Status.Conditions = append(modelRoute.Status.Conditions, newCond)
+	} else {
+		old := modelRoute.Status.Conditions[index]
+		if old.Status == newCond.Status && old.Message == newCond.Message {
+			return
+		}
+
+		modelRoute.Status.Conditions[index] = newCond
+	}
+}
+
+func reconcileBackendPhase(backend Backend) {
 	backend.GetStatus().SetStatus(knowaydevv1alpha1.Healthy)
-	if isDeleted(backend) {
+	if isBackendDeleted(backend) {
 		backend.GetStatus().SetStatus(knowaydevv1alpha1.Healthy)
 		return
 	}
@@ -130,6 +193,28 @@ func reconcilePhase(backend Backend) {
 	for _, cond := range backend.GetStatus().GetConditions() {
 		if cond.Status == metav1.ConditionFalse {
 			backend.GetStatus().SetStatus(knowaydevv1alpha1.Failed)
+			return
+		}
+	}
+}
+
+func reconcileModelRoutePhase(modelRoute *knowaydevv1alpha1.ModelRoute) {
+	modelRoute.Status.Status = knowaydevv1alpha1.Healthy
+	if isModelRouteDeleted(modelRoute) {
+		modelRoute.Status.Status = knowaydevv1alpha1.Healthy
+		return
+	}
+
+	for _, cond := range modelRoute.Status.Conditions {
+		if cond.Status == metav1.ConditionFalse {
+			modelRoute.Status.Status = knowaydevv1alpha1.Failed
+			return
+		}
+	}
+
+	for _, target := range modelRoute.Status.Targets {
+		if target.Status == knowaydevv1alpha1.Failed {
+			modelRoute.Status.Status = knowaydevv1alpha1.Failed
 			return
 		}
 	}

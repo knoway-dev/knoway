@@ -105,6 +105,15 @@ func StartController(ctx context.Context, lifecycle bootkit.LifeCycle, metricsAd
 		setupLog.Error(err, "unable to create controller", "controller", "ImageGenerationBackend")
 		os.Exit(1)
 	}
+
+	if err = (&controller.ModelRouteReconciler{
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		LifeCycle: lifecycle,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ModelRoute")
+		os.Exit(1)
+	}
 	// +kubebuilder:scaffold:builder
 
 	err = mgr.AddHealthzCheck("healthz", healthz.Ping)

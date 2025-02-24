@@ -60,12 +60,17 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 			continue
 		}
 
-		if !isModelRouteConfiguration(m.cfg) {
+		if len(m.cfg.GetTargets()) == 0 {
 			continue
 		}
 
-		if backend := m.lb.Next(request); backend != "" {
-			clusterName = backend
+		// default lb policy
+		if m.cfg.GetLoadBalancePolicy() == routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED {
+			return m.cfg.GetTargets()[0].GetDestination().GetCluster(), m.cfg.GetTargets()[0].GetDestination().GetCluster() != ""
+		}
+
+		if cluster := m.lb.Next(request); cluster != "" {
+			clusterName = cluster
 			found = true
 
 			break
@@ -75,24 +80,19 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 	return clusterName, found
 }
 
-func isModelRouteConfiguration(cfg *routev1alpha1.Route) bool {
-	return cfg.GetLoadBalancePolicy() != routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED && len(cfg.GetTargets()) != 0
-}
-
 func buildBackendNsMap(cfg *routev1alpha1.Route) map[string]string {
 	nsMap := make(map[string]string)
-	if isModelRouteConfiguration(cfg) {
-		for _, target := range cfg.GetTargets() {
-			if target.GetDestination() == nil {
-				continue
-			}
 
-			ns := target.GetDestination().GetNamespace()
-			if ns == "" {
-				ns = "public"
-			}
-			nsMap[target.GetDestination().GetBackend()] = ns
+	for _, target := range cfg.GetTargets() {
+		if target.GetDestination() == nil {
+			continue
 		}
+
+		ns := target.GetDestination().GetNamespace()
+		if ns == "" {
+			ns = "public"
+		}
+		nsMap[target.GetDestination().GetBackend()] = ns
 	}
 
 	return nsMap

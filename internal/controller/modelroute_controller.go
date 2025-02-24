@@ -406,7 +406,8 @@ func (r *ModelRouteReconciler) mapModelRouteTargetsToBackends(targets []*routev1
 		backends = append(backends, &routev1alpha1.RouteTarget{
 			Destination: &routev1alpha1.RouteDestination{
 				Namespace: target.GetDestination().GetNamespace(),
-				Backend:   backend.GetModelName(),
+				Backend:   target.GetDestination().GetBackend(),
+				Cluster:   backend.GetModelName(),
 				Weight:    target.GetDestination().Weight, //nolint:protogetter
 			},
 		})

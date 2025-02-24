@@ -28,6 +28,7 @@ message RouteDestination {
     string namespace      = 1;
     string backend        = 2;
     optional int32 weight = 3;
+    string cluster        = 4;
 }
 
 message RouteTarget {

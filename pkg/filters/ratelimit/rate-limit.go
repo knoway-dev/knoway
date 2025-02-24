@@ -26,20 +26,29 @@ const (
 	defaultDuration    = 5 * time.Minute
 	numShards          = 64    // Number of shards, must be power of 2
 	maxBucketsPerShard = 10000 // Maximum buckets per shard
-	precision          = 100   // Precision for fixed-point arithmetic
+	precision          = 1000  // Precision for fixed-point arithmetic
 )
 
 type tokenBucket struct {
 	tokens     atomic.Int64 // Store tokens * precision
-	capacity   int64        // Store capacity * precision
-	rate       int64        // Store rate * precision
+	capacity   atomic.Int64 // Store capacity * precision
+	rate       atomic.Int64 // Store rate * precision
 	lastUpdate atomic.Int64
+	oldLimit   atomic.Int64
 }
 
 type rateLimitShard struct {
 	buckets        map[string]*tokenBucket
 	lastAccessTime map[string]time.Time
 	mu             sync.Mutex
+}
+
+type RateLimiter struct {
+	filters.IsRequestFilter
+
+	shards    []*rateLimitShard
+	numShards int
+	stopCh    chan struct{}
 }
 
 func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {
@@ -78,14 +87,6 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 
 var _ filters.RequestFilter = (*RateLimiter)(nil)
 var _ filters.OnCompletionRequestFilter = (*RateLimiter)(nil)
-
-type RateLimiter struct {
-	filters.IsRequestFilter
-
-	shards    []*rateLimitShard
-	numShards int
-	stopCh    chan struct{}
-}
 
 func (rl *RateLimiter) getShard(key string) *rateLimitShard {
 	h := fnv.New32a()
@@ -160,7 +161,7 @@ func (rl *RateLimiter) checkBucket(key string, window time.Duration, limit int) 
 	}
 
 	if window.Seconds() == 0 {
-		window = time.Second
+		window = defaultDuration
 	}
 
 	shard := rl.getShard(key)
@@ -169,6 +170,10 @@ func (rl *RateLimiter) checkBucket(key string, window time.Duration, limit int) 
 
 	now := time.Now()
 	shard.lastAccessTime[key] = now
+
+	newCapacity := int64(limit * precision)
+	rateInternal := window.Seconds()
+	newRate := int64(float64(newCapacity) / rateInternal)
 
 	bucket, exists := shard.buckets[key]
 	if !exists {
@@ -189,43 +194,42 @@ func (rl *RateLimiter) checkBucket(key string, window time.Duration, limit int) 
 		}
 
 		// init new token bucket with fixed-point precision
-		bucket = &tokenBucket{
-			capacity: int64(limit * precision),
-			rate:     int64(float64(limit*precision) / window.Seconds()),
-		}
-		bucket.tokens.Store(int64(limit * precision))
+		bucket = &tokenBucket{}
+		bucket.capacity.Store(newCapacity)
+		bucket.rate.Store(newRate)
+		bucket.tokens.Store(newCapacity)
 		bucket.lastUpdate.Store(now.UnixNano())
+		bucket.oldLimit.Store(int64(limit))
 		shard.buckets[key] = bucket
+	} else if bucket.oldLimit.Load() != int64(limit) {
+		bucket.oldLimit.Store(int64(limit))
+		bucket.capacity.Store(newCapacity)
+		bucket.rate.Store(newRate)
 	}
 
 	// calculate tokens to add based on time elapsed
 	lastUpdateNano := bucket.lastUpdate.Load()
 	lastUpdate := time.Unix(0, lastUpdateNano)
 	elapsed := now.Sub(lastUpdate).Seconds()
+	elapsedInt := int64(elapsed)
 
-	// Use fixed-point arithmetic
-	currentTokens := bucket.tokens.Load()
-	tokensToAdd := int64(elapsed * float64(bucket.rate))
-	newTokens := currentTokens + tokensToAdd
-
-	if newTokens > bucket.capacity {
-		newTokens = bucket.capacity
-	}
-
-	bucket.tokens.Store(newTokens)
-	bucket.lastUpdate.Store(now.UnixNano())
-
-	// CAS find token using fixed-point precision
-	for {
-		currentTokens := bucket.tokens.Load()
-		if currentTokens < precision {
-			return false
+	tokensToAdd := elapsedInt * bucket.rate.Load()
+	if tokensToAdd > 0 {
+		newTokens := bucket.tokens.Load() + tokensToAdd
+		if newTokens > bucket.capacity.Load() {
+			newTokens = bucket.capacity.Load()
 		}
 
-		if bucket.tokens.CompareAndSwap(currentTokens, currentTokens-precision) {
-			return true
-		}
+		bucket.tokens.Store(newTokens)
+		bucket.lastUpdate.Store(now.UnixNano())
 	}
+
+	if bucket.tokens.Load() >= precision {
+		bucket.tokens.Add(-precision)
+		return true
+	}
+
+	return false
 }
 
 func buildKey(baseOn routev1alpha1.RateLimitBaseOn, value string, routeName string) string {
@@ -239,7 +243,27 @@ func (rl *RateLimiter) AllowRequestWithConfig(apiKey, userName string, routeName
 
 	// check advanced limits first
 	for _, advanceLimit := range config.GetAdvanceLimits() {
-		if !rl.matchAdvanceLimit(advanceLimit, apiKey, userName) {
+		on := routev1alpha1.RateLimitBaseOn_APIKey
+		value := ""
+
+		for _, obj := range advanceLimit.GetObjects() {
+			switch obj.GetBaseOn() {
+			case routev1alpha1.RateLimitBaseOn_APIKey:
+				if apiKey == obj.GetValue() {
+					value = apiKey
+					break
+				}
+			case routev1alpha1.RateLimitBaseOn_User:
+				if userName == obj.GetValue() {
+					on = routev1alpha1.RateLimitBaseOn_User
+					value = userName
+
+					break
+				}
+			}
+		}
+
+		if value == "" {
 			continue
 		}
 
@@ -248,12 +272,9 @@ func (rl *RateLimiter) AllowRequestWithConfig(apiKey, userName string, routeName
 			return true
 		}
 
-		for _, obj := range advanceLimit.GetObjects() {
-			key := buildKey(obj.GetBaseOn(), obj.GetValue(), routeName)
-			if !rl.checkBucket(key, advanceLimit.GetDuration().AsDuration(), int(advanceLimit.GetLimit())) {
-				return false
-			}
-		}
+		key := buildKey(on, value, routeName)
+
+		return rl.checkBucket(key, advanceLimit.GetDuration().AsDuration(), int(advanceLimit.GetLimit()))
 	}
 
 	// disabled limit
@@ -279,21 +300,4 @@ func (rl *RateLimiter) AllowRequestWithConfig(apiKey, userName string, routeName
 	allowed := rl.checkBucket(key, duration, int(config.GetLimit()))
 
 	return allowed
-}
-
-func (rl *RateLimiter) matchAdvanceLimit(limit *routev1alpha1.RateLimitAdvanceLimit, apiKey, userName string) bool {
-	for _, obj := range limit.GetObjects() {
-		switch obj.GetBaseOn() {
-		case routev1alpha1.RateLimitBaseOn_APIKey:
-			if apiKey != obj.GetValue() {
-				return false
-			}
-		case routev1alpha1.RateLimitBaseOn_User:
-			if userName != obj.GetValue() {
-				return false
-			}
-		}
-	}
-
-	return true
 }

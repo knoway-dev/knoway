@@ -40,7 +40,7 @@ func InitDirectModelRoute(modelName string) *v1alpha1.Route {
 		Targets: []*v1alpha1.RouteTarget{
 			{
 				Destination: &v1alpha1.RouteDestination{
-					Backend: modelName,
+					Cluster: modelName,
 				},
 			},
 		},

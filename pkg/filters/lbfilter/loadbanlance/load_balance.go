@@ -35,7 +35,7 @@ func newServers(destinations []*v1alpha1.RouteDestination) []*server {
 	servers := make([]*server, 0)
 	for _, d := range destinations {
 		servers = append(servers, &server{
-			name:   d.GetBackend(),
+			name:   d.GetCluster(),
 			weight: d.GetWeight(),
 			// TODO: if knoway deploy in mutil replicas, should implement a distributed request counter
 			requestCounter: newRequestCounter(),

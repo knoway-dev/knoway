@@ -45,12 +45,6 @@ func WithAccessLog(enable bool) Middleware {
 					slog.Int("upstream_response_status_code", rMeta.UpstreamResponseStatusCode),
 				}
 
-				if rMeta.SelectedCluster.IsPresent() {
-					attrs = append(attrs,
-						slog.String("selected_cluster", rMeta.SelectedCluster.MustGet().Config().GetName()),
-					)
-				}
-
 				if rMeta.LLMUpstreamTokensUsage.IsPresent() {
 					attrs = append(attrs,
 						slog.Uint64("llm_usage_prompt_tokens", rMeta.LLMUpstreamTokensUsage.MustGet().GetPromptTokens()),

@@ -44,10 +44,39 @@ spec:
               rateLimit:
                 description: Rate limit policy
                 properties:
-                  apiKeyWhitelist:
-                    description: Whitelist of API keys that are exempt from rate limiting
+                  advanceLimits:
+                    description: Advanced rate limiting rules
                     items:
-                      type: string
+                      properties:
+                        duration:
+                          description: Duration window for rate limiting
+                          format: int64
+                          type: integer
+                        limit:
+                          description: |-
+                            Number of requests allowed in the duration window
+                            If set to 0, rate limiting will be disabled
+                          type: integer
+                        objects:
+                          description: Objects specifies the objects to match for
+                            this advance limit
+                          items:
+                            properties:
+                              baseOn:
+                                description: BaseOn specifies what the rate limit
+                                  is based on
+                                type: string
+                              value:
+                                description: Value specifies the value to match
+                                type: string
+                            required:
+                            - baseOn
+                            - value
+                            type: object
+                          type: array
+                      required:
+                      - objects
+                      type: object
                     type: array
                   basedOn:
                     type: string
@@ -60,11 +89,6 @@ spec:
                       Number of requests allowed in the duration window
                       If set to 0, rate limiting will be disabled
                     type: integer
-                  userWhitelist:
-                    description: Whitelist of users that are exempt from rate limiting
-                    items:
-                      type: string
-                    type: array
                 type: object
               route:
                 description: Route policy

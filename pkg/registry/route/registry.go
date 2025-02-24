@@ -1,8 +1,14 @@
 package route
 
 import (
+	"context"
 	"log/slog"
 	"sync"
+
+	clustersv1alpha1 "knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/clusters"
+	"knoway.dev/pkg/object"
+	registrycluster "knoway.dev/pkg/registry/cluster"
 
 	"knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/route"
@@ -12,9 +18,11 @@ import (
 )
 
 var (
-	routes        = make([]route.Route, 0)
-	routeRegistry = make(map[string]route.Route)
-	routeLock     sync.RWMutex
+	matchRouteRegistry = make(map[string]route.Route)
+	routeRegistry      = make(map[string]route.Route)
+
+	routes    = make([]route.Route, 0)
+	routeLock sync.RWMutex
 )
 
 func InitDirectModelRoute(modelName string) *v1alpha1.Route {
@@ -40,7 +48,34 @@ func InitDirectModelRoute(modelName string) *v1alpha1.Route {
 	}
 }
 
-func RegisterRouteWithConfig(cfg *v1alpha1.Route) error {
+func RegisterMatchRouteWithConfig(cfg *v1alpha1.Route) error {
+	routeLock.Lock()
+	defer routeLock.Unlock()
+
+	r, err := manager.NewWithConfig(cfg)
+	if err != nil {
+		return err
+	}
+
+	matchRouteRegistry[cfg.GetName()] = r
+	routes = mergeRoutes()
+
+	slog.Info("register match route", "name", cfg.GetName())
+
+	return nil
+}
+
+func RemoveMatchRoute(rName string) {
+	routeLock.Lock()
+	defer routeLock.Unlock()
+
+	delete(matchRouteRegistry, rName)
+	routes = mergeRoutes()
+
+	slog.Info("remove match route", "name", rName)
+}
+
+func RegisterBaseRouteWithConfig(cfg *v1alpha1.Route) error {
 	routeLock.Lock()
 	defer routeLock.Unlock()
 
@@ -50,19 +85,43 @@ func RegisterRouteWithConfig(cfg *v1alpha1.Route) error {
 	}
 
 	routeRegistry[cfg.GetName()] = r
-	routes = lo.Values(routeRegistry)
 
-	slog.Info("register route", "name", cfg.GetName())
+	if _, exists := matchRouteRegistry[cfg.GetName()]; exists {
+		slog.Info("route exists in matchRouteRegistry, skipping base route registration", "name", cfg.GetName())
+		return nil
+	}
+
+	routes = mergeRoutes()
+
+	slog.Info("register base route", "name", cfg.GetName())
 
 	return nil
 }
 
-func RemoveRoute(rName string) {
+func RemoveBaseRoute(rName string) {
 	routeLock.Lock()
 	defer routeLock.Unlock()
 
 	delete(routeRegistry, rName)
-	routes = lo.Values(routeRegistry)
+	routes = mergeRoutes()
+
+	slog.Info("remove base route", "name", rName)
+}
+
+func mergeRoutes() []route.Route {
+	uniqueRoutes := make(map[string]route.Route)
+
+	for k, v := range matchRouteRegistry {
+		uniqueRoutes[k] = v
+	}
+
+	for k, v := range routeRegistry {
+		if _, exists := uniqueRoutes[k]; !exists {
+			uniqueRoutes[k] = v
+		}
+	}
+
+	return lo.Values(uniqueRoutes)
 }
 
 func ForeachRoute(f func(route.Route) bool) {
@@ -75,4 +134,40 @@ func ForeachRoute(f func(route.Route) bool) {
 			break
 		}
 	}
+}
+
+func FindRoute(ctx context.Context, llmRequest object.LLMRequest) (route.Route, string) {
+	var r route.Route
+	var clusterName string
+
+	ForeachRoute(func(item route.Route) bool {
+		if cn, ok := item.Match(ctx, llmRequest); ok {
+			clusterName = cn
+			r = item
+
+			return false
+		}
+
+		return true
+	})
+
+	return r, clusterName
+}
+
+func FindCluster(ctx context.Context, llmRequest object.LLMRequest, expectedType clustersv1alpha1.ClusterType) (clusters.Cluster, bool) {
+	r, clusterName := FindRoute(ctx, llmRequest)
+	if r == nil {
+		return nil, false
+	}
+
+	c, ok := registrycluster.FindClusterByName(clusterName)
+	if !ok {
+		return nil, false
+	}
+
+	if expectedType != c.GetClusterType() {
+		return nil, false
+	}
+
+	return c, true
 }

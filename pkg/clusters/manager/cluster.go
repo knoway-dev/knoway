@@ -86,11 +86,11 @@ func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) 
 	}, nil
 }
 
-func (m *clusterManager) Type() v1alpha1.ClusterType {
+func (m *clusterManager) GetClusterType() v1alpha1.ClusterType {
 	return m.cluster.GetType()
 }
 
-func (m *clusterManager) Config() *v1alpha1.Cluster {
+func (m *clusterManager) GetClusterConfig() *v1alpha1.Cluster {
 	return m.cluster
 }
 

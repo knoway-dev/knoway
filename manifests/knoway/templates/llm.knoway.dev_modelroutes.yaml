@@ -44,21 +44,51 @@ spec:
               rateLimit:
                 description: Rate limit policy
                 properties:
+                  advanceLimits:
+                    description: Advanced rate limiting rules
+                    items:
+                      properties:
+                        duration:
+                          description: Duration window for rate limiting
+                          format: int64
+                          type: integer
+                        limit:
+                          description: |-
+                            Number of requests allowed in the duration window
+                            If set to 0, rate limiting will be disabled
+                          type: integer
+                        objects:
+                          description: Objects specifies the objects to match for
+                            this advance limit
+                          items:
+                            properties:
+                              baseOn:
+                                description: BaseOn specifies what the rate limit
+                                  is based on
+                                type: string
+                              value:
+                                description: Value specifies the value to match
+                                type: string
+                            required:
+                            - baseOn
+                            - value
+                            type: object
+                          type: array
+                      required:
+                      - objects
+                      type: object
+                    type: array
                   basedOn:
                     type: string
-                  count:
-                    type: integer
-                  interval:
-                    description: |-
-                      A Duration represents the elapsed time between two instants
-                      as an int64 nanosecond count. The representation limits the
-                      largest representable duration to approximately 290 years.
+                  duration:
+                    description: Default duration is 5m
                     format: int64
                     type: integer
-                required:
-                - basedOn
-                - count
-                - interval
+                  limit:
+                    description: |-
+                      Number of requests allowed in the duration window
+                      If set to 0, rate limiting will be disabled
+                    type: integer
                 type: object
               route:
                 description: Route policy

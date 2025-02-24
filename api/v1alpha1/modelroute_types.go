@@ -36,6 +36,43 @@ const (
 	ModelRouteRateLimitBasedOnUser ModelRouteRateLimitBasedOn = "User"
 )
 
+type ModelRouteRateLimitAdvanceLimitObject struct {
+	// BaseOn specifies what the rate limit is based on
+	BaseOn ModelRouteRateLimitBasedOn `json:"baseOn"`
+	// Value specifies the value to match
+	Value string `json:"value"`
+}
+
+type ModelRouteRateLimitAdvanceLimit struct {
+	// Objects specifies the objects to match for this advance limit
+	Objects []ModelRouteRateLimitAdvanceLimitObject `json:"objects"`
+	// Number of requests allowed in the duration window
+	// If set to 0, rate limiting will be disabled
+	Limit int `json:"limit,omitempty"`
+	// Duration window for rate limiting
+	Duration time.Duration `json:"duration,omitempty"`
+}
+
+// ModelRouteRateLimit provides rate limiting rules that allow more granular control
+// over rate limiting based on combinations of API keys and users.
+//
+// Example:
+// ```yaml
+// rateLimit:
+//
+//	basedOn: "APIKey"      # Base rate limit applies to all API keys
+//	limit: 10              # Allow 10 requests
+//	duration: 1m           # Per minute
+//	advanceLimits:         # Advanced rules for specific cases
+//	  - objects:
+//	      - baseOn: "User"     # Match specific user
+//	        value: "user-123"
+//	      - baseOn: "APIKey"   # And specific API key
+//	        value: "api-key-abc"
+//	    limit: 50
+//	    duration: 1m
+//
+// ```
 type ModelRouteRateLimit struct {
 	BasedOn ModelRouteRateLimitBasedOn `json:"basedOn,omitempty"`
 	// Number of requests allowed in the duration window
@@ -43,12 +80,9 @@ type ModelRouteRateLimit struct {
 	Limit int `json:"limit,omitempty"`
 	// Default duration is 5m
 	Duration time.Duration `json:"duration,omitempty"`
-	// Whitelist of API keys that are exempt from rate limiting
+	// Advanced rate limiting rules
 	// +optional
-	APIKeyWhitelist []string `json:"apiKeyWhitelist,omitempty"`
-	// Whitelist of users that are exempt from rate limiting
-	// +optional
-	UserWhitelist []string `json:"userWhitelist,omitempty"`
+	AdvanceLimits []ModelRouteRateLimitAdvanceLimit `json:"advanceLimits,omitempty"`
 }
 
 // See also:

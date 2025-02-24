@@ -5,7 +5,6 @@ import (
 
 	"knoway.dev/pkg/filters/lbfilter/loadbanlance"
 
-	"knoway.dev/api/route/v1alpha1"
 	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/route"
@@ -76,11 +75,11 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 	return clusterName, found
 }
 
-func isModelRouteConfiguration(cfg *v1alpha1.Route) bool {
-	return cfg.GetLoadBalancePolicy() != v1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED && len(cfg.GetTargets()) != 0
+func isModelRouteConfiguration(cfg *routev1alpha1.Route) bool {
+	return cfg.GetLoadBalancePolicy() != routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED && len(cfg.GetTargets()) != 0
 }
 
-func buildBackendNsMap(cfg *v1alpha1.Route) map[string]string {
+func buildBackendNsMap(cfg *routev1alpha1.Route) map[string]string {
 	nsMap := make(map[string]string)
 	if isModelRouteConfiguration(cfg) {
 		for _, target := range cfg.GetTargets() {

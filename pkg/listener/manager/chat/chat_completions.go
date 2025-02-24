@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"net/http"
 
+	"knoway.dev/pkg/registry/route"
+
 	"github.com/samber/lo"
 
 	"knoway.dev/pkg/metadata"
@@ -48,7 +50,7 @@ func (l *OpenAIChatListener) chatCompletions(writer http.ResponseWriter, request
 
 	rMeta := metadata.RequestMetadataFromCtx(request.Context())
 	rMeta.RequestModel = llmRequest.GetModel()
-	findRoute, _ := listener.FindRoute(request.Context(), llmRequest)
+	findRoute, _ := route.FindRoute(request.Context(), llmRequest)
 
 	if findRoute.GetRouteConfig() != nil {
 		rMeta.MatchRoute = findRoute.GetRouteConfig()

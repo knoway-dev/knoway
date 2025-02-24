@@ -23,6 +23,8 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 	"github.com/stoewer/go-strcase"
@@ -33,11 +35,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"knoway.dev/api/clusters/v1alpha1"
 	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	llmv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/route"
 	"knoway.dev/pkg/route/manager"
 )
@@ -149,10 +149,7 @@ func (r *ModelRouteReconciler) reconcileRegister(ctx context.Context, modelRoute
 
 	removeBackendFunc := func() {
 		if modelName != "" {
-			cluster.RemoveCluster(&v1alpha1.Cluster{
-				Name: modelName,
-			})
-			route.RemoveRoute(modelName)
+			route.RemoveMatchRoute(modelName)
 		}
 	}
 	if isModelRouteDeleted(modelRoute) {
@@ -171,7 +168,7 @@ func (r *ModelRouteReconciler) reconcileRegister(ctx context.Context, modelRoute
 
 	mulErrs := &multierror.Error{}
 	if routeConfig != nil {
-		if err := route.RegisterRouteWithConfig(routeConfig); err != nil {
+		if err := route.RegisterMatchRouteWithConfig(routeConfig); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ModelRoute %s route: %w", modelRoute.GetName(), err))
 		}
@@ -418,6 +415,41 @@ func (r *ModelRouteReconciler) mapModelRouteTargetsToBackends(targets []*routev1
 	return backends
 }
 
+func (r *ModelRouteReconciler) buildRateLimitPolicy(rateLimit *llmv1alpha1.ModelRouteRateLimit) *routev1alpha1.RateLimitPolicy {
+	if rateLimit == nil {
+		return nil
+	}
+
+	policy := &routev1alpha1.RateLimitPolicy{
+		BaseOn:   MapModelRouteRateLimitBaseOnModelRouteRateLimitBaseOn(rateLimit.BasedOn),
+		Limit:    int32(rateLimit.Limit),
+		Duration: durationpb.New(rateLimit.Duration),
+	}
+
+	if len(rateLimit.AdvanceLimits) > 0 {
+		policy.AdvanceLimits = make([]*routev1alpha1.RateLimitAdvanceLimit, 0, len(rateLimit.AdvanceLimits))
+
+		for _, advanceLimit := range rateLimit.AdvanceLimits {
+			objects := make([]*routev1alpha1.RateLimitAdvanceLimitObject, 0, len(advanceLimit.Objects))
+
+			for _, object := range advanceLimit.Objects {
+				objects = append(objects, &routev1alpha1.RateLimitAdvanceLimitObject{
+					BaseOn: MapModelRouteRateLimitBaseOnModelRouteRateLimitBaseOn(object.BaseOn),
+					Value:  object.Value,
+				})
+			}
+
+			policy.AdvanceLimits = append(policy.AdvanceLimits, &routev1alpha1.RateLimitAdvanceLimit{
+				Objects:  objects,
+				Limit:    int32(advanceLimit.Limit),
+				Duration: durationpb.New(advanceLimit.Duration),
+			})
+		}
+	}
+
+	return policy
+}
+
 func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRoute *llmv1alpha1.ModelRoute, mBackends map[string]Backend) *routev1alpha1.Route {
 	if modelRoute == nil {
 		return nil
@@ -431,7 +463,8 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 	}
 
 	return &routev1alpha1.Route{
-		Name: modelName,
+		Name:            modelName,
+		RateLimitPolicy: r.buildRateLimitPolicy(modelRoute.Spec.RateLimit),
 		Matches: []*routev1alpha1.Match{
 			{
 				Model: &routev1alpha1.StringMatch{

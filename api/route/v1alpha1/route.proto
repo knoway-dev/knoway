@@ -53,14 +53,24 @@ message Route {
 }
 
 enum RateLimitBaseOn {
-    USER    = 0;
-    API_KEY = 1;
+    User   = 0;
+    APIKey = 1;
+}
+
+message RateLimitAdvanceLimitObject {
+    RateLimitBaseOn base_on = 1;
+    string value            = 2;
+}
+
+message RateLimitAdvanceLimit {
+    repeated RateLimitAdvanceLimitObject objects = 1;
+    int32 limit                                  = 2;
+    google.protobuf.Duration duration            = 3;
 }
 
 message RateLimitPolicy {
-    RateLimitBaseOn baseOn            = 1;
-    int32 limit                       = 2;
-    google.protobuf.Duration duration = 3;
-    repeated string api_key_whitelist = 4;
-    repeated string user_whitelist    = 5;
+    RateLimitBaseOn base_on                       = 1;
+    int32 limit                                   = 2;
+    google.protobuf.Duration duration             = 3;
+    repeated RateLimitAdvanceLimit advance_limits = 4;
 }

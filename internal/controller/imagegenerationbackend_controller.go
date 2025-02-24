@@ -129,7 +129,7 @@ func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context
 			cluster.RemoveCluster(&v1alpha1.Cluster{
 				Name: modelName,
 			})
-			route.RemoveRoute(modelName)
+			route.RemoveBaseRoute(modelName)
 		}
 	}
 	if isBackendDeleted(BackendFromImageGenerationBackend(backend)) {
@@ -152,7 +152,7 @@ func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ImageGenerationBackend %s: %w", backend.GetName(), err))
 		}
 
-		if err = route.RegisterRouteWithConfig(routeCfg); err != nil {
+		if err = route.RegisterBaseRouteWithConfig(routeCfg); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ImageGenerationBackend %s route: %w", backend.GetName(), err))
 		}

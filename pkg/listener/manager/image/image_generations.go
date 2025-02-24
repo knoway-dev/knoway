@@ -4,8 +4,6 @@ import (
 	"log/slog"
 	"net/http"
 
-	registrycluster "knoway.dev/pkg/registry/cluster"
-
 	"github.com/samber/lo"
 
 	"knoway.dev/pkg/metadata"
@@ -58,12 +56,11 @@ func (l *OpenAIImageListener) imageGeneration(writer http.ResponseWriter, reques
 		}
 	}
 
-	c, ok := registrycluster.FindClusterByName(rMeta.DestinationCluster)
-	if !ok {
+	if rMeta.SelectedCluster.IsAbsent() {
 		return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
 	}
 
-	resp, err = l.clusterDoImageGenerationRequest(request.Context(), c, writer, request, llmRequest)
+	resp, err = l.clusterDoImageGenerationRequest(request.Context(), rMeta.SelectedCluster.MustGet(), writer, request, llmRequest)
 	if !lo.IsNil(resp) {
 		for _, f := range l.reversedFilters.OnImageGenerationsResponseFilters() {
 			fResult := f.OnImageGenerationsResponse(request.Context(), llmRequest, resp)

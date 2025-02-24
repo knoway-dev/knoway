@@ -42,3 +42,10 @@ const (
 	ProviderVLLM   Provider = "vLLM"
 	ProviderOllama Provider = "Ollama"
 )
+
+type BackendType string
+
+const (
+	BackendTypeLLM             BackendType = "LLM"
+	BackendTypeImageGeneration BackendType = "ImageGeneration"
+)

@@ -41,8 +41,6 @@ type Config struct {
 	Debug      bool             `yaml:"debug" json:"debug"`
 	Controller ControllerConfig `yaml:"controller" json:"controller"`
 	Gateway    GatewayConfig    `yaml:"gateway" json:"gateway"`
-	// KubeConfig is the path to the kubeconfig file, used for local development, if empty, in-cluster config will be used.
-	KubeConfig string `yaml:"kubeConfig" json:"kubeConfig"`
 }
 
 // LoadConfig loads the configuration from the specified YAML file

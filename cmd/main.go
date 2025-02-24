@@ -32,7 +32,6 @@ import (
 	"knoway.dev/cmd/server"
 	"knoway.dev/config"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/clients"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -79,8 +78,6 @@ func main() {
 
 	// development static server
 	devStaticServer := false
-
-	clients.InitClients(cfg)
 
 	if devStaticServer {
 		app.Add(func(_ context.Context, lifeCycle bootkit.LifeCycle) error {

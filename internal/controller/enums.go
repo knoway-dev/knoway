@@ -1,9 +1,10 @@
-package clusters
+package controller
 
 import (
 	"github.com/samber/lo"
 
 	"knoway.dev/api/clusters/v1alpha1"
+	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 )
 
@@ -51,4 +52,23 @@ func MapBackendSizeFromClusterSizeFrom(sizeFrom *knowaydevv1alpha1.SizeFrom) *v1
 	}
 
 	return lo.ToPtr(mapClusterSizeFromBackendSizeFrom[*sizeFrom])
+}
+
+var (
+	mapClusterLoadBalancePolicyBackendLoadBalancePolicy = map[knowaydevv1alpha1.LoadBalancePolicy]routev1alpha1.LoadBalancePolicy{
+		knowaydevv1alpha1.LoadBalancePolicyWeightedLeastRequest: routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_LEAST_REQUEST,
+		knowaydevv1alpha1.LoadBalancePolicyWeightedRoundRobin:   routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_ROUND_ROBIN,
+	}
+	mapBackendLoadBalancePolicyClusterLoadBalancePolicy = map[routev1alpha1.LoadBalancePolicy]knowaydevv1alpha1.LoadBalancePolicy{
+		routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_LEAST_REQUEST: knowaydevv1alpha1.LoadBalancePolicyWeightedLeastRequest,
+		routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_ROUND_ROBIN:   knowaydevv1alpha1.LoadBalancePolicyWeightedRoundRobin,
+	}
+)
+
+func MapModelRouteLoadBalancePolicyRouteLoadBalancePolicy(policy routev1alpha1.LoadBalancePolicy) knowaydevv1alpha1.LoadBalancePolicy {
+	return mapBackendLoadBalancePolicyClusterLoadBalancePolicy[policy]
+}
+
+func MapModelRouteLoadBalancePolicyModelRouteLoadBalancePolicy(policy knowaydevv1alpha1.LoadBalancePolicy) routev1alpha1.LoadBalancePolicy {
+	return mapClusterLoadBalancePolicyBackendLoadBalancePolicy[policy]
 }

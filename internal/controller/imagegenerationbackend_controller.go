@@ -37,7 +37,6 @@ import (
 	"knoway.dev/api/clusters/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/route"
@@ -74,7 +73,7 @@ func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ct
 	log.Log.Info("reconcile ImageGenerationBackend modelName", "modelName", modelNameOrNamespacedName(currentBackend))
 
 	rrs := r.getReconciles()
-	if isDeleted(BackendFromImageGenerationBackend(currentBackend)) {
+	if isBackendDeleted(BackendFromImageGenerationBackend(currentBackend)) {
 		rrs = r.getDeleteReconciles()
 	}
 
@@ -85,7 +84,8 @@ func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ct
 
 		err := rr.reconciler(ctx, currentBackend)
 		if err != nil {
-			if isDeleted(BackendFromImageGenerationBackend(currentBackend)) && shouldForceDelete(BackendFromImageGenerationBackend(currentBackend)) {
+			if isBackendDeleted(BackendFromImageGenerationBackend(currentBackend)) &&
+				shouldForceDeleteBackend(BackendFromImageGenerationBackend(currentBackend)) {
 				continue
 			}
 
@@ -110,7 +110,7 @@ func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ct
 		log.Log.Error(err, "reconcile ImageGenerationBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if !statusEqual(BackendFromImageGenerationBackend(currentBackend), BackendFromImageGenerationBackend(newBackend)) {
+	if !statusEqual[knowaydevv1alpha1.StatusEnum](BackendFromImageGenerationBackend(currentBackend).GetStatus(), BackendFromImageGenerationBackend(newBackend).GetStatus()) {
 		newBackend.Status = currentBackend.Status
 		if err := r.Status().Update(ctx, newBackend); err != nil {
 			log.Log.Error(err, "update ImageGenerationBackend status error", "name", currentBackend.GetName())
@@ -132,7 +132,7 @@ func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context
 			route.RemoveRoute(modelName)
 		}
 	}
-	if isDeleted(BackendFromImageGenerationBackend(backend)) {
+	if isBackendDeleted(BackendFromImageGenerationBackend(backend)) {
 		removeBackendFunc()
 		return nil
 	}
@@ -148,13 +148,13 @@ func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context
 	if clusterCfg != nil {
 		err = cluster.UpsertAndRegisterCluster(clusterCfg, r.LifeCycle)
 		if err != nil {
-			log.Log.Error(err, "Failed to upsert LLMBackend", "cluster", clusterCfg)
-			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s: %w", backend.GetName(), err))
+			log.Log.Error(err, "Failed to upsert ImageGenerationBackend", "cluster", clusterCfg)
+			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ImageGenerationBackend %s: %w", backend.GetName(), err))
 		}
 
 		if err = route.RegisterRouteWithConfig(routeCfg); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", modelName)
-			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s route: %w", backend.GetName(), err))
+			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ImageGenerationBackend %s route: %w", backend.GetName(), err))
 		}
 	}
 
@@ -171,7 +171,7 @@ func (r *ImageGenerationBackendReconciler) reconcileUpstreamHealthy(ctx context.
 }
 
 func (r *ImageGenerationBackendReconciler) reconcilePhase(_ context.Context, backend *knowaydevv1alpha1.ImageGenerationBackend) {
-	reconcilePhase(BackendFromImageGenerationBackend(backend))
+	reconcileBackendPhase(BackendFromImageGenerationBackend(backend))
 }
 
 func (r *ImageGenerationBackendReconciler) getReconciles() []reconcileHandler[*knowaydevv1alpha1.ImageGenerationBackend] {
@@ -237,7 +237,7 @@ func (r *ImageGenerationBackendReconciler) reconcileFinalDelete(ctx context.Cont
 		}
 	}
 
-	if !canDelete && !shouldForceDelete(BackendFromImageGenerationBackend(backend)) {
+	if !canDelete && !shouldForceDeleteBackend(BackendFromImageGenerationBackend(backend)) {
 		return errors.New("have delete condition not ready")
 	}
 
@@ -371,13 +371,13 @@ func (r *ImageGenerationBackendReconciler) toRegisterClusterConfig(ctx context.C
 	// usage
 	var sizeFrom *v1alpha1.ClusterMeteringPolicy_SizeFrom
 	if backend.Spec.MeteringPolicy != nil && backend.Spec.MeteringPolicy.SizeFrom != nil {
-		sizeFrom = clusters.MapBackendSizeFromClusterSizeFrom(backend.Spec.MeteringPolicy.SizeFrom)
+		sizeFrom = MapBackendSizeFromClusterSizeFrom(backend.Spec.MeteringPolicy.SizeFrom)
 	}
 
 	return &v1alpha1.Cluster{
 		Type:     v1alpha1.ClusterType_IMAGE_GENERATION,
 		Name:     modelName,
-		Provider: clusters.MapBackendProviderToClusterProvider(backend.Spec.Provider),
+		Provider: MapBackendProviderToClusterProvider(backend.Spec.Provider),
 		Created:  backend.GetCreationTimestamp().Unix(),
 
 		// todo configurable to replace hard config

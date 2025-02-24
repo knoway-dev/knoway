@@ -4,6 +4,7 @@ dictionaryDefinitions: []
 dictionaries: []
 words:
   - anypb
+  - apierrors
   - apikey
   - apimachinery
   - bmatcuk
@@ -12,6 +13,7 @@ words:
   - bufconn
   - bufnet
   - Causef
+  - clientcmd
   - clientgoscheme
   - clusterfilters
   - containedctx
@@ -73,16 +75,19 @@ words:
   - knoway
   - knowaydevv1alpha1
   - kubebuilder
+  - kubeconfig
   - listenerfilters
   - lll
   - llmbackend
   - llmbackends
+  - llmv1alpha1
   - Loggable
   - maintidx
   - Marshallers
   - metav1
   - metricsserver
   - misspell
+  - modelroute
   - multierror
   - nakedret
   - nekomeowww
@@ -103,6 +108,7 @@ words:
   - predeclared
   - Preflights
   - printcolumn
+  - protogetter
   - protoutils
   - ptypes
   - qwen
@@ -112,11 +118,15 @@ words:
   - registryfilters
   - registryroute
   - revive
+  - routev1alpha1
   - samber
   - sashabaranov
   - servicev1alpha1
   - stabilityai
   - staticcheck
+  - Statusable
+  - Statuser
+  - strcase
   - stretchr
   - structpb
   - stylecheck

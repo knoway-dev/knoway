@@ -9,6 +9,7 @@ import (
 
 	"knoway.dev/api/clusters/v1alpha1"
 	v1alpha12 "knoway.dev/api/service/v1alpha1"
+	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/object"
 )
 
@@ -29,11 +30,12 @@ type RequestMetadata struct {
 	StatusCode   int
 	ErrorMessage string
 
-	DestinationCluster string // Set in LoadBalancerFilter
-
 	// Auth related metadata
 	EnabledAuthFilter bool                          // Set in AuthFilter
 	AuthInfo          *v1alpha12.APIKeyAuthResponse // Set in AuthFilter
+
+	// SelectedCluster is the cluster that the request is routed to
+	SelectedCluster mo.Option[clusters.Cluster]
 
 	// Upstream related metadata
 	UpstreamProvider             v1alpha1.ClusterProvider // Set in Cluster Manager

@@ -5,20 +5,20 @@ import (
 
 	"knoway.dev/pkg/filters/lbfilter/loadbanlance"
 
-	"knoway.dev/api/route/v1alpha1"
+	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/route"
 )
 
 type routeManager struct {
-	cfg *v1alpha1.Route
+	cfg *routev1alpha1.Route
 	// filters []filters.RequestFilter
 	route.Route
 	lb    loadbanlance.LoadBalancer
 	nsMap map[string]string
 }
 
-func NewWithConfig(cfg *v1alpha1.Route) (route.Route, error) {
+func NewWithConfig(cfg *routev1alpha1.Route) (route.Route, error) {
 	rm := &routeManager{
 		cfg:   cfg,
 		lb:    loadbanlance.New(cfg),
@@ -60,12 +60,17 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 			continue
 		}
 
-		if !isModelRouteConfiguration(m.cfg) {
+		if len(m.cfg.GetTargets()) == 0 {
 			continue
 		}
 
-		if backend := m.lb.Next(request); backend != "" {
-			clusterName = backend
+		// default lb policy
+		if m.cfg.GetLoadBalancePolicy() == routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED {
+			return m.cfg.GetTargets()[0].GetDestination().GetBackend(), m.cfg.GetTargets()[0].GetDestination().GetBackend() != ""
+		}
+
+		if cluster := m.lb.Next(request); cluster != "" {
+			clusterName = cluster
 			found = true
 
 			break
@@ -75,24 +80,15 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 	return clusterName, found
 }
 
-func isModelRouteConfiguration(cfg *v1alpha1.Route) bool {
-	return cfg.GetLoadBalancePolicy() != v1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED && len(cfg.GetTargets()) != 0
-}
-
-func buildBackendNsMap(cfg *v1alpha1.Route) map[string]string {
+func buildBackendNsMap(cfg *routev1alpha1.Route) map[string]string {
 	nsMap := make(map[string]string)
-	if isModelRouteConfiguration(cfg) {
-		for _, target := range cfg.GetTargets() {
-			if target.GetDestination() == nil {
-				continue
-			}
 
-			ns := target.GetDestination().GetNamespace()
-			if ns == "" {
-				ns = "public"
-			}
-			nsMap[target.GetDestination().GetBackend()] = ns
+	for _, target := range cfg.GetTargets() {
+		if target.GetDestination() == nil {
+			continue
 		}
+
+		nsMap[target.GetDestination().GetBackend()] = target.GetDestination().GetNamespace()
 	}
 
 	return nsMap

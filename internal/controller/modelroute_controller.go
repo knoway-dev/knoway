@@ -195,8 +195,13 @@ func (r *ModelRouteReconciler) reconcileDestinationHealthy(ctx context.Context, 
 	targetsStatus := make([]llmv1alpha1.ModelRouteStatusTarget, 0, len(mBackends))
 
 	for _, target := range crdTargets {
+		tns := target.GetDestination().GetNamespace()
+		if tns == "" {
+			tns = modelRoute.GetNamespace()
+		}
+
 		nsName := types.NamespacedName{
-			Namespace: target.GetDestination().GetNamespace(),
+			Namespace: tns,
 			Name:      target.GetDestination().GetBackend(),
 		}
 
@@ -371,9 +376,13 @@ func (r *ModelRouteReconciler) getModelRouteTargets(modelRoute *llmv1alpha1.Mode
 				weight = lo.ToPtr(int32(lo.FromPtr(target.Destination.Weight)))
 			}
 
+			tns := target.Destination.Namespace
+			if tns == "" {
+				tns = modelRoute.GetNamespace()
+			}
 			targets = append(targets, &routev1alpha1.RouteTarget{
 				Destination: &routev1alpha1.RouteDestination{
-					Namespace: target.Destination.Namespace,
+					Namespace: tns,
 					Backend:   target.Destination.Backend,
 					Weight:    weight,
 				},

@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"hash/fnv"
 	"net/http"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"knoway.dev/pkg/metadata"
+	"knoway.dev/pkg/object"
 
 	"knoway.dev/api/filters/v1alpha1"
 	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
-	"knoway.dev/pkg/metadata"
-	"knoway.dev/pkg/object"
 	"knoway.dev/pkg/protoutils"
 
 	"google.golang.org/protobuf/types/known/anypb"
@@ -23,7 +25,7 @@ import (
 const (
 	cleanupInterval    = 30 * time.Minute
 	cleanupThreshold   = 24 * time.Hour
-	defaultDuration    = 5 * time.Minute
+	defaultDuration    = 1 * time.Minute
 	numShards          = 64    // Number of shards, must be power of 2
 	maxBucketsPerShard = 10000 // Maximum buckets per shard
 	precision          = 1000  // Precision for fixed-point arithmetic
@@ -48,8 +50,12 @@ type RateLimiter struct {
 
 	shards    []*rateLimitShard
 	numShards int
-	stopCh    chan struct{}
+	cancel    context.CancelFunc
 }
+
+var _ filters.RequestFilter = (*RateLimiter)(nil)
+var _ filters.OnCompletionRequestFilter = (*RateLimiter)(nil)
+var _ filters.OnImageGenerationsRequestFilter = (*RateLimiter)(nil)
 
 func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {
 	_, err := protoutils.FromAny(cfg, &v1alpha1.RateLimitConfig{})
@@ -57,15 +63,16 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	rl := &RateLimiter{
 		shards:    make([]*rateLimitShard, numShards),
 		numShards: numShards,
-		stopCh:    make(chan struct{}),
+		cancel:    cancel,
 	}
 
 	// init shards
-	//nolint:intrange
-	for i := 0; i < numShards; i++ {
+	for i := range numShards {
 		rl.shards[i] = &rateLimitShard{
 			buckets:        make(map[string]*tokenBucket),
 			lastAccessTime: make(map[string]time.Time),
@@ -73,11 +80,11 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 	}
 
 	// start cleanup
-	go rl.cleanupLoop()
+	go rl.cleanupLoop(ctx)
 
 	lifecycle.Append(bootkit.LifeCycleHook{
 		OnStop: func(ctx context.Context) error {
-			close(rl.stopCh)
+			rl.cancel()
 			return nil
 		},
 	})
@@ -85,8 +92,13 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 	return rl, nil
 }
 
-var _ filters.RequestFilter = (*RateLimiter)(nil)
-var _ filters.OnCompletionRequestFilter = (*RateLimiter)(nil)
+func (rl *RateLimiter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+	return rl.onRequest(ctx)
+}
+
+func (rl *RateLimiter) OnImageGenerationsRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+	return rl.onRequest(ctx)
+}
 
 func (rl *RateLimiter) getShard(key string) *rateLimitShard {
 	h := fnv.New32a()
@@ -97,7 +109,7 @@ func (rl *RateLimiter) getShard(key string) *rateLimitShard {
 }
 
 // Cleanup old keys that haven't been accessed for more than 24 hours
-func (rl *RateLimiter) cleanupLoop() {
+func (rl *RateLimiter) cleanupLoop(ctx context.Context) {
 	ticker := time.NewTicker(cleanupInterval)
 	defer ticker.Stop()
 
@@ -105,7 +117,7 @@ func (rl *RateLimiter) cleanupLoop() {
 		select {
 		case <-ticker.C:
 			rl.cleanup()
-		case <-rl.stopCh:
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -126,33 +138,6 @@ func (rl *RateLimiter) cleanup() {
 		}
 		shard.mu.Unlock()
 	}
-}
-
-func (rl *RateLimiter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
-	rMeta := metadata.RequestMetadataFromCtx(ctx)
-	apiKey := rMeta.AuthInfo.GetApiKeyId()
-	userName := rMeta.AuthInfo.GetUserId()
-
-	if apiKey == "" && userName == "" {
-		return filters.NewOK()
-	}
-
-	rCfg := rMeta.MatchRoute
-	if rCfg == nil || rCfg.GetRateLimitPolicy() == nil {
-		return filters.NewOK()
-	}
-
-	routeName := rCfg.GetName()
-
-	if routeName == "" {
-		return filters.NewOK()
-	}
-
-	if !rl.AllowRequestWithConfig(apiKey, userName, routeName, rCfg.GetRateLimitPolicy()) {
-		return filters.NewFailed(object.NewErrorRateLimitExceeded())
-	}
-
-	return filters.NewOK()
 }
 
 func (rl *RateLimiter) checkBucket(key string, window time.Duration, limit int) bool {
@@ -236,68 +221,85 @@ func buildKey(baseOn routev1alpha1.RateLimitBaseOn, value string, routeName stri
 	return fmt.Sprintf("%s:%s:%s", baseOn, value, routeName)
 }
 
-func (rl *RateLimiter) AllowRequestWithConfig(apiKey, userName string, routeName string, config *routev1alpha1.RateLimitPolicy) bool {
+func (rl *RateLimiter) onRequest(ctx context.Context) filters.RequestFilterResult {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+	apiKey := rMeta.AuthInfo.GetApiKeyId()
+	userName := rMeta.AuthInfo.GetUserId()
+
+	if apiKey == "" && userName == "" {
+		return filters.NewOK()
+	}
+
+	rCfg := rMeta.MatchRoute
+	if rCfg == nil || rCfg.GetRateLimitPolicy() == nil {
+		return filters.NewOK()
+	}
+
+	routeName := rCfg.GetName()
+
+	if routeName == "" {
+		return filters.NewOK()
+	}
+
+	if !rl.CheckRateLimitPolicies(apiKey, userName, routeName, rCfg.GetRateLimitPolicy()) {
+		return filters.NewFailed(object.NewErrorRateLimitExceeded())
+	}
+
+	return filters.NewOK()
+}
+
+func (rl *RateLimiter) CheckRateLimitPolicies(apiKey, userName string, routeName string, config []*routev1alpha1.RateLimitPolicy) bool {
 	if config == nil {
 		return true
 	}
 
-	// check advanced limits first
-	for _, advanceLimit := range config.GetAdvanceLimits() {
-		on := routev1alpha1.RateLimitBaseOn_APIKey
-		value := ""
+	for _, policy := range config {
+		var value string
 
-		for _, obj := range advanceLimit.GetObjects() {
-			switch obj.GetBaseOn() {
-			case routev1alpha1.RateLimitBaseOn_APIKey:
-				if apiKey == obj.GetValue() {
-					value = apiKey
-					break
-				}
-			case routev1alpha1.RateLimitBaseOn_User:
-				if userName == obj.GetValue() {
-					on = routev1alpha1.RateLimitBaseOn_User
-					value = userName
+		switch policy.GetBasedOn() {
+		case routev1alpha1.RateLimitBaseOn_API_KEY:
+			value = apiKey
+		case routev1alpha1.RateLimitBaseOn_USER_ID:
+			value = userName
+		case routev1alpha1.RateLimitBaseOn_RATE_LIMIT_BASE_ON_UNSPECIFIED:
+			continue
+		default:
+			continue
+		}
 
-					break
-				}
+		matched := false
+		if policy.GetMatch() == nil {
+			// effective scope: any baseOn value
+			matched = true
+		} else {
+			if policy.GetMatch().GetExact() == value {
+				matched = true
+			} else if policy.GetMatch().GetPrefix() != "" && strings.HasPrefix(value, policy.GetMatch().GetPrefix()) {
+				matched = true
 			}
 		}
 
-		if value == "" {
+		if !matched {
 			continue
 		}
 
 		// disabled limit
-		if advanceLimit.GetLimit() == 0 {
+		if policy.GetLimit() == 0 {
 			return true
 		}
 
-		key := buildKey(on, value, routeName)
+		duration := policy.GetDuration().AsDuration()
+		if duration == 0 {
+			duration = defaultDuration
+		}
 
-		return rl.checkBucket(key, advanceLimit.GetDuration().AsDuration(), int(advanceLimit.GetLimit()))
+		key := buildKey(policy.GetBasedOn(), value, routeName)
+		allowed := rl.checkBucket(key, duration, int(policy.GetLimit()))
+
+		if !allowed {
+			return false
+		}
 	}
 
-	// disabled limit
-	if config.GetLimit() == 0 {
-		return true
-	}
-
-	duration := config.GetDuration().AsDuration()
-	if duration == 0 {
-		duration = defaultDuration
-	}
-
-	var value string
-
-	switch config.GetBaseOn() {
-	case routev1alpha1.RateLimitBaseOn_APIKey:
-		value = apiKey
-	case routev1alpha1.RateLimitBaseOn_User:
-		value = userName
-	}
-
-	key := buildKey(config.GetBaseOn(), value, routeName)
-	allowed := rl.checkBucket(key, duration, int(config.GetLimit()))
-
-	return allowed
+	return true
 }

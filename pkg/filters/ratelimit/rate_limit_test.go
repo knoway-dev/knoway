@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -10,10 +11,11 @@ import (
 )
 
 func TestCheckBucket(t *testing.T) {
+	_, cancel := context.WithCancel(context.Background())
 	rl := &RateLimiter{
 		shards:    make([]*rateLimitShard, numShards),
 		numShards: numShards,
-		stopCh:    make(chan struct{}),
+		cancel:    cancel,
 	}
 
 	// Initialize shards
@@ -102,13 +104,13 @@ func TestCheckBucket(t *testing.T) {
 	}
 }
 
-func TestRateLimiter_AllowRequestWithConfig(t *testing.T) {
+func TestRateLimiter_CheckRateLimitPolicies(t *testing.T) {
 	tests := []struct {
 		name     string
 		apiKey   string
 		userName string
 		route    string
-		policy   *routev1alpha1.RateLimitPolicy
+		policy   []*routev1alpha1.RateLimitPolicy
 		requests int
 		expected []bool
 	}{
@@ -117,67 +119,66 @@ func TestRateLimiter_AllowRequestWithConfig(t *testing.T) {
 			apiKey:   "key1",
 			userName: "user1",
 			route:    "route1",
-			policy: &routev1alpha1.RateLimitPolicy{
-				BaseOn:   routev1alpha1.RateLimitBaseOn_APIKey,
-				Limit:    2,
-				Duration: durationpb.New(60 * time.Second), // 1 minute
+			policy: []*routev1alpha1.RateLimitPolicy{
+				{
+					BasedOn:  routev1alpha1.RateLimitBaseOn_API_KEY,
+					Limit:    2,
+					Duration: durationpb.New(60 * time.Second), // 1 minute
+				},
 			},
 			requests: 3,
 			expected: []bool{true, true, false}, // First 2 allowed, 3rd rejected
 		},
 		{
-			name:     "advance limit - 5 requests per minute for specific API key",
+			name:     "basic user id limit - 2 requests per minute",
+			apiKey:   "key1",
+			userName: "user1",
+			route:    "route1",
+			policy: []*routev1alpha1.RateLimitPolicy{
+				{
+					BasedOn:  routev1alpha1.RateLimitBaseOn_USER_ID,
+					Limit:    2,
+					Duration: durationpb.New(60 * time.Second), // 1 minute
+				},
+			},
+			requests: 3,
+			expected: []bool{true, true, false}, // First 2 allowed, 3rd rejected
+		},
+		{
+			name:     "api key limit with match exact",
 			apiKey:   "special-key",
 			userName: "user1",
 			route:    "route1",
-			policy: &routev1alpha1.RateLimitPolicy{
-				// Default limit
-				BaseOn:   routev1alpha1.RateLimitBaseOn_APIKey,
-				Limit:    2,
-				Duration: durationpb.New(60 * time.Second),
-				// Advanced limit for specific API key
-				AdvanceLimits: []*routev1alpha1.RateLimitAdvanceLimit{
-					{
-						Objects: []*routev1alpha1.RateLimitAdvanceLimitObject{
-							{
-								BaseOn: routev1alpha1.RateLimitBaseOn_APIKey,
-								Value:  "special-key",
-							},
+			policy: []*routev1alpha1.RateLimitPolicy{
+				{
+					Match: &routev1alpha1.StringMatch{
+						Match: &routev1alpha1.StringMatch_Exact{
+							Exact: "special-key",
 						},
-						Limit:    5,
-						Duration: durationpb.New(60 * time.Second),
 					},
+					BasedOn:  routev1alpha1.RateLimitBaseOn_API_KEY,
+					Limit:    5,
+					Duration: durationpb.New(60 * time.Second),
 				},
 			},
 			requests: 6,
 			expected: []bool{true, true, true, true, true, false}, // First 5 allowed, 6th rejected
 		},
 		{
-			name:     "advance limit - combined user and API key",
-			apiKey:   "key-vip",
-			userName: "user-vip",
+			name:     "api key limit with match prefix",
+			apiKey:   "key-vip-123",
+			userName: "user1",
 			route:    "route1",
-			policy: &routev1alpha1.RateLimitPolicy{
-				// Default limit
-				BaseOn:   routev1alpha1.RateLimitBaseOn_APIKey,
-				Limit:    2,
-				Duration: durationpb.New(60 * time.Second),
-				// Advanced limit for VIP user+key combination
-				AdvanceLimits: []*routev1alpha1.RateLimitAdvanceLimit{
-					{
-						Objects: []*routev1alpha1.RateLimitAdvanceLimitObject{
-							{
-								BaseOn: routev1alpha1.RateLimitBaseOn_APIKey,
-								Value:  "key-vip",
-							},
-							{
-								BaseOn: routev1alpha1.RateLimitBaseOn_User,
-								Value:  "user-vip",
-							},
+			policy: []*routev1alpha1.RateLimitPolicy{
+				{
+					Match: &routev1alpha1.StringMatch{
+						Match: &routev1alpha1.StringMatch_Prefix{
+							Prefix: "key-vip-",
 						},
-						Limit:    3,
-						Duration: durationpb.New(60 * time.Second),
 					},
+					BasedOn:  routev1alpha1.RateLimitBaseOn_API_KEY,
+					Limit:    3,
+					Duration: durationpb.New(60 * time.Second),
 				},
 			},
 			requests: 4,
@@ -187,10 +188,12 @@ func TestRateLimiter_AllowRequestWithConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			_, cancel := context.WithCancel(context.Background())
+
 			rl := &RateLimiter{
 				shards:    make([]*rateLimitShard, numShards),
 				numShards: numShards,
-				stopCh:    make(chan struct{}),
+				cancel:    cancel,
 			}
 
 			for i := range numShards {
@@ -201,9 +204,9 @@ func TestRateLimiter_AllowRequestWithConfig(t *testing.T) {
 			}
 
 			for i := range tt.requests {
-				got := rl.AllowRequestWithConfig(tt.apiKey, tt.userName, tt.route, tt.policy)
+				got := rl.CheckRateLimitPolicies(tt.apiKey, tt.userName, tt.route, tt.policy)
 				if got != tt.expected[i] {
-					t.Errorf("Request %d: AllowRequestWithConfig() = %v, want %v", i+1, got, tt.expected[i])
+					t.Errorf("Request %d = %v, want %v", i+1, got, tt.expected[i])
 				}
 			}
 		})

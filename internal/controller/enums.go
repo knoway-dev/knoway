@@ -75,12 +75,12 @@ func MapModelRouteLoadBalancePolicyModelRouteLoadBalancePolicy(policy knowaydevv
 
 var (
 	mapClusterRateLimitBaseOnBackendRateLimitBaseOn = map[knowaydevv1alpha1.ModelRouteRateLimitBasedOn]routev1alpha1.RateLimitBaseOn{
-		knowaydevv1alpha1.ModelRouteRateLimitBasedOnUser:   routev1alpha1.RateLimitBaseOn_User,
-		knowaydevv1alpha1.ModelRouteRateLimitBasedOnAPIKey: routev1alpha1.RateLimitBaseOn_APIKey,
+		knowaydevv1alpha1.ModelRouteRateLimitBasedOnUserID: routev1alpha1.RateLimitBaseOn_USER_ID,
+		knowaydevv1alpha1.ModelRouteRateLimitBasedOnAPIKey: routev1alpha1.RateLimitBaseOn_API_KEY,
 	}
 	mapBackendRateLimitBaseOnClusterRateLimitBaseOn = map[routev1alpha1.RateLimitBaseOn]knowaydevv1alpha1.ModelRouteRateLimitBasedOn{
-		routev1alpha1.RateLimitBaseOn_User:   knowaydevv1alpha1.ModelRouteRateLimitBasedOnUser,
-		routev1alpha1.RateLimitBaseOn_APIKey: knowaydevv1alpha1.ModelRouteRateLimitBasedOnAPIKey,
+		routev1alpha1.RateLimitBaseOn_USER_ID: knowaydevv1alpha1.ModelRouteRateLimitBasedOnUserID,
+		routev1alpha1.RateLimitBaseOn_API_KEY: knowaydevv1alpha1.ModelRouteRateLimitBasedOnAPIKey,
 	}
 )
 

@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"time"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -32,57 +30,27 @@ type ModelRouteRateLimitBasedOn string
 const (
 	// ModelRouteRateLimitBasedOnAPIKey indicates rate limiting based on API key
 	ModelRouteRateLimitBasedOnAPIKey ModelRouteRateLimitBasedOn = "APIKey"
-	// ModelRouteRateLimitBasedOnUser indicates rate limiting based on user identity
-	ModelRouteRateLimitBasedOnUser ModelRouteRateLimitBasedOn = "User"
+	// ModelRouteRateLimitBasedOnUserID indicates rate limiting based on user identity
+	ModelRouteRateLimitBasedOnUserID ModelRouteRateLimitBasedOn = "UserID"
 )
 
-type ModelRouteRateLimitAdvanceLimitObject struct {
-	// BaseOn specifies what the rate limit is based on
-	BaseOn ModelRouteRateLimitBasedOn `json:"baseOn"`
-	// Value specifies the value to match
-	Value string `json:"value"`
+type StringMatch struct {
+	// Exact match value
+	Exact string `json:"exact,omitempty"`
+	// Prefix match value
+	Prefix string `json:"prefix,omitempty"`
 }
 
-type ModelRouteRateLimitAdvanceLimit struct {
-	// Objects specifies the objects to match for this advance limit
-	Objects []ModelRouteRateLimitAdvanceLimitObject `json:"objects"`
-	// Number of requests allowed in the duration window
-	// If set to 0, rate limiting will be disabled
-	Limit int `json:"limit,omitempty"`
-	// Default duration is 300 seconds, with the unit being seconds
-	Duration time.Duration `json:"duration,omitempty"`
-}
-
-// ModelRouteRateLimit provides rate limiting rules that allow more granular control
-// over rate limiting based on combinations of API keys and users.
-//
-// Example:
-// ```yaml
-// rateLimit:
-//
-//	basedOn: "APIKey"      # Base rate limit applies to all API keys
-//	limit: 10              # Allow 10 requests
-//	duration: 300          # 300s
-//	advanceLimits:         # Advanced rules for specific cases
-//	  - objects:
-//	      - baseOn: "User"     # Match specific user
-//	        value: "user-123"
-//	      - baseOn: "APIKey"   # And specific API key
-//	        value: "api-key-abc"
-//	    limit: 50
-//	    duration: 1m
-//
-// ```
 type ModelRouteRateLimit struct {
-	BasedOn ModelRouteRateLimitBasedOn `json:"basedOn,omitempty"`
+	// Match specifies the match criteria for this rate limit
+	Match *StringMatch `json:"match,omitempty"`
 	// Number of requests allowed in the duration window
 	// If set to 0, rate limiting will be disabled
 	Limit int `json:"limit,omitempty"`
+	// BasedOn specifies what the rate limit is based on
+	BasedOn ModelRouteRateLimitBasedOn `json:"basedOn,omitempty"`
 	// Default duration is 300 seconds, with the unit being seconds
 	Duration int64 `json:"duration,omitempty"`
-	// Advanced rate limiting rules
-	// +optional
-	AdvanceLimits []ModelRouteRateLimitAdvanceLimit `json:"advanceLimits,omitempty"`
 }
 
 // See also:
@@ -135,7 +103,7 @@ type ModelRouteSpec struct {
 	// Rate limit policy
 	// +kubebuilder:validation:Optional
 	// +optional
-	RateLimit *ModelRouteRateLimit `json:"rateLimit"`
+	RateLimit []*ModelRouteRateLimit `json:"rateLimit"`
 	// Route policy
 	// +kubebuilder:validation:Optional
 	// +optional

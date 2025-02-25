@@ -416,39 +416,36 @@ func (r *ModelRouteReconciler) mapModelRouteTargetsToBackends(targets []*routev1
 	return backends
 }
 
-func (r *ModelRouteReconciler) buildRateLimitPolicy(rateLimit *llmv1alpha1.ModelRouteRateLimit) *routev1alpha1.RateLimitPolicy {
-	if rateLimit == nil {
+func (r *ModelRouteReconciler) buildRateLimitPolicy(rateLimits []*llmv1alpha1.ModelRouteRateLimit) []*routev1alpha1.RateLimitPolicy {
+	if len(rateLimits) == 0 {
 		return nil
 	}
 
-	policy := &routev1alpha1.RateLimitPolicy{
-		BaseOn:   MapModelRouteRateLimitBaseOnModelRouteRateLimitBaseOn(rateLimit.BasedOn),
-		Limit:    int32(rateLimit.Limit),
-		Duration: durationpb.New(time.Duration(rateLimit.Duration) * time.Second),
-	}
+	res := make([]*routev1alpha1.RateLimitPolicy, 0)
 
-	if len(rateLimit.AdvanceLimits) > 0 {
-		policy.AdvanceLimits = make([]*routev1alpha1.RateLimitAdvanceLimit, 0, len(rateLimit.AdvanceLimits))
-
-		for _, advanceLimit := range rateLimit.AdvanceLimits {
-			objects := make([]*routev1alpha1.RateLimitAdvanceLimitObject, 0, len(advanceLimit.Objects))
-
-			for _, object := range advanceLimit.Objects {
-				objects = append(objects, &routev1alpha1.RateLimitAdvanceLimitObject{
-					BaseOn: MapModelRouteRateLimitBaseOnModelRouteRateLimitBaseOn(object.BaseOn),
-					Value:  object.Value,
-				})
+	for _, rateLimit := range rateLimits {
+		var pMatch *routev1alpha1.StringMatch
+		if rateLimit.Match != nil {
+			if rateLimit.Match.Exact != "" {
+				pMatch = &routev1alpha1.StringMatch{
+					Match: &routev1alpha1.StringMatch_Exact{Exact: rateLimit.Match.Exact},
+				}
+			} else if rateLimit.Match.Prefix != "" {
+				pMatch = &routev1alpha1.StringMatch{
+					Match: &routev1alpha1.StringMatch_Prefix{Prefix: rateLimit.Match.Exact},
+				}
 			}
-
-			policy.AdvanceLimits = append(policy.AdvanceLimits, &routev1alpha1.RateLimitAdvanceLimit{
-				Objects:  objects,
-				Limit:    int32(advanceLimit.Limit),
-				Duration: durationpb.New(time.Duration(rateLimit.Duration) * time.Second),
-			})
 		}
+
+		res = append(res, &routev1alpha1.RateLimitPolicy{
+			BasedOn:  MapModelRouteRateLimitBaseOnModelRouteRateLimitBaseOn(rateLimit.BasedOn),
+			Limit:    int32(rateLimit.Limit),
+			Duration: durationpb.New(time.Duration(rateLimit.Duration) * time.Second),
+			Match:    pMatch,
+		})
 	}
 
-	return policy
+	return res
 }
 
 func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRoute *llmv1alpha1.ModelRoute, mBackends map[string]Backend) *routev1alpha1.Route {

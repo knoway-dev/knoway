@@ -43,55 +43,35 @@ spec:
                 type: string
               rateLimit:
                 description: Rate limit policy
-                properties:
-                  advanceLimits:
-                    description: Advanced rate limiting rules
-                    items:
+                items:
+                  properties:
+                    basedOn:
+                      description: BasedOn specifies what the rate limit is based
+                        on
+                      type: string
+                    duration:
+                      description: Default duration is 300 seconds, with the unit
+                        being seconds
+                      format: int64
+                      type: integer
+                    limit:
+                      description: |-
+                        Number of requests allowed in the duration window
+                        If set to 0, rate limiting will be disabled
+                      type: integer
+                    match:
+                      description: Match specifies the match criteria for this rate
+                        limit
                       properties:
-                        duration:
-                          description: Default duration is 300 seconds, with the unit
-                            being seconds
-                          format: int64
-                          type: integer
-                        limit:
-                          description: |-
-                            Number of requests allowed in the duration window
-                            If set to 0, rate limiting will be disabled
-                          type: integer
-                        objects:
-                          description: Objects specifies the objects to match for
-                            this advance limit
-                          items:
-                            properties:
-                              baseOn:
-                                description: BaseOn specifies what the rate limit
-                                  is based on
-                                type: string
-                              value:
-                                description: Value specifies the value to match
-                                type: string
-                            required:
-                            - baseOn
-                            - value
-                            type: object
-                          type: array
-                      required:
-                      - objects
+                        exact:
+                          description: Exact match value
+                          type: string
+                        prefix:
+                          description: Prefix match value
+                          type: string
                       type: object
-                    type: array
-                  basedOn:
-                    type: string
-                  duration:
-                    description: Default duration is 300 seconds, with the unit being
-                      seconds
-                    format: int64
-                    type: integer
-                  limit:
-                    description: |-
-                      Number of requests allowed in the duration window
-                      If set to 0, rate limiting will be disabled
-                    type: integer
-                type: object
+                  type: object
+                type: array
               route:
                 description: Route policy
                 properties:

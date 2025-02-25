@@ -45,33 +45,23 @@ enum LoadBalancePolicy {
 }
 
 message Route {
-    string name                           = 1;
-    repeated Match matches                = 2;
-    repeated RouteFilter filters          = 3;
-    LoadBalancePolicy load_balance_policy = 4;
-    repeated RouteTarget targets          = 5;
-    RateLimitPolicy rate_limit_policy     = 6;
+    string name                                = 1;
+    repeated Match matches                     = 2;
+    repeated RouteFilter filters               = 3;
+    LoadBalancePolicy load_balance_policy      = 4;
+    repeated RouteTarget targets               = 5;
+    repeated RateLimitPolicy rate_limit_policy = 6;
 }
 
 enum RateLimitBaseOn {
-    User   = 0;
-    APIKey = 1;
-}
-
-message RateLimitAdvanceLimitObject {
-    RateLimitBaseOn base_on = 1;
-    string value            = 2;
-}
-
-message RateLimitAdvanceLimit {
-    repeated RateLimitAdvanceLimitObject objects = 1;
-    int32 limit                                  = 2;
-    google.protobuf.Duration duration            = 3;
+    RATE_LIMIT_BASE_ON_UNSPECIFIED = 0;
+    USER_ID                        = 1;
+    API_KEY                        = 2;
 }
 
 message RateLimitPolicy {
-    RateLimitBaseOn base_on                       = 1;
-    int32 limit                                   = 2;
-    google.protobuf.Duration duration             = 3;
-    repeated RateLimitAdvanceLimit advance_limits = 4;
+    StringMatch match                 = 1;
+    int32 limit                       = 2;
+    RateLimitBaseOn based_on          = 3;
+    google.protobuf.Duration duration = 4;
 }

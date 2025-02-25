@@ -55,7 +55,7 @@ func (l *OpenAIChatListener) completions(writer http.ResponseWriter, request *ht
 	rMeta.RequestModel = llmRequest.GetModel()
 	findRoute, _ := route.FindRoute(request.Context(), llmRequest)
 
-	if findRoute.GetRouteConfig() != nil {
+	if findRoute != nil && findRoute.GetRouteConfig() != nil {
 		rMeta.MatchRoute = findRoute.GetRouteConfig()
 	}
 

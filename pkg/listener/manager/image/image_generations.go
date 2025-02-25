@@ -52,7 +52,7 @@ func (l *OpenAIImageListener) imageGeneration(writer http.ResponseWriter, reques
 	rMeta.RequestModel = llmRequest.GetModel()
 	findRoute, _ := route.FindRoute(request.Context(), llmRequest)
 
-	if findRoute.GetRouteConfig() != nil {
+	if findRoute != nil && findRoute.GetRouteConfig() != nil {
 		rMeta.MatchRoute = findRoute.GetRouteConfig()
 	}
 

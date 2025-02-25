@@ -95,9 +95,5 @@ func buildBackendNsMap(cfg *routev1alpha1.Route) map[string]string {
 }
 
 func (m *routeManager) GetRouteConfig() *routev1alpha1.Route {
-	if m == nil || m.cfg == nil {
-		return nil
-	}
-
 	return m.cfg
 }

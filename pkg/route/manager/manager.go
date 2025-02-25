@@ -88,11 +88,7 @@ func buildBackendNsMap(cfg *routev1alpha1.Route) map[string]string {
 			continue
 		}
 
-		ns := target.GetDestination().GetNamespace()
-		if ns == "" {
-			ns = "public"
-		}
-		nsMap[target.GetDestination().GetBackend()] = ns
+		nsMap[target.GetDestination().GetBackend()] = target.GetDestination().GetNamespace()
 	}
 
 	return nsMap

@@ -2,7 +2,6 @@ package lbfilter
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -56,7 +55,7 @@ func onRequest(ctx context.Context, request object.LLMRequest) filters.RequestFi
 
 	c, ok := findCluster(ctx, request, clusterType)
 	if !ok {
-		return filters.NewFailed(errors.New("cluster not found"))
+		return filters.NewFailed(object.NewErrorModelNotFoundOrNotAccessible(request.GetModel()))
 	}
 
 	// set destination cluster to context

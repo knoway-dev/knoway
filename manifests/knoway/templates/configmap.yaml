@@ -8,12 +8,34 @@ metadata:
 data:
   config.yaml: |-
     debug: {{.Values.debug }}
-    gateway:
-      auth_server:
-        url: {{ .Values.config.auth_server.url }}
-        timeout: {{ .Values.config.auth_server.timeout }}
-      stats_server:
-        url: {{ .Values.config.stats_server.url }}
-        timeout: {{ .Values.config.stats_server.timeout }}
-      log:
-        access_log: {{- toYaml .Values.config.log.access_log | nindent 10 }}
+    staticListeners:
+      chat:
+        name: openai-chat
+        filters:
+          - name: api-key-auth
+            config:
+              '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
+              authServer:
+                url: {{ .Values.config.auth_server.url }}
+                timeout: {{ .Values.config.auth_server.timeout }}
+          - config:
+              '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
+              statsServer:
+                url: {{ .Values.config.stats_server.url }}
+                timeout: {{ .Values.config.stats_server.timeout }}
+        accessLog: {{- toYaml .Values.config.log.access_log | nindent 10 }}
+      image:
+        name: openai-image
+        filters:
+          - name: api-key-auth
+            config:
+              '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
+              authServer:
+                url: {{ .Values.config.auth_server.url }}
+                timeout: {{ .Values.config.auth_server.timeout }}
+          - config:
+              '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
+              statsServer:
+                url: {{ .Values.config.stats_server.url }}
+                timeout: {{ .Values.config.stats_server.timeout }}
+        accessLog: {{- toYaml .Values.config.log.access_log | nindent 10 }}

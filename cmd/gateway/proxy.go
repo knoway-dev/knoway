@@ -2,17 +2,17 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
 	"time"
 
-	"knoway.dev/config"
+	"github.com/samber/lo"
+	"gopkg.in/yaml.v3"
 
-	"google.golang.org/protobuf/types/known/anypb"
-	"google.golang.org/protobuf/types/known/durationpb"
+	"buf.build/go/protoyaml"
 
-	v1alpha2 "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/listener"
@@ -20,117 +20,31 @@ import (
 	"knoway.dev/pkg/listener/manager/image"
 )
 
-func newChatListenerConfig(cfg config.GatewayConfig) *v1alpha1.ChatCompletionListener {
-	baseListenConfig := &v1alpha1.ChatCompletionListener{
-		Name:    "openai-chat",
-		Filters: []*v1alpha1.ListenerFilter{},
-	}
-	if cfg.Log.AccessLog != nil {
-		baseListenConfig.AccessLog = &v1alpha1.Log{
-			Enable: cfg.Log.AccessLog.Enabled,
-		}
-	}
-
-	if cfg.AuthServer.URL != "" {
-		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-			Name: "api-key-auth",
-			Config: func() *anypb.Any {
-				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
-					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url:     cfg.AuthServer.URL,
-						Timeout: durationpb.New(time.Duration(cfg.AuthServer.Timeout) * time.Second),
-					},
-				})
-				if err != nil {
-					return nil
-				}
-
-				return c
-			}(),
-		})
-	}
-
-	if cfg.StatsServer.URL != "" {
-		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-			Config: func() *anypb.Any {
-				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
-					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url:     cfg.StatsServer.URL,
-						Timeout: durationpb.New(time.Duration(cfg.StatsServer.Timeout) * time.Second),
-					},
-				})
-				if err != nil {
-					return nil
-				}
-
-				return c
-			}(),
-		})
-	}
-
-	return baseListenConfig
-}
-
-func newImageListenerConfig(cfg config.GatewayConfig) *v1alpha1.ImageListener {
-	baseListenConfig := &v1alpha1.ImageListener{
-		Name:    "openai-image",
-		Filters: []*v1alpha1.ListenerFilter{},
-	}
-	if cfg.Log.AccessLog != nil {
-		baseListenConfig.AccessLog = &v1alpha1.Log{
-			Enable: cfg.Log.AccessLog.Enabled,
-		}
-	}
-
-	if cfg.AuthServer.URL != "" {
-		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-			Name: "api-key-auth",
-			Config: func() *anypb.Any {
-				c, err := anypb.New(&v1alpha2.APIKeyAuthConfig{
-					AuthServer: &v1alpha2.APIKeyAuthConfig_AuthServer{
-						Url:     cfg.AuthServer.URL,
-						Timeout: durationpb.New(time.Duration(cfg.AuthServer.Timeout) * time.Second),
-					},
-				})
-				if err != nil {
-					return nil
-				}
-
-				return c
-			}(),
-		})
-	}
-
-	if cfg.StatsServer.URL != "" {
-		baseListenConfig.Filters = append(baseListenConfig.Filters, &v1alpha1.ListenerFilter{
-			Config: func() *anypb.Any {
-				c, err := anypb.New(&v1alpha2.UsageStatsConfig{
-					StatsServer: &v1alpha2.UsageStatsConfig_StatsServer{
-						Url:     cfg.StatsServer.URL,
-						Timeout: durationpb.New(time.Duration(cfg.StatsServer.Timeout) * time.Second),
-					},
-				})
-				if err != nil {
-					return nil
-				}
-
-				return c
-			}(),
-		})
-	}
-
-	return baseListenConfig
-}
-
-func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg config.GatewayConfig) error {
+func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg map[string]map[string]interface{}) error {
 	if listenerAddr == "" {
 		listenerAddr = ":8080"
 	}
+	mux := listener.NewMux()
+	exists := false
+	if v, ok := cfg["chat"]; ok { //nolint: wsl
+		bs, _ := yaml.Marshal(v)
+		l := new(v1alpha1.ChatCompletionListener)
+		lo.Must0(protoyaml.Unmarshal(bs, l))
+		mux.Register(chat.NewOpenAIChatListenerConfigs(l, lifecycle))
+		exists = true
+	}
+	if v, ok := cfg["image"]; ok {
+		bs, _ := yaml.Marshal(v)
+		l := new(v1alpha1.ImageListener)
+		lo.Must0(protoyaml.Unmarshal(bs, l))
+		mux.Register(image.NewOpenAIImageListenerConfigs(l, lifecycle))
+		exists = true
+	}
+	if !exists {
+		return errors.New("no listener found")
+	}
 
-	server, err := listener.NewMux().
-		Register(chat.NewOpenAIChatListenerConfigs(newChatListenerConfig(cfg), lifecycle)).
-		Register(image.NewOpenAIImageListenerConfigs(newImageListenerConfig(cfg), lifecycle)).
-		BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})
+	server, err := mux.BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})
 	if err != nil {
 		return err
 	}

@@ -3,13 +3,36 @@ controller:
   secure_metrics: false
   enable_http2: false
 kubeConfig: ""
-gateway:
-  auth_server:
-    url: ''
-    timeout: 0
-  stats_server:
-    url: ''
-    timeout: 0
-  log:
-    access_log:
-      enabled: true
+staticListeners:
+  chat:
+    name: openai-chat
+    filters:
+      - name: api-key-auth
+        config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
+          authServer:
+            url: console.d.run:443
+            timeout: 0s
+      - config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
+          statsServer:
+            url: console.d.run:443
+            timeout: 0s
+    accessLog:
+      enable: true
+  image:
+    name: openai-image
+    filters:
+      - name: api-key-auth
+        config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
+          authServer:
+            url: console.d.run:443
+            timeout: 0s
+      - config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
+          statsServer:
+            url: console.d.run:443
+            timeout: 0s
+    accessLog:
+      enable: true

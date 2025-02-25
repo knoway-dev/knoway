@@ -96,7 +96,7 @@ func main() {
 	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
 		return gateway.StartGateway(ctx, lifeCycle,
 			listenerAddr,
-			cfg.Gateway)
+			cfg.StaticListeners)
 	})
 
 	app.Start()

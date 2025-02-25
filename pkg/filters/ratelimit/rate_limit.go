@@ -14,7 +14,6 @@ import (
 	"knoway.dev/pkg/object"
 
 	"knoway.dev/api/filters/v1alpha1"
-	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/protoutils"
@@ -51,6 +50,8 @@ type RateLimiter struct {
 	shards    []*rateLimitShard
 	numShards int
 	cancel    context.CancelFunc
+
+	pluginPolicies []*v1alpha1.RateLimitPolicy
 }
 
 var _ filters.RequestFilter = (*RateLimiter)(nil)
@@ -58,7 +59,7 @@ var _ filters.OnCompletionRequestFilter = (*RateLimiter)(nil)
 var _ filters.OnImageGenerationsRequestFilter = (*RateLimiter)(nil)
 
 func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {
-	_, err := protoutils.FromAny(cfg, &v1alpha1.RateLimitConfig{})
+	rCfg, err := protoutils.FromAny(cfg, &v1alpha1.RateLimitConfig{})
 	if err != nil {
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
@@ -69,6 +70,8 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 		shards:    make([]*rateLimitShard, numShards),
 		numShards: numShards,
 		cancel:    cancel,
+
+		pluginPolicies: rCfg.GetPolicies(),
 	}
 
 	// init shards
@@ -93,11 +96,11 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 }
 
 func (rl *RateLimiter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
-	return rl.onRequest(ctx)
+	return rl.onRequest(ctx, request)
 }
 
 func (rl *RateLimiter) OnImageGenerationsRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
-	return rl.onRequest(ctx)
+	return rl.onRequest(ctx, request)
 }
 
 func (rl *RateLimiter) getShard(key string) *rateLimitShard {
@@ -217,51 +220,37 @@ func (rl *RateLimiter) checkBucket(key string, window time.Duration, limit int) 
 	return false
 }
 
-func buildKey(baseOn routev1alpha1.RateLimitBaseOn, value string, routeName string) string {
+func buildKey(baseOn v1alpha1.RateLimitBaseOn, value string, routeName string) string {
 	return fmt.Sprintf("%s:%s:%s", baseOn, value, routeName)
 }
 
-func (rl *RateLimiter) onRequest(ctx context.Context) filters.RequestFilterResult {
-	rMeta := metadata.RequestMetadataFromCtx(ctx)
-	apiKey := rMeta.AuthInfo.GetApiKeyId()
-	userName := rMeta.AuthInfo.GetUserId()
-
-	if apiKey == "" && userName == "" {
-		return filters.NewOK()
+func NewRateLimitConfigWithFilter(cfg *anypb.Any) (*v1alpha1.RateLimitConfig, error) {
+	if cfg == nil {
+		return nil, nil
 	}
 
-	rCfg := rMeta.MatchRoute
-	if rCfg == nil || rCfg.GetRateLimitPolicy() == nil {
-		return filters.NewOK()
+	res, err := protoutils.FromAny(cfg, &v1alpha1.RateLimitConfig{})
+	if err != nil {
+		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
 
-	routeName := rCfg.GetName()
-
-	if routeName == "" {
-		return filters.NewOK()
-	}
-
-	if !rl.CheckRateLimitPolicies(apiKey, userName, routeName, rCfg.GetRateLimitPolicy()) {
-		return filters.NewFailed(object.NewErrorRateLimitExceeded())
-	}
-
-	return filters.NewOK()
+	return res, nil
 }
 
-func (rl *RateLimiter) CheckRateLimitPolicies(apiKey, userName string, routeName string, config []*routev1alpha1.RateLimitPolicy) bool {
-	if config == nil {
-		return true
+func (rl *RateLimiter) findMatchingPolicy(apiKey, userName string, policies []*v1alpha1.RateLimitPolicy) *v1alpha1.RateLimitPolicy {
+	if policies == nil {
+		return nil
 	}
 
-	for _, policy := range config {
+	for i, policy := range policies {
 		var value string
 
 		switch policy.GetBasedOn() {
-		case routev1alpha1.RateLimitBaseOn_API_KEY:
+		case v1alpha1.RateLimitBaseOn_API_KEY:
 			value = apiKey
-		case routev1alpha1.RateLimitBaseOn_USER_ID:
+		case v1alpha1.RateLimitBaseOn_USER_ID:
 			value = userName
-		case routev1alpha1.RateLimitBaseOn_RATE_LIMIT_BASE_ON_UNSPECIFIED:
+		case v1alpha1.RateLimitBaseOn_RATE_LIMIT_BASE_ON_UNSPECIFIED:
 			continue
 		default:
 			continue
@@ -279,24 +268,100 @@ func (rl *RateLimiter) CheckRateLimitPolicies(apiKey, userName string, routeName
 			}
 		}
 
-		if !matched {
-			continue
+		if matched {
+			return policies[i]
 		}
-
-		// disabled limit
-		if policy.GetLimit() == 0 {
-			return true
-		}
-
-		duration := policy.GetDuration().AsDuration()
-		if duration == 0 {
-			duration = defaultDuration
-		}
-
-		key := buildKey(policy.GetBasedOn(), value, routeName)
-
-		return rl.checkBucket(key, duration, int(policy.GetLimit()))
 	}
 
-	return true
+	return nil
+}
+
+func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest) filters.RequestFilterResult {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+	apiKey := rMeta.AuthInfo.GetApiKeyId()
+	userName := rMeta.AuthInfo.GetUserId()
+
+	if apiKey == "" && userName == "" {
+		return filters.NewOK()
+	}
+
+	route := rMeta.MatchRoute
+	routeName := route.GetName()
+
+	var fPolicy *v1alpha1.RateLimitPolicy
+	if routeName == "" {
+		routeName = request.GetModel()
+	}
+
+	var rCfg *v1alpha1.RateLimitConfig
+
+	for _, f := range route.GetFilters() {
+		newRl, _ := NewRateLimitConfigWithFilter(f.GetConfig())
+		if newRl != nil {
+			rCfg = newRl
+			break
+		}
+	}
+
+	if rCfg != nil {
+		fPolicy = rl.findMatchingPolicy(apiKey, userName, rCfg.GetPolicies())
+	}
+	if fPolicy == nil {
+		fPolicy = rl.findMatchingPolicy(apiKey, userName, rl.pluginPolicies)
+	}
+
+	if !rl.allowRequest(apiKey, userName, routeName, fPolicy) {
+		return filters.NewFailed(object.NewErrorRateLimitExceeded())
+	}
+
+	return filters.NewOK()
+}
+
+func (rl *RateLimiter) allowRequest(apiKey, userName string, routeName string, policy *v1alpha1.RateLimitPolicy) bool {
+	if policy == nil {
+		return true
+	}
+
+	var value string
+
+	switch policy.GetBasedOn() {
+	case v1alpha1.RateLimitBaseOn_API_KEY:
+		value = apiKey
+	case v1alpha1.RateLimitBaseOn_USER_ID:
+		value = userName
+	case v1alpha1.RateLimitBaseOn_RATE_LIMIT_BASE_ON_UNSPECIFIED:
+		return true
+	default:
+		return true
+	}
+
+	matched := false
+	if policy.GetMatch() == nil {
+		// effective scope: any baseOn value
+		matched = true
+	} else {
+		if policy.GetMatch().GetExact() == value {
+			matched = true
+		} else if policy.GetMatch().GetPrefix() != "" && strings.HasPrefix(value, policy.GetMatch().GetPrefix()) {
+			matched = true
+		}
+	}
+
+	if !matched {
+		return true
+	}
+
+	// disabled limit
+	if policy.GetLimit() == 0 {
+		return true
+	}
+
+	duration := policy.GetDuration().AsDuration()
+	if duration == 0 {
+		duration = defaultDuration
+	}
+
+	key := buildKey(policy.GetBasedOn(), value, routeName)
+
+	return rl.checkBucket(key, duration, int(policy.GetLimit()))
 }

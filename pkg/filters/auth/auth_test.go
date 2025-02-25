@@ -85,7 +85,7 @@ func TestAPIKeyAuth(t *testing.T) {
 	defer server.Stop()
 
 	// 创建 gRPC 客户端连接
-	conn, err := grpc.DialContext(
+	conn, err := grpc.DialContext( //nolint:staticcheck
 		context.Background(),
 		"bufnet",
 		grpc.WithContextDialer(dialer(listener)),

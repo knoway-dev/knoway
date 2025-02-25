@@ -7,7 +7,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
-	routev1alpha1 "knoway.dev/api/route/v1alpha1"
+	filtersv1alpha1 "knoway.dev/api/filters/v1alpha1"
 )
 
 func TestCheckBucket(t *testing.T) {
@@ -110,7 +110,7 @@ func TestRateLimiter_CheckRateLimitPolicies(t *testing.T) {
 		apiKey   string
 		userName string
 		route    string
-		policy   []*routev1alpha1.RateLimitPolicy
+		policy   *filtersv1alpha1.RateLimitPolicy
 		requests int
 		expected []bool
 	}{
@@ -119,12 +119,10 @@ func TestRateLimiter_CheckRateLimitPolicies(t *testing.T) {
 			apiKey:   "key1",
 			userName: "user1",
 			route:    "route1",
-			policy: []*routev1alpha1.RateLimitPolicy{
-				{
-					BasedOn:  routev1alpha1.RateLimitBaseOn_API_KEY,
-					Limit:    2,
-					Duration: durationpb.New(60 * time.Second), // 1 minute
-				},
+			policy: &filtersv1alpha1.RateLimitPolicy{
+				BasedOn:  filtersv1alpha1.RateLimitBaseOn_API_KEY,
+				Limit:    2,
+				Duration: durationpb.New(60 * time.Second), // 1 minute
 			},
 			requests: 3,
 			expected: []bool{true, true, false}, // First 2 allowed, 3rd rejected
@@ -134,12 +132,10 @@ func TestRateLimiter_CheckRateLimitPolicies(t *testing.T) {
 			apiKey:   "key1",
 			userName: "user1",
 			route:    "route1",
-			policy: []*routev1alpha1.RateLimitPolicy{
-				{
-					BasedOn:  routev1alpha1.RateLimitBaseOn_USER_ID,
-					Limit:    2,
-					Duration: durationpb.New(60 * time.Second), // 1 minute
-				},
+			policy: &filtersv1alpha1.RateLimitPolicy{
+				BasedOn:  filtersv1alpha1.RateLimitBaseOn_USER_ID,
+				Limit:    2,
+				Duration: durationpb.New(60 * time.Second), // 1 minute
 			},
 			requests: 3,
 			expected: []bool{true, true, false}, // First 2 allowed, 3rd rejected
@@ -149,17 +145,15 @@ func TestRateLimiter_CheckRateLimitPolicies(t *testing.T) {
 			apiKey:   "special-key",
 			userName: "user1",
 			route:    "route1",
-			policy: []*routev1alpha1.RateLimitPolicy{
-				{
-					Match: &routev1alpha1.StringMatch{
-						Match: &routev1alpha1.StringMatch_Exact{
-							Exact: "special-key",
-						},
+			policy: &filtersv1alpha1.RateLimitPolicy{
+				Match: &filtersv1alpha1.StringMatch{
+					Match: &filtersv1alpha1.StringMatch_Exact{
+						Exact: "special-key",
 					},
-					BasedOn:  routev1alpha1.RateLimitBaseOn_API_KEY,
-					Limit:    5,
-					Duration: durationpb.New(60 * time.Second),
 				},
+				BasedOn:  filtersv1alpha1.RateLimitBaseOn_API_KEY,
+				Limit:    5,
+				Duration: durationpb.New(60 * time.Second),
 			},
 			requests: 6,
 			expected: []bool{true, true, true, true, true, false}, // First 5 allowed, 6th rejected
@@ -169,17 +163,15 @@ func TestRateLimiter_CheckRateLimitPolicies(t *testing.T) {
 			apiKey:   "key-vip-123",
 			userName: "user1",
 			route:    "route1",
-			policy: []*routev1alpha1.RateLimitPolicy{
-				{
-					Match: &routev1alpha1.StringMatch{
-						Match: &routev1alpha1.StringMatch_Prefix{
-							Prefix: "key-vip-",
-						},
+			policy: &filtersv1alpha1.RateLimitPolicy{
+				Match: &filtersv1alpha1.StringMatch{
+					Match: &filtersv1alpha1.StringMatch_Prefix{
+						Prefix: "key-vip-",
 					},
-					BasedOn:  routev1alpha1.RateLimitBaseOn_API_KEY,
-					Limit:    3,
-					Duration: durationpb.New(60 * time.Second),
 				},
+				BasedOn:  filtersv1alpha1.RateLimitBaseOn_API_KEY,
+				Limit:    3,
+				Duration: durationpb.New(60 * time.Second),
 			},
 			requests: 4,
 			expected: []bool{true, true, true, false}, // First 3 allowed, 4th rejected
@@ -204,7 +196,7 @@ func TestRateLimiter_CheckRateLimitPolicies(t *testing.T) {
 			}
 
 			for i := range tt.requests {
-				got := rl.CheckRateLimitPolicies(tt.apiKey, tt.userName, tt.route, tt.policy)
+				got := rl.allowRequest(tt.apiKey, tt.userName, tt.route, tt.policy)
 				if got != tt.expected[i] {
 					t.Errorf("Request %d = %v, want %v", i+1, got, tt.expected[i])
 				}

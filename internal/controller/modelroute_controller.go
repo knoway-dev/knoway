@@ -23,6 +23,10 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/types/known/anypb"
+
+	filtersv1alpha1 "knoway.dev/api/filters/v1alpha1"
+
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/hashicorp/go-multierror"
@@ -425,29 +429,29 @@ func (r *ModelRouteReconciler) mapModelRouteTargetsToBackends(targets []*routev1
 	return backends
 }
 
-func (r *ModelRouteReconciler) buildRateLimitPolicy(rateLimits []*llmv1alpha1.ModelRouteRateLimit) []*routev1alpha1.RateLimitPolicy {
+func (r *ModelRouteReconciler) buildRateLimitPolicy(rateLimits []*llmv1alpha1.ModelRouteRateLimit) []*filtersv1alpha1.RateLimitPolicy {
 	if len(rateLimits) == 0 {
 		return nil
 	}
 
-	res := make([]*routev1alpha1.RateLimitPolicy, 0)
+	res := make([]*filtersv1alpha1.RateLimitPolicy, 0)
 
 	for _, rateLimit := range rateLimits {
-		var pMatch *routev1alpha1.StringMatch
+		var pMatch *filtersv1alpha1.StringMatch
 		if rateLimit.Match != nil {
 			if rateLimit.Match.Exact != "" {
-				pMatch = &routev1alpha1.StringMatch{
-					Match: &routev1alpha1.StringMatch_Exact{Exact: rateLimit.Match.Exact},
+				pMatch = &filtersv1alpha1.StringMatch{
+					Match: &filtersv1alpha1.StringMatch_Exact{Exact: rateLimit.Match.Exact},
 				}
 			} else if rateLimit.Match.Prefix != "" {
-				pMatch = &routev1alpha1.StringMatch{
-					Match: &routev1alpha1.StringMatch_Prefix{Prefix: rateLimit.Match.Exact},
+				pMatch = &filtersv1alpha1.StringMatch{
+					Match: &filtersv1alpha1.StringMatch_Prefix{Prefix: rateLimit.Match.Exact},
 				}
 			}
 		}
 
-		res = append(res, &routev1alpha1.RateLimitPolicy{
-			BasedOn:  MapModelRouteRateLimitBaseOnModelRouteRateLimitBaseOn(rateLimit.BasedOn),
+		res = append(res, &filtersv1alpha1.RateLimitPolicy{
+			BasedOn:  MapCRDRateLimitBaseOnConfigRateLimitBaseOn(rateLimit.BasedOn),
 			Limit:    int32(rateLimit.Limit),
 			Duration: durationpb.New(time.Duration(rateLimit.Duration) * time.Second),
 			Match:    pMatch,
@@ -466,12 +470,23 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 
 	loadBalancePolicy := routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED
 	if modelRoute.Spec.Route != nil {
-		loadBalancePolicy = MapModelRouteLoadBalancePolicyModelRouteLoadBalancePolicy(modelRoute.Spec.Route.LoadBalancePolicy)
+		loadBalancePolicy = MapCRDLoadBalancePolicyModelConfigLoadBalancePolicy(modelRoute.Spec.Route.LoadBalancePolicy)
+	}
+
+	var filters []*routev1alpha1.RouteFilter
+	if len(modelRoute.Spec.RateLimit) > 0 {
+		filters = make([]*routev1alpha1.RouteFilter, 0)
+
+		filters = append(filters, &routev1alpha1.RouteFilter{
+			Name: "route-rate-limits",
+			Config: lo.Must(anypb.New(&filtersv1alpha1.RateLimitConfig{
+				Policies: r.buildRateLimitPolicy(modelRoute.Spec.RateLimit),
+			})),
+		})
 	}
 
 	return &routev1alpha1.Route{
-		Name:            modelName,
-		RateLimitPolicy: r.buildRateLimitPolicy(modelRoute.Spec.RateLimit),
+		Name: modelName,
 		Matches: []*routev1alpha1.Match{
 			{
 				Model: &routev1alpha1.StringMatch{
@@ -483,7 +498,7 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 		},
 		LoadBalancePolicy: loadBalancePolicy,
 		Targets:           r.mapModelRouteTargetsToBackends(r.getModelRouteTargets(modelRoute), mBackends),
-		Filters:           nil, // todo future
+		Filters:           filters,
 	}
 }
 

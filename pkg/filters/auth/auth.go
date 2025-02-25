@@ -47,7 +47,7 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 		c.AuthServer.Timeout = durationpb.New(defaultAuthServerTimeout)
 	}
 
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}

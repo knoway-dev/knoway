@@ -13,45 +13,13 @@ type ControllerConfig struct {
 	EnableHTTP2          bool `yaml:"enable_http2" json:"enable_http_2"`
 }
 
-type AuthServer struct {
-	URL     string `yaml:"url" json:"url,omitempty" protobuf:"bytes,1,opt,name=url,proto3"`
-	Timeout int64  `yaml:"timeout" json:"timeout,omitempty" protobuf:"varint,2,opt,name=timeout,proto3"` // Unit in seconds
-}
-
-type StatsServer struct {
-	URL     string `yaml:"url" json:"url,omitempty" protobuf:"bytes,2,opt,name=url,proto3"`
-	Timeout int64  `yaml:"timeout" json:"timeout,omitempty" protobuf:"varint,2,opt,name=timeout,proto3"` // Unit in seconds
-}
-
-type LogConfig struct {
-	Enabled bool `yaml:"enabled" json:"enabled,omitempty"`
-}
-
-type Log struct {
-	AccessLog *LogConfig `yaml:"access_log" json:"access_log,omitempty"`
-}
-
-type GatewayConfig struct {
-	AuthServer  AuthServer  `yaml:"auth_server" json:"auth_server"`
-	StatsServer StatsServer `yaml:"stats_server" json:"stats_server"`
-	Log         *Log        `yaml:"log,omitempty" json:"log,omitempty"`
-	// Policy defines the traffic policy plugins that are enabled and their global default settings
-	Policy GatewayPolicy `yaml:"policy" json:"policy,omitempty"`
-}
-
-type RateLimit struct {
-	Enabled bool `yaml:"enabled" json:"enabled,omitempty"`
-}
-
-// GatewayPolicy defines the traffic policy plugins that are enabled and their global default settings
-type GatewayPolicy struct {
-	RateLimit RateLimit `yaml:"rate_limit" json:"rate_limit,omitempty"`
-}
-
 type Config struct {
 	Debug      bool             `yaml:"debug" json:"debug"`
 	Controller ControllerConfig `yaml:"controller" json:"controller"`
-	Gateway    GatewayConfig    `yaml:"gateway" json:"gateway"`
+	// KubeConfig is the path to the kubeconfig file, used for local development, if empty, in-cluster config will be used.
+	KubeConfig string `yaml:"kubeConfig" json:"kubeConfig"`
+
+	StaticListeners map[string]map[string]interface{} `yaml:"staticListeners" json:"staticListeners"`
 }
 
 // LoadConfig loads the configuration from the specified YAML file

@@ -3,6 +3,8 @@ package controller
 import (
 	"github.com/samber/lo"
 
+	filtersv1alpha1 "knoway.dev/api/filters/v1alpha1"
+
 	"knoway.dev/api/clusters/v1alpha1"
 	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
@@ -65,29 +67,29 @@ var (
 	}
 )
 
-func MapModelRouteLoadBalancePolicyRouteLoadBalancePolicy(policy routev1alpha1.LoadBalancePolicy) knowaydevv1alpha1.LoadBalancePolicy {
+func MapConfigLoadBalancePolicyCRDLoadBalancePolicy(policy routev1alpha1.LoadBalancePolicy) knowaydevv1alpha1.LoadBalancePolicy {
 	return mapBackendLoadBalancePolicyClusterLoadBalancePolicy[policy]
 }
 
-func MapModelRouteLoadBalancePolicyModelRouteLoadBalancePolicy(policy knowaydevv1alpha1.LoadBalancePolicy) routev1alpha1.LoadBalancePolicy {
+func MapCRDLoadBalancePolicyModelConfigLoadBalancePolicy(policy knowaydevv1alpha1.LoadBalancePolicy) routev1alpha1.LoadBalancePolicy {
 	return mapClusterLoadBalancePolicyBackendLoadBalancePolicy[policy]
 }
 
 var (
-	mapClusterRateLimitBaseOnBackendRateLimitBaseOn = map[knowaydevv1alpha1.ModelRouteRateLimitBasedOn]routev1alpha1.RateLimitBaseOn{
-		knowaydevv1alpha1.ModelRouteRateLimitBasedOnUserID: routev1alpha1.RateLimitBaseOn_USER_ID,
-		knowaydevv1alpha1.ModelRouteRateLimitBasedOnAPIKey: routev1alpha1.RateLimitBaseOn_API_KEY,
+	mapClusterRateLimitBaseOnBackendRateLimitBaseOn = map[knowaydevv1alpha1.ModelRouteRateLimitBasedOn]filtersv1alpha1.RateLimitBaseOn{
+		knowaydevv1alpha1.ModelRouteRateLimitBasedOnUserID: filtersv1alpha1.RateLimitBaseOn_USER_ID,
+		knowaydevv1alpha1.ModelRouteRateLimitBasedOnAPIKey: filtersv1alpha1.RateLimitBaseOn_API_KEY,
 	}
-	mapBackendRateLimitBaseOnClusterRateLimitBaseOn = map[routev1alpha1.RateLimitBaseOn]knowaydevv1alpha1.ModelRouteRateLimitBasedOn{
-		routev1alpha1.RateLimitBaseOn_USER_ID: knowaydevv1alpha1.ModelRouteRateLimitBasedOnUserID,
-		routev1alpha1.RateLimitBaseOn_API_KEY: knowaydevv1alpha1.ModelRouteRateLimitBasedOnAPIKey,
+	mapBackendRateLimitBaseOnClusterRateLimitBaseOn = map[filtersv1alpha1.RateLimitBaseOn]knowaydevv1alpha1.ModelRouteRateLimitBasedOn{
+		filtersv1alpha1.RateLimitBaseOn_USER_ID: knowaydevv1alpha1.ModelRouteRateLimitBasedOnUserID,
+		filtersv1alpha1.RateLimitBaseOn_API_KEY: knowaydevv1alpha1.ModelRouteRateLimitBasedOnAPIKey,
 	}
 )
 
-func MapModelRouteRateLimitBaseOnRouteRateLimitBaseOn(baseOn routev1alpha1.RateLimitBaseOn) knowaydevv1alpha1.ModelRouteRateLimitBasedOn {
+func MapConfigRateLimitBaseOnCRDRateLimitBaseOn(baseOn filtersv1alpha1.RateLimitBaseOn) knowaydevv1alpha1.ModelRouteRateLimitBasedOn {
 	return mapBackendRateLimitBaseOnClusterRateLimitBaseOn[baseOn]
 }
 
-func MapModelRouteRateLimitBaseOnModelRouteRateLimitBaseOn(baseOn knowaydevv1alpha1.ModelRouteRateLimitBasedOn) routev1alpha1.RateLimitBaseOn {
+func MapCRDRateLimitBaseOnConfigRateLimitBaseOn(baseOn knowaydevv1alpha1.ModelRouteRateLimitBasedOn) filtersv1alpha1.RateLimitBaseOn {
 	return mapClusterRateLimitBaseOnBackendRateLimitBaseOn[baseOn]
 }

@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package knoway.filters.v1alpha1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "knoway.dev/api/filters/v1alpha1";
+
+message StringMatch {
+    oneof match {
+        string exact  = 1;
+        string prefix = 2;
+    }
+}
+
+enum RateLimitBaseOn {
+    RATE_LIMIT_BASE_ON_UNSPECIFIED = 0;
+    USER_ID                        = 1;
+    API_KEY                        = 2;
+}
+
+message RateLimitPolicy {
+    StringMatch match                 = 1;
+    int32 limit                       = 2;
+    RateLimitBaseOn based_on          = 3;
+    google.protobuf.Duration duration = 4;
+}
+
+// RateLimitConfig defines rate limiting configuration
+message RateLimitConfig {
+    repeated RateLimitPolicy policies = 1;
+}

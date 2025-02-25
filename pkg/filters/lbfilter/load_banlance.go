@@ -30,8 +30,17 @@ type LBFilter struct {
 
 var _ filters.RequestFilter = (*LBFilter)(nil)
 var _ filters.OnCompletionRequestFilter = (*LBFilter)(nil)
+var _ filters.OnImageGenerationsRequestFilter = (*LBFilter)(nil)
+
+func (l *LBFilter) OnImageGenerationsRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+	return onRequest(ctx, request)
+}
 
 func (l *LBFilter) OnCompletionRequest(ctx context.Context, request object.LLMRequest, sourceHTTPRequest *http.Request) filters.RequestFilterResult {
+	return onRequest(ctx, request)
+}
+
+func onRequest(ctx context.Context, request object.LLMRequest) filters.RequestFilterResult {
 	var clusterType v1alpha1.ClusterType
 
 	switch request.GetRequestType() {

@@ -22,7 +22,7 @@ staticListeners:
           '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
           policies:
             - limit: 0
-              baseOn: USER_ID
+              based_on: USER_ID
               duration: 30s
     accessLog:
       enable: true

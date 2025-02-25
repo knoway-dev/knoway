@@ -41,7 +41,9 @@ config:
   log:
     access_log:
       enabled: true
-  rate_limits: []
+  rate_limit:
+    enabled: false
+    policies: []
 
 gateway:
   image:

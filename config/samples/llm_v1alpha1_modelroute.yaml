@@ -13,16 +13,16 @@ spec:
           prefix: sk-prj-123
       limit: 100
       basedOn: APIKey
-      duration: 1m
+      duration: 60
     - match:
         value:
           exact: u-4587
       limit: 100
       basedOn: APIKey
-      duration: 1m
+      duration: 60
     - limit: 1
       basedOn: UserID
-      duration: 1m
+      duration: 60
   route:
     loadBalancePolicy: "WeightedRoundRobin"
     targets:

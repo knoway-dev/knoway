@@ -48,6 +48,9 @@ spec:
                     basedOn:
                       description: BasedOn specifies what the rate limit is based
                         on
+                      enum:
+                      - APIKey
+                      - UserID
                       type: string
                     duration:
                       description: Default duration is 300 seconds, with the unit

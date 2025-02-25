@@ -294,11 +294,8 @@ func (rl *RateLimiter) CheckRateLimitPolicies(apiKey, userName string, routeName
 		}
 
 		key := buildKey(policy.GetBasedOn(), value, routeName)
-		allowed := rl.checkBucket(key, duration, int(policy.GetLimit()))
 
-		if !allowed {
-			return false
-		}
+		return rl.checkBucket(key, duration, int(policy.GetLimit()))
 	}
 
 	return true

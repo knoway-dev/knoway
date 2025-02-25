@@ -48,6 +48,7 @@ type ModelRouteRateLimit struct {
 	// If set to 0, rate limiting will be disabled
 	Limit int `json:"limit,omitempty"`
 	// BasedOn specifies what the rate limit is based on
+	// +kubebuilder:validation:Enum=APIKey;UserID
 	BasedOn ModelRouteRateLimitBasedOn `json:"basedOn,omitempty"`
 	// Default duration is 300 seconds, with the unit being seconds
 	Duration int64 `json:"duration,omitempty"`

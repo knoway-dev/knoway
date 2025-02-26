@@ -23,7 +23,7 @@ data:
               statsServer:
                 url: {{ .Values.config.stats_server.url }}
                 timeout: {{ .Values.config.stats_server.timeout }}
-          {{- if .Values.config.rate_limit.enabled }}
+          {{- if .Values.config.rate_limit.enable }}
           - config:
               '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
               policies: {{- toYaml .Values.config.rate_limit.policies | nindent 16 }}
@@ -43,7 +43,7 @@ data:
               statsServer:
                 url: {{ .Values.config.stats_server.url }}
                 timeout: {{ .Values.config.stats_server.timeout }}
-          {{- if .Values.config.rate_limit.enabled }}
+          {{- if .Values.config.rate_limit.enable }}
           - config:
               '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
               policies: {{- toYaml .Values.config.rate_limit.policies | nindent 16 }}

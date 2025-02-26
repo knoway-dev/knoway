@@ -25,13 +25,13 @@ import (
 //+kubebuilder:printcolumn:name="Model Name",type=string,JSONPath=`.spec.modelName`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
-type ModelRouteRateLimitBasedOn string
+type RateLimitBasedOn string
 
 const (
 	// ModelRouteRateLimitBasedOnAPIKey indicates rate limiting based on API key
-	ModelRouteRateLimitBasedOnAPIKey ModelRouteRateLimitBasedOn = "APIKey"
+	ModelRouteRateLimitBasedOnAPIKey RateLimitBasedOn = "APIKey"
 	// ModelRouteRateLimitBasedOnUserID indicates rate limiting based on user identity
-	ModelRouteRateLimitBasedOnUserID ModelRouteRateLimitBasedOn = "UserID"
+	ModelRouteRateLimitBasedOnUserID RateLimitBasedOn = "UserID"
 )
 
 type StringMatch struct {
@@ -41,7 +41,7 @@ type StringMatch struct {
 	Prefix string `json:"prefix,omitempty"`
 }
 
-type ModelRouteRateLimit struct {
+type RateLimitRule struct {
 	// Match specifies the match criteria for this rate limit
 	Match *StringMatch `json:"match,omitempty"`
 	// Number of requests allowed in the duration window
@@ -49,7 +49,7 @@ type ModelRouteRateLimit struct {
 	Limit int `json:"limit,omitempty"`
 	// BasedOn specifies what the rate limit is based on
 	// +kubebuilder:validation:Enum=APIKey;UserID
-	BasedOn ModelRouteRateLimitBasedOn `json:"basedOn,omitempty"`
+	BasedOn RateLimitBasedOn `json:"basedOn,omitempty"`
 	// Default duration is 300 seconds, with the unit being seconds
 	Duration int64 `json:"duration,omitempty"`
 }
@@ -98,13 +98,20 @@ type ModelRouteRoute struct {
 	Targets []ModelRouteRouteTarget `json:"targets"`
 }
 
+type RateLimitPolicy struct {
+	// Rate limit rules
+	// +kubebuilder:validation:Optional
+	// +optional
+	Rules []*RateLimitRule `json:"rules"`
+}
+
 // ModelRouteSpec defines the desired state of ModelRoute.
 type ModelRouteSpec struct {
 	ModelName string `json:"modelName"`
-	// Rate limit policy
+	// Rate limit
 	// +kubebuilder:validation:Optional
 	// +optional
-	RateLimit []*ModelRouteRateLimit `json:"rateLimit"`
+	RateLimit *RateLimitPolicy `json:"rateLimit"`
 	// Route policy
 	// +kubebuilder:validation:Optional
 	// +optional

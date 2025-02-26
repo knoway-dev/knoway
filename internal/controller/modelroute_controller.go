@@ -429,7 +429,7 @@ func (r *ModelRouteReconciler) mapModelRouteTargetsToBackends(targets []*routev1
 	return backends
 }
 
-func (r *ModelRouteReconciler) buildRateLimitPolicy(rateLimits []*llmv1alpha1.ModelRouteRateLimit) []*filtersv1alpha1.RateLimitPolicy {
+func (r *ModelRouteReconciler) buildRateLimitPolicies(rateLimits []*llmv1alpha1.RateLimitRule) []*filtersv1alpha1.RateLimitPolicy {
 	if len(rateLimits) == 0 {
 		return nil
 	}
@@ -474,13 +474,13 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 	}
 
 	var filters []*routev1alpha1.RouteFilter
-	if len(modelRoute.Spec.RateLimit) > 0 {
+	if modelRoute.Spec.RateLimit != nil {
 		filters = make([]*routev1alpha1.RouteFilter, 0)
 
 		filters = append(filters, &routev1alpha1.RouteFilter{
 			Name: "route-rate-limits",
 			Config: lo.Must(anypb.New(&filtersv1alpha1.RateLimitConfig{
-				Policies: r.buildRateLimitPolicy(modelRoute.Spec.RateLimit),
+				Policies: r.buildRateLimitPolicies(modelRoute.Spec.RateLimit.Rules),
 			})),
 		})
 	}

@@ -8,21 +8,22 @@ metadata:
 spec:
   modelName: deepseek-r1
   rateLimit:
-    - match:
-        value:
-          prefix: sk-prj-123
-      limit: 100
-      basedOn: APIKey
-      duration: 60
-    - match:
-        value:
-          exact: u-4587
-      limit: 100
-      basedOn: APIKey
-      duration: 60
-    - limit: 1
-      basedOn: UserID
-      duration: 60
+    rules:
+      - match:
+          value:
+            prefix: sk-prj-123
+        limit: 100
+        basedOn: APIKey
+        duration: 60
+      - match:
+          value:
+            exact: u-4587
+        limit: 100
+        basedOn: APIKey
+        duration: 60
+      - limit: 1
+        basedOn: UserID
+        duration: 60
   route:
     loadBalancePolicy: "WeightedRoundRobin"
     targets:

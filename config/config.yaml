@@ -20,6 +20,9 @@ staticListeners:
             timeout: 0s
       - config:
           '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
+          model: REDIS
+          redis_server:
+            url: redis://:xxx@10.6.229.81:31863/1
           policies:
             - limit: 0
               based_on: USER_ID
@@ -42,6 +45,7 @@ staticListeners:
             timeout: 0s
       - config:
           '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
+          model: LOCAL
           policies:
             - limit: 0
               based_on: USER_ID

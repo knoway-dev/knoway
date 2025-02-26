@@ -3,46 +3,36 @@ package ratelimit
 import (
 	"context"
 	"fmt"
-	"hash/fnv"
+	"log/slog"
 	"net/http"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/redis"
 
 	"knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/protoutils"
 
+	"github.com/redis/rueidis"
 	"google.golang.org/protobuf/types/known/anypb"
 )
 
 const (
-	cleanupInterval    = 30 * time.Minute
-	cleanupThreshold   = 24 * time.Hour
-	defaultDuration    = 1 * time.Minute
+	cleanupInterval = 30 * time.Minute
+	maxTTL          = 5 * time.Minute
+	ttlRate         = 2
+
 	numShards          = 64    // Number of shards, must be power of 2
 	maxBucketsPerShard = 10000 // Maximum buckets per shard
-	precision          = 1000  // Precision for fixed-point arithmetic
+
+	precision           = 1000 // Precision for fixed-point arithmetic
+	defaultDuration     = 1 * time.Minute
+	defaultServerPrefix = "knoway-rate-limit"
 )
-
-type tokenBucket struct {
-	tokens     atomic.Int64 // Store tokens * precision
-	capacity   atomic.Int64 // Store capacity * precision
-	rate       atomic.Int64 // Store rate * precision
-	lastUpdate atomic.Int64
-	oldLimit   atomic.Int64
-}
-
-type rateLimitShard struct {
-	buckets        map[string]*tokenBucket
-	lastAccessTime map[string]time.Time
-	mu             sync.Mutex
-}
 
 type RateLimiter struct {
 	filters.IsRequestFilter
@@ -52,6 +42,11 @@ type RateLimiter struct {
 	cancel    context.CancelFunc
 
 	pluginPolicies []*v1alpha1.RateLimitPolicy
+	mode           v1alpha1.RateLimitMode
+
+	serverPrefix string
+
+	redisClient rueidis.Client
 }
 
 var _ filters.RequestFilter = (*RateLimiter)(nil)
@@ -59,35 +54,63 @@ var _ filters.OnCompletionRequestFilter = (*RateLimiter)(nil)
 var _ filters.OnImageGenerationsRequestFilter = (*RateLimiter)(nil)
 
 func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {
+	slog.Info("initializing rate limiter")
+
 	rCfg, err := protoutils.FromAny(cfg, &v1alpha1.RateLimitConfig{})
 	if err != nil {
+		slog.Error("invalid rate limit config", "error", err)
 		return nil, fmt.Errorf("invalid config type %T", cfg)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 
 	rl := &RateLimiter{
-		shards:    make([]*rateLimitShard, numShards),
-		numShards: numShards,
-		cancel:    cancel,
+		shards:       make([]*rateLimitShard, numShards),
+		serverPrefix: rCfg.GetServerPrefix(),
+		numShards:    numShards,
+		cancel:       cancel,
 
 		pluginPolicies: rCfg.GetPolicies(),
+		mode:           rCfg.GetModel(),
 	}
 
-	// init shards
-	for i := range numShards {
-		rl.shards[i] = &rateLimitShard{
-			buckets:        make(map[string]*tokenBucket),
-			lastAccessTime: make(map[string]time.Time),
+	if rl.serverPrefix == "" {
+		rl.serverPrefix = defaultServerPrefix
+	}
+
+	slog.Info("rate limiter mode", "mode", rl.mode)
+
+	if rl.mode == v1alpha1.RateLimitMode_REDIS {
+		slog.Info("initializing redis client", "url", rCfg.GetRedisServer().GetUrl())
+
+		redisClient, err := redis.NewRedisClient(rCfg.GetRedisServer().GetUrl())
+		if err != nil {
+			slog.Error("failed to create redis client", "error", err)
+			return nil, fmt.Errorf("failed to create redis client: %w", err)
 		}
-	}
 
-	// start cleanup
-	go rl.cleanupLoop(ctx)
+		rl.redisClient = redisClient
+	} else {
+		slog.Info("initializing local rate limiter shards")
+		// init shards for local mode
+		for i := range numShards {
+			rl.shards[i] = &rateLimitShard{
+				buckets:        make(map[string]*tokenBucket),
+				lastAccessTime: make(map[string]time.Time),
+			}
+		}
+
+		// start cleanup
+		go rl.cleanupLoop(ctx)
+	}
 
 	lifecycle.Append(bootkit.LifeCycleHook{
 		OnStop: func(ctx context.Context) error {
+			slog.Info("stopping rate limiter")
 			rl.cancel()
+			if rl.redisClient != nil {
+				rl.redisClient.Close()
+			}
 			return nil
 		},
 	})
@@ -103,125 +126,8 @@ func (rl *RateLimiter) OnImageGenerationsRequest(ctx context.Context, request ob
 	return rl.onRequest(ctx, request)
 }
 
-func (rl *RateLimiter) getShard(key string) *rateLimitShard {
-	h := fnv.New32a()
-	h.Write([]byte(key))
-	shardIndex := h.Sum32() % uint32(rl.numShards)
-
-	return rl.shards[shardIndex]
-}
-
-// Cleanup old keys that haven't been accessed for more than 24 hours
-func (rl *RateLimiter) cleanupLoop(ctx context.Context) {
-	ticker := time.NewTicker(cleanupInterval)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			rl.cleanup()
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (rl *RateLimiter) cleanup() {
-	now := time.Now()
-	threshold := now.Add(-cleanupThreshold)
-
-	// Clean each shard
-	for _, shard := range rl.shards {
-		shard.mu.Lock()
-		for key, lastAccess := range shard.lastAccessTime {
-			if lastAccess.Before(threshold) {
-				delete(shard.buckets, key)
-				delete(shard.lastAccessTime, key)
-			}
-		}
-		shard.mu.Unlock()
-	}
-}
-
-func (rl *RateLimiter) checkBucket(key string, window time.Duration, limit int) bool {
-	if limit == 0 {
-		return true
-	}
-
-	if window.Seconds() == 0 {
-		window = defaultDuration
-	}
-
-	shard := rl.getShard(key)
-	shard.mu.Lock()
-	defer shard.mu.Unlock()
-
-	now := time.Now()
-	shard.lastAccessTime[key] = now
-
-	newCapacity := int64(limit * precision)
-	rateInternal := window.Seconds()
-	newRate := int64(float64(newCapacity) / rateInternal)
-
-	bucket, exists := shard.buckets[key]
-	if !exists {
-		// check the maximum number of buckets for this shard
-		if len(shard.buckets) >= maxBucketsPerShard {
-			var oldestKey string
-			oldestTime := now
-
-			for k, t := range shard.lastAccessTime {
-				if t.Before(oldestTime) {
-					oldestTime = t
-					oldestKey = k
-				}
-			}
-
-			delete(shard.buckets, oldestKey)
-			delete(shard.lastAccessTime, oldestKey)
-		}
-
-		// init new token bucket with fixed-point precision
-		bucket = &tokenBucket{}
-		bucket.capacity.Store(newCapacity)
-		bucket.rate.Store(newRate)
-		bucket.tokens.Store(newCapacity)
-		bucket.lastUpdate.Store(now.UnixNano())
-		bucket.oldLimit.Store(int64(limit))
-		shard.buckets[key] = bucket
-	} else if bucket.oldLimit.Load() != int64(limit) {
-		bucket.oldLimit.Store(int64(limit))
-		bucket.capacity.Store(newCapacity)
-		bucket.rate.Store(newRate)
-	}
-
-	// calculate tokens to add based on time elapsed
-	lastUpdateNano := bucket.lastUpdate.Load()
-	lastUpdate := time.Unix(0, lastUpdateNano)
-	elapsed := now.Sub(lastUpdate).Seconds()
-	elapsedInt := int64(elapsed)
-
-	tokensToAdd := elapsedInt * bucket.rate.Load()
-	if tokensToAdd > 0 {
-		newTokens := bucket.tokens.Load() + tokensToAdd
-		if newTokens > bucket.capacity.Load() {
-			newTokens = bucket.capacity.Load()
-		}
-
-		bucket.tokens.Store(newTokens)
-		bucket.lastUpdate.Store(now.UnixNano())
-	}
-
-	if bucket.tokens.Load() >= precision {
-		bucket.tokens.Add(-precision)
-		return true
-	}
-
-	return false
-}
-
-func buildKey(baseOn v1alpha1.RateLimitBaseOn, value string, routeName string) string {
-	return fmt.Sprintf("%s:%s:%s", baseOn, value, routeName)
+func (rl *RateLimiter) buildKey(baseOn v1alpha1.RateLimitBaseOn, value string, routeName string) string {
+	return fmt.Sprintf("%s:%s:%s:%s", rl.serverPrefix, baseOn, value, routeName)
 }
 
 func NewRateLimitConfigWithFilter(cfg *anypb.Any) (*v1alpha1.RateLimitConfig, error) {
@@ -282,6 +188,7 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 	userName := rMeta.AuthInfo.GetUserId()
 
 	if apiKey == "" && userName == "" {
+		slog.Debug("no api key or user name found, skipping rate limit")
 		return filters.NewOK()
 	}
 
@@ -310,16 +217,29 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 		fPolicy = rl.findMatchingPolicy(apiKey, userName, rl.pluginPolicies)
 	}
 
-	if !rl.allowRequest(apiKey, userName, routeName, fPolicy) {
+	allow, err := rl.allowRequest(apiKey, userName, routeName, fPolicy)
+	if err != nil {
+		slog.Error("failed to check rate limit", "error", err)
+		return filters.NewFailed(err)
+	}
+
+	if !allow {
+		slog.Debug("rate limit exceeded",
+			"apiKey", apiKey,
+			"userName", userName,
+			"route", routeName,
+			"limit", fPolicy.GetLimit(),
+			"duration", fPolicy.GetDuration().AsDuration())
+
 		return filters.NewFailed(object.NewErrorRateLimitExceeded())
 	}
 
 	return filters.NewOK()
 }
 
-func (rl *RateLimiter) allowRequest(apiKey, userName string, routeName string, policy *v1alpha1.RateLimitPolicy) bool {
+func (rl *RateLimiter) allowRequest(apiKey, userName string, routeName string, policy *v1alpha1.RateLimitPolicy) (bool, error) {
 	if policy == nil {
-		return true
+		return true, nil
 	}
 
 	var value string
@@ -330,9 +250,9 @@ func (rl *RateLimiter) allowRequest(apiKey, userName string, routeName string, p
 	case v1alpha1.RateLimitBaseOn_USER_ID:
 		value = userName
 	case v1alpha1.RateLimitBaseOn_RATE_LIMIT_BASE_ON_UNSPECIFIED:
-		return true
+		return true, nil
 	default:
-		return true
+		return true, nil
 	}
 
 	matched := false
@@ -348,12 +268,12 @@ func (rl *RateLimiter) allowRequest(apiKey, userName string, routeName string, p
 	}
 
 	if !matched {
-		return true
+		return true, nil
 	}
 
 	// disabled limit
 	if policy.GetLimit() == 0 {
-		return true
+		return true, nil
 	}
 
 	duration := policy.GetDuration().AsDuration()
@@ -361,7 +281,23 @@ func (rl *RateLimiter) allowRequest(apiKey, userName string, routeName string, p
 		duration = defaultDuration
 	}
 
-	key := buildKey(policy.GetBasedOn(), value, routeName)
+	key := rl.buildKey(policy.GetBasedOn(), value, routeName)
 
 	return rl.checkBucket(key, duration, int(policy.GetLimit()))
+}
+
+func (rl *RateLimiter) checkBucket(key string, window time.Duration, limit int) (bool, error) {
+	if limit == 0 {
+		return true, nil
+	}
+
+	if window.Seconds() == 0 {
+		window = defaultDuration
+	}
+
+	if rl.mode == v1alpha1.RateLimitMode_REDIS {
+		return rl.checkBucketRedis(key, window, limit)
+	}
+
+	return rl.checkBucketLocal(key, window, limit)
 }

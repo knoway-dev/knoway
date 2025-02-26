@@ -95,7 +95,7 @@ func TestCheckBucket(t *testing.T) {
 					time.Sleep(req.delay)
 				}
 
-				got := rl.checkBucket(tt.key, tt.window, tt.limit)
+				got, _ := rl.checkBucket(tt.key, tt.window, tt.limit)
 				if got != req.expected {
 					t.Errorf("Request #%d: got %v, want %v", i+1, got, req.expected)
 				}
@@ -196,7 +196,7 @@ func TestRateLimiter_CheckRateLimitPolicies(t *testing.T) {
 			}
 
 			for i := range tt.requests {
-				got := rl.allowRequest(tt.apiKey, tt.userName, tt.route, tt.policy)
+				got, _ := rl.allowRequest(tt.apiKey, tt.userName, tt.route, tt.policy)
 				if got != tt.expected[i] {
 					t.Errorf("Request %d = %v, want %v", i+1, got, tt.expected[i])
 				}

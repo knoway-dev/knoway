@@ -58,23 +58,19 @@ func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr s
 		OnStart: func(ctx context.Context) error {
 			slog.Info("Starting gateway ...", "addr", ln.Addr().String())
 
-			err := server.Serve(ln)
-			if err != nil && err != http.ErrServerClosed {
+			if err := server.Serve(ln); err != nil && err != http.ErrServerClosed {
 				return err
 			}
-
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
 			slog.Info("Stopping gateway ...")
 
-			err = server.Shutdown(ctx)
-			if err != nil {
+			if err := server.Shutdown(ctx); err != nil {
 				return err
 			}
 
 			slog.Info("Gateway stopped gracefully.")
-
 			return nil
 		},
 	})

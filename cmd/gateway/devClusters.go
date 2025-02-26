@@ -49,7 +49,7 @@ func StaticRegisterClusters(clusterDetails map[string]*clusters.Cluster, lifecyc
 		if err := cluster.UpsertAndRegisterCluster(c, lifecycle); err != nil {
 			return err
 		}
-		if err := route.RegisterRouteWithConfig(route.InitDirectModelRoute(c.GetName())); err != nil {
+		if err := route.RegisterBaseRouteWithConfig(route.InitDirectModelRoute(c.GetName())); err != nil {
 			return err
 		}
 	}

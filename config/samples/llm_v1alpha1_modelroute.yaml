@@ -6,10 +6,32 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: modelroute-example
 spec:
-  modelName: public/sample:auto
+  modelName: deepseek-r1
+  rateLimit:
+    rules:
+      - match:
+          value:
+            prefix: sk-prj-123
+        limit: 100
+        basedOn: APIKey
+        duration: 60
+      - match:
+          value:
+            exact: u-4587
+        limit: 100
+        basedOn: APIKey
+        duration: 60
+      - limit: 1
+        basedOn: UserID
+        duration: 60
   route:
-    loadBalancePolicy: WeightedRoundRobin
+    loadBalancePolicy: "WeightedRoundRobin"
     targets:
       - destination:
-          backend: llmbackend-sample
+          backend: deepseek-r1
           namespace: public
+          weight: 1
+      - destination:
+          backend: deepseek-r1-4090
+          namespace: public
+          weight: 2

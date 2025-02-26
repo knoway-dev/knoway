@@ -32,15 +32,16 @@ debug: false
 config:
   auth_server:
     url: ''
-    # timeout in seconds, default is 3s
-    timeout: 3
+    timeout: 3s
   stats_server:
     url: ''
-    # timeout in seconds, default is 3s
-    timeout: 3
+    timeout: 3s
   log:
     access_log:
-      enabled: true
+      enable: true
+  rate_limit:
+    enable: false
+    policies: []
 
 gateway:
   image:

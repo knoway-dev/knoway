@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"time"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -27,19 +25,33 @@ import (
 //+kubebuilder:printcolumn:name="Model Name",type=string,JSONPath=`.spec.modelName`
 //+kubebuilder:printcolumn:name="Status",type=string,JSONPath=`.status.status`
 
-type ModelRouteRateLimitBasedOn string
+type RateLimitBasedOn string
 
 const (
-	ModelRouteRateLimitBasedOnClientIP      ModelRouteRateLimitBasedOn = "ClientIP"
-	ModelRouteRateLimitBasedOnAPIKey        ModelRouteRateLimitBasedOn = "APIKey"
-	ModelRouteRateLimitBasedOnUser          ModelRouteRateLimitBasedOn = "User"
-	ModelRouteRateLimitBasedOnAPIKeyAndUser ModelRouteRateLimitBasedOn = "APIKeyAndUser"
+	// ModelRouteRateLimitBasedOnAPIKey indicates rate limiting based on API key
+	ModelRouteRateLimitBasedOnAPIKey RateLimitBasedOn = "APIKey"
+	// ModelRouteRateLimitBasedOnUserID indicates rate limiting based on user identity
+	ModelRouteRateLimitBasedOnUserID RateLimitBasedOn = "UserID"
 )
 
-type ModelRouteRateLimit struct {
-	BasedOn  ModelRouteRateLimitBasedOn `json:"basedOn"`
-	Count    int                        `json:"count"`
-	Interval time.Duration              `json:"interval"`
+type StringMatch struct {
+	// Exact match value
+	Exact string `json:"exact,omitempty"`
+	// Prefix match value
+	Prefix string `json:"prefix,omitempty"`
+}
+
+type RateLimitRule struct {
+	// Match specifies the match criteria for this rate limit
+	Match *StringMatch `json:"match,omitempty"`
+	// Number of requests allowed in the duration window
+	// If set to 0, rate limiting will be disabled
+	Limit int `json:"limit,omitempty"`
+	// BasedOn specifies what the rate limit is based on
+	// +kubebuilder:validation:Enum=APIKey;UserID
+	BasedOn RateLimitBasedOn `json:"basedOn,omitempty"`
+	// Default duration is 300 seconds, with the unit being seconds
+	Duration int64 `json:"duration,omitempty"`
 }
 
 // See also:
@@ -86,13 +98,20 @@ type ModelRouteRoute struct {
 	Targets []ModelRouteRouteTarget `json:"targets"`
 }
 
+type RateLimitPolicy struct {
+	// Rate limit rules
+	// +kubebuilder:validation:Optional
+	// +optional
+	Rules []*RateLimitRule `json:"rules"`
+}
+
 // ModelRouteSpec defines the desired state of ModelRoute.
 type ModelRouteSpec struct {
 	ModelName string `json:"modelName"`
-	// Rate limit policy
+	// Rate limit
 	// +kubebuilder:validation:Optional
 	// +optional
-	RateLimit *ModelRouteRateLimit `json:"rateLimit"`
+	RateLimit *RateLimitPolicy `json:"rateLimit"`
 	// Route policy
 	// +kubebuilder:validation:Optional
 	// +optional

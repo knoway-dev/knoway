@@ -11,6 +11,7 @@ import (
 	"knoway.dev/pkg/clusters/filters/openai"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/filters/auth"
+	"knoway.dev/pkg/filters/ratelimit"
 	"knoway.dev/pkg/filters/usage"
 	"knoway.dev/pkg/protoutils"
 )
@@ -37,6 +38,7 @@ func ClusterDefaultFilters(lifecycle bootkit.LifeCycle) []clusterfilters.Cluster
 
 func init() {
 	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.APIKeyAuthConfig{})] = auth.NewWithConfig
+	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.RateLimitConfig{})] = ratelimit.NewWithConfig
 	requestFilters[protoutils.TypeURLOrDie(&filtersv1alpha1.UsageStatsConfig{})] = usage.NewWithConfig
 
 	// internal base Filters

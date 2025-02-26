@@ -16,6 +16,7 @@ type LLMErrorCode string
 const (
 	LLMErrorCodeModelNotFoundOrNotAccessible LLMErrorCode = "model_not_found"
 	LLMErrorCodeModelAccessDenied            LLMErrorCode = "model_access_denied"
+	LLMErrorCodeRateLimitExceeded            LLMErrorCode = "model_rate_limit_exceeded"
 	LLMErrorCodeInsufficientQuota            LLMErrorCode = "insufficient_quota"
 	LLMErrorCodeMissingAPIKey                LLMErrorCode = "missing_api_key"
 	LLMErrorCodeIncorrectAPIKey              LLMErrorCode = "incorrect_api_key"
@@ -112,6 +113,16 @@ func NewErrorModelAccessDenied(model string) *BaseLLMError {
 		ErrorBody: &BaseError{
 			Code:    lo.ToPtr(LLMErrorCodeModelAccessDenied),
 			Message: fmt.Sprintf("You do not have access to the model `%s`.", model),
+		},
+	}
+}
+
+func NewErrorRateLimitExceeded() *BaseLLMError {
+	return &BaseLLMError{
+		Status: http.StatusTooManyRequests,
+		ErrorBody: &BaseError{
+			Code:    lo.ToPtr(LLMErrorCodeRateLimitExceeded),
+			Message: "You have exceeded the rate limit. Please try again later.",
 		},
 	}
 }

@@ -8,7 +8,8 @@ import (
 	"github.com/samber/mo"
 
 	"knoway.dev/api/clusters/v1alpha1"
-	v1alpha12 "knoway.dev/api/service/v1alpha1"
+	routev1alpha1 "knoway.dev/api/route/v1alpha1"
+	servicev1alpha1 "knoway.dev/api/service/v1alpha1"
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/object"
 )
@@ -31,8 +32,8 @@ type RequestMetadata struct {
 	ErrorMessage string
 
 	// Auth related metadata
-	EnabledAuthFilter bool                          // Set in AuthFilter
-	AuthInfo          *v1alpha12.APIKeyAuthResponse // Set in AuthFilter
+	EnabledAuthFilter bool                                // Set in AuthFilter
+	AuthInfo          *servicev1alpha1.APIKeyAuthResponse // Set in AuthFilter
 
 	// SelectedCluster is the cluster that the request is routed to
 	SelectedCluster mo.Option[clusters.Cluster]
@@ -64,6 +65,8 @@ type RequestMetadata struct {
 	// Overall usage consumption
 	LLMUpstreamTokensUsage mo.Option[object.LLMTokensUsage]
 	LLMUpstreamImagesUsage mo.Option[object.LLMImagesUsage]
+
+	MatchRoute *routev1alpha1.Route
 }
 
 // RequestMetadataFromCtx retrieves RequestMetadata from context

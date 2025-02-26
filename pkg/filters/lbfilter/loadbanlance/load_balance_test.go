@@ -14,22 +14,22 @@ import (
 func TestWeightedRoundRobin_Next(t *testing.T) {
 	destinations := []*v1alpha1.RouteDestination{
 		{
-			Backend:   "backend1",
+			Cluster:   "backend1",
 			Namespace: "namespace1",
 			Weight:    lo.ToPtr(int32(10)),
 		},
 		{
-			Backend:   "backend2",
+			Cluster:   "backend2",
 			Namespace: "namespace2",
 			Weight:    lo.ToPtr(int32(20)),
 		},
 		{
-			Backend:   "backend3",
+			Cluster:   "backend3",
 			Namespace: "namespace3",
 			Weight:    lo.ToPtr(int32(50)),
 		},
 		{
-			Backend:   "backend4",
+			Cluster:   "backend4",
 			Namespace: "namespace4",
 			Weight:    lo.ToPtr(int32(20)),
 		},
@@ -91,17 +91,17 @@ func TestWeightedRoundRobin_Next(t *testing.T) {
 func TestWeightedLeastRequest_Next(t *testing.T) {
 	destinations := []*v1alpha1.RouteDestination{
 		{
-			Backend:   "backend1",
+			Cluster:   "backend1",
 			Namespace: "namespace1",
 			Weight:    lo.ToPtr(int32(10)),
 		},
 		{
-			Backend:   "backend2",
+			Cluster:   "backend2",
 			Namespace: "namespace2",
 			Weight:    lo.ToPtr(int32(60)),
 		},
 		{
-			Backend:   "backend3",
+			Cluster:   "backend3",
 			Namespace: "namespace3",
 			Weight:    lo.ToPtr(int32(30)),
 		},

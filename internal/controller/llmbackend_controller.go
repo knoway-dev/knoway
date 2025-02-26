@@ -128,7 +128,7 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 			cluster.RemoveCluster(&v1alpha1.Cluster{
 				Name: modelName,
 			})
-			route.RemoveRoute(modelName)
+			route.RemoveBaseRoute(modelName)
 		}
 	}
 	if isBackendDeleted(BackendFromLLMBackend(llmBackend)) {
@@ -151,7 +151,7 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s: %w", llmBackend.GetName(), err))
 		}
 
-		if err = route.RegisterRouteWithConfig(routeCfg); err != nil {
+		if err = route.RegisterBaseRouteWithConfig(routeCfg); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s route: %w", llmBackend.GetName(), err))
 		}

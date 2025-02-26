@@ -42,23 +42,42 @@ spec:
               modelName:
                 type: string
               rateLimit:
-                description: Rate limit policy
+                description: Rate limit
                 properties:
-                  basedOn:
-                    type: string
-                  count:
-                    type: integer
-                  interval:
-                    description: |-
-                      A Duration represents the elapsed time between two instants
-                      as an int64 nanosecond count. The representation limits the
-                      largest representable duration to approximately 290 years.
-                    format: int64
-                    type: integer
-                required:
-                - basedOn
-                - count
-                - interval
+                  rules:
+                    description: Rate limit rules
+                    items:
+                      properties:
+                        basedOn:
+                          description: BasedOn specifies what the rate limit is based
+                            on
+                          enum:
+                          - APIKey
+                          - UserID
+                          type: string
+                        duration:
+                          description: Default duration is 300 seconds, with the unit
+                            being seconds
+                          format: int64
+                          type: integer
+                        limit:
+                          description: |-
+                            Number of requests allowed in the duration window
+                            If set to 0, rate limiting will be disabled
+                          type: integer
+                        match:
+                          description: Match specifies the match criteria for this
+                            rate limit
+                          properties:
+                            exact:
+                              description: Exact match value
+                              type: string
+                            prefix:
+                              description: Prefix match value
+                              type: string
+                          type: object
+                      type: object
+                    type: array
                 type: object
               route:
                 description: Route policy

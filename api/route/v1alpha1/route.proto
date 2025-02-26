@@ -3,6 +3,7 @@ syntax = "proto3";
 package knoway.route.v1alpha1;
 
 import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
 
 option go_package = "knoway.dev/api/route/v1alpha1";
 
@@ -27,6 +28,7 @@ message RouteDestination {
     string namespace      = 1;
     string backend        = 2;
     optional int32 weight = 3;
+    string cluster        = 4;
 }
 
 message RouteTarget {

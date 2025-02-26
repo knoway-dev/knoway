@@ -23,6 +23,12 @@ import (
 	"strings"
 	"time"
 
+	"google.golang.org/protobuf/types/known/anypb"
+
+	filtersv1alpha1 "knoway.dev/api/filters/v1alpha1"
+
+	"google.golang.org/protobuf/types/known/durationpb"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/samber/lo"
 	"github.com/stoewer/go-strcase"
@@ -33,11 +39,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	"knoway.dev/api/clusters/v1alpha1"
 	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	llmv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/registry/route"
 	"knoway.dev/pkg/route/manager"
 )
@@ -149,10 +153,7 @@ func (r *ModelRouteReconciler) reconcileRegister(ctx context.Context, modelRoute
 
 	removeBackendFunc := func() {
 		if modelName != "" {
-			cluster.RemoveCluster(&v1alpha1.Cluster{
-				Name: modelName,
-			})
-			route.RemoveRoute(modelName)
+			route.RemoveMatchRoute(modelName)
 		}
 	}
 	if isModelRouteDeleted(modelRoute) {
@@ -171,7 +172,7 @@ func (r *ModelRouteReconciler) reconcileRegister(ctx context.Context, modelRoute
 
 	mulErrs := &multierror.Error{}
 	if routeConfig != nil {
-		if err := route.RegisterRouteWithConfig(routeConfig); err != nil {
+		if err := route.RegisterMatchRouteWithConfig(routeConfig); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ModelRoute %s route: %w", modelRoute.GetName(), err))
 		}
@@ -418,13 +419,46 @@ func (r *ModelRouteReconciler) mapModelRouteTargetsToBackends(targets []*routev1
 		backends = append(backends, &routev1alpha1.RouteTarget{
 			Destination: &routev1alpha1.RouteDestination{
 				Namespace: target.GetDestination().GetNamespace(),
-				Backend:   backend.GetModelName(),
+				Backend:   target.GetDestination().GetBackend(),
+				Cluster:   backend.GetModelName(),
 				Weight:    target.GetDestination().Weight, //nolint:protogetter
 			},
 		})
 	}
 
 	return backends
+}
+
+func (r *ModelRouteReconciler) buildRateLimitPolicies(rateLimits []*llmv1alpha1.RateLimitRule) []*filtersv1alpha1.RateLimitPolicy {
+	if len(rateLimits) == 0 {
+		return nil
+	}
+
+	res := make([]*filtersv1alpha1.RateLimitPolicy, 0)
+
+	for _, rateLimit := range rateLimits {
+		var pMatch *filtersv1alpha1.StringMatch
+		if rateLimit.Match != nil {
+			if rateLimit.Match.Exact != "" {
+				pMatch = &filtersv1alpha1.StringMatch{
+					Match: &filtersv1alpha1.StringMatch_Exact{Exact: rateLimit.Match.Exact},
+				}
+			} else if rateLimit.Match.Prefix != "" {
+				pMatch = &filtersv1alpha1.StringMatch{
+					Match: &filtersv1alpha1.StringMatch_Prefix{Prefix: rateLimit.Match.Exact},
+				}
+			}
+		}
+
+		res = append(res, &filtersv1alpha1.RateLimitPolicy{
+			BasedOn:  MapCRDRateLimitBaseOnConfigRateLimitBaseOn(rateLimit.BasedOn),
+			Limit:    int32(rateLimit.Limit),
+			Duration: durationpb.New(time.Duration(rateLimit.Duration) * time.Second),
+			Match:    pMatch,
+		})
+	}
+
+	return res
 }
 
 func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRoute *llmv1alpha1.ModelRoute, mBackends map[string]Backend) *routev1alpha1.Route {
@@ -436,7 +470,19 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 
 	loadBalancePolicy := routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED
 	if modelRoute.Spec.Route != nil {
-		loadBalancePolicy = MapModelRouteLoadBalancePolicyModelRouteLoadBalancePolicy(modelRoute.Spec.Route.LoadBalancePolicy)
+		loadBalancePolicy = MapCRDLoadBalancePolicyModelConfigLoadBalancePolicy(modelRoute.Spec.Route.LoadBalancePolicy)
+	}
+
+	var filters []*routev1alpha1.RouteFilter
+	if modelRoute.Spec.RateLimit != nil {
+		filters = make([]*routev1alpha1.RouteFilter, 0)
+
+		filters = append(filters, &routev1alpha1.RouteFilter{
+			Name: "route-rate-limits",
+			Config: lo.Must(anypb.New(&filtersv1alpha1.RateLimitConfig{
+				Policies: r.buildRateLimitPolicies(modelRoute.Spec.RateLimit.Rules),
+			})),
+		})
 	}
 
 	return &routev1alpha1.Route{
@@ -452,7 +498,7 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 		},
 		LoadBalancePolicy: loadBalancePolicy,
 		Targets:           r.mapModelRouteTargetsToBackends(r.getModelRouteTargets(modelRoute), mBackends),
-		Filters:           nil, // todo future
+		Filters:           filters,
 	}
 }
 

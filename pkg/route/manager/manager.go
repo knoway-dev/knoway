@@ -66,7 +66,7 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 
 		// default lb policy
 		if m.cfg.GetLoadBalancePolicy() == routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED {
-			return m.cfg.GetTargets()[0].GetDestination().GetBackend(), m.cfg.GetTargets()[0].GetDestination().GetBackend() != ""
+			return m.cfg.GetTargets()[0].GetDestination().GetCluster(), m.cfg.GetTargets()[0].GetDestination().GetCluster() != ""
 		}
 
 		if cluster := m.lb.Next(request); cluster != "" {
@@ -92,4 +92,8 @@ func buildBackendNsMap(cfg *routev1alpha1.Route) map[string]string {
 	}
 
 	return nsMap
+}
+
+func (m *routeManager) GetRouteConfig() *routev1alpha1.Route {
+	return m.cfg
 }

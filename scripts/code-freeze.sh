@@ -22,7 +22,7 @@ if [ -n "${NEXT_VERSION}" ] && ! echo ${NEXT_VERSION} | grep -E "^v\d+\.\d+$"; t
 else
     major_number=$(echo ${minor_version} | awk -F. '{print $1}')
     minor_number=$(echo ${minor_version} | awk -F. '{print $2}')
-    NEXT_VERSION=v${major_number}.$((${minor_number} + 1))
+    NEXT_VERSION=${major_number}.$((${minor_number} + 1))
 fi
 
 if [ -n "${GITLAB_CI_TOKEN}" ]; then

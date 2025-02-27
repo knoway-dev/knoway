@@ -3,15 +3,15 @@ package gateway
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
 	"time"
 
-	"github.com/samber/lo"
-	"gopkg.in/yaml.v3"
+	"google.golang.org/protobuf/types/known/anypb"
 
-	"buf.build/go/protoyaml"
+	"google.golang.org/protobuf/proto"
 
 	"knoway.dev/api/listeners/v1alpha1"
 	"knoway.dev/pkg/bootkit"
@@ -20,28 +20,29 @@ import (
 	"knoway.dev/pkg/listener/manager/image"
 )
 
-func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg map[string]map[string]interface{}) error {
+func StartGateway(_ context.Context, lifecycle bootkit.LifeCycle, listenerAddr string, cfg []*anypb.Any) error {
 	if listenerAddr == "" {
 		listenerAddr = ":8080"
 	}
-	mux := listener.NewMux()
-	exists := false
-	if v, ok := cfg["chat"]; ok { //nolint: wsl
-		bs, _ := yaml.Marshal(v)
-		l := new(v1alpha1.ChatCompletionListener)
-		lo.Must0(protoyaml.Unmarshal(bs, l))
-		mux.Register(chat.NewOpenAIChatListenerConfigs(l, lifecycle))
-		exists = true
-	}
-	if v, ok := cfg["image"]; ok {
-		bs, _ := yaml.Marshal(v)
-		l := new(v1alpha1.ImageListener)
-		lo.Must0(protoyaml.Unmarshal(bs, l))
-		mux.Register(image.NewOpenAIImageListenerConfigs(l, lifecycle))
-		exists = true
-	}
-	if !exists {
+	if len(cfg) == 0 {
 		return errors.New("no listener found")
+	}
+	mux := listener.NewMux()
+
+	for _, c := range cfg {
+		obj, err := anypb.UnmarshalNew(c, proto.UnmarshalOptions{})
+		if err != nil {
+			return err
+		}
+
+		switch obj.(type) {
+		case *v1alpha1.ChatCompletionListener:
+			mux.Register(chat.NewOpenAIChatListenerConfigs(obj, lifecycle))
+		case *v1alpha1.ImageListener:
+			mux.Register(image.NewOpenAIImageListenerConfigs(obj, lifecycle))
+		default:
+			return fmt.Errorf("%s is not a valid listener", c.GetTypeUrl())
+		}
 	}
 
 	server, err := mux.BuildServer(&http.Server{Addr: listenerAddr, ReadTimeout: time.Minute})

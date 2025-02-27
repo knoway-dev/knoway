@@ -27,3 +27,4 @@ go.work
 *.swp
 *.swo
 *~
+config/local.yaml

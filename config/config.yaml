@@ -4,7 +4,7 @@ controller:
   enable_http2: false
 kubeConfig: ""
 staticListeners:
-  chat:
+  - '@type': type.googleapis.com/knoway.listeners.v1alpha1.ChatCompletionListener
     name: openai-chat
     # filters:
     #   - name: api-key-auth
@@ -24,9 +24,26 @@ staticListeners:
     #         - limit: 0
     #           based_on: USER_ID
     #           duration: 30s
+    filters:
+      - name: api-key-auth
+        config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
+          authServer:
+            url: console.d.run:443
+            timeout: 0s
+      - config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
+          statsServer:
+            url: console.d.run:443
+            timeout: 0s
+      - config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
+          policies:
+            - basedOn: USER_ID
+              duration: 30s
     accessLog:
       enable: true
-  image:
+  - '@type': type.googleapis.com/knoway.listeners.v1alpha1.ImageListener
     name: openai-image
     # filters:
     #   - name: api-key-auth
@@ -46,5 +63,22 @@ staticListeners:
     #         - limit: 0
     #           based_on: USER_ID
     #           duration: 30s
+    filters:
+      - name: api-key-auth
+        config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
+          authServer:
+            url: console.d.run:443
+            timeout: 0s
+      - config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
+          statsServer:
+            url: console.d.run:443
+            timeout: 0s
+      - config:
+          '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
+          policies:
+            - basedOn: USER_ID
+              duration: 30s
     accessLog:
       enable: true

@@ -148,3 +148,12 @@ func FindRoute(ctx context.Context, llmRequest object.LLMRequest) route.Route {
 
 	return r
 }
+
+func DebugDumpAllRoutes() []*v1alpha1.Route {
+	routeLock.Lock()
+	defer routeLock.Unlock()
+
+	return lo.Map(routes, func(r route.Route, _ int) *v1alpha1.Route {
+		return r.GetRouteConfig()
+	})
+}

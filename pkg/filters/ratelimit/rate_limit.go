@@ -49,26 +49,12 @@ type RateLimiter struct {
 	redisClient rueidis.Client
 }
 
-func (rl *RateLimiter) log(level slog.Level, msg string, args ...any) {
-	commonArgs := []any{
-		"filter", "rate_limit",
-		"serverPrefix", rl.serverPrefix,
-		"mode", rl.mode,
+func (rl *RateLimiter) logCommonAttrs() []slog.Attr {
+	return []slog.Attr{
+		slog.String("filter", "rate_limit"),
+		slog.String("serverPrefix", rl.serverPrefix),
+		slog.Any("mode", rl.mode),
 	}
-	args = append(commonArgs, args...)
-	slog.Log(context.Background(), level, msg, args...)
-}
-
-func (rl *RateLimiter) Info(msg string, args ...any) {
-	rl.log(slog.LevelInfo, msg, args...)
-}
-
-func (rl *RateLimiter) Debug(msg string, args ...any) {
-	rl.log(slog.LevelDebug, msg, args...)
-}
-
-func (rl *RateLimiter) Error(msg string, args ...any) {
-	rl.log(slog.LevelError, msg, args...)
 }
 
 var _ filters.RequestFilter = (*RateLimiter)(nil)
@@ -102,24 +88,21 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 		rl.mode = v1alpha1.RateLimitMode_LOCAL
 	}
 
-	rl.Info("initializing rate limiter")
-	rl.Debug("rate limiter default policies",
-		"serverPrefix", rl.serverPrefix,
-		"mode", rl.mode,
-		"pluginPolicies", rl.pluginPolicies)
+	slog.LogAttrs(context.Background(), slog.LevelInfo, "initializing rate limiter", rl.logCommonAttrs()...)
+	slog.LogAttrs(context.Background(), slog.LevelDebug, "rate limiter default policies", append(rl.logCommonAttrs(), slog.Any("pluginPolicies", rl.pluginPolicies))...)
 
 	if rl.mode == v1alpha1.RateLimitMode_REDIS {
-		rl.Info("initializing redis client", "url", rCfg.GetRedisServer().GetUrl())
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "initializing redis client", append(rl.logCommonAttrs(), slog.String("url", rCfg.GetRedisServer().GetUrl()))...)
 
 		redisClient, err := redis.NewRedisClient(rCfg.GetRedisServer().GetUrl())
 		if err != nil {
-			rl.Error("failed to create redis client", "error", err)
+			slog.LogAttrs(context.Background(), slog.LevelError, "failed to create redis client", append(rl.logCommonAttrs(), slog.Any("error", err))...)
 			return nil, fmt.Errorf("failed to create redis client: %w", err)
 		}
 
 		rl.redisClient = redisClient
 	} else {
-		rl.Info("initializing local rate limiter shards")
+		slog.LogAttrs(context.Background(), slog.LevelInfo, "initializing local rate limiter shards", rl.logCommonAttrs()...)
 		// init shards for local mode
 		for i := range numShards {
 			rl.shards[i] = &rateLimitShard{
@@ -134,7 +117,7 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 
 	lifecycle.Append(bootkit.LifeCycleHook{
 		OnStop: func(ctx context.Context) error {
-			rl.Info("stopping rate limiter")
+			slog.LogAttrs(context.Background(), slog.LevelInfo, "stopping rate limiter", rl.logCommonAttrs()...)
 			rl.cancel()
 			if rl.redisClient != nil {
 				rl.redisClient.Close()
@@ -216,7 +199,7 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 	userName := rMeta.AuthInfo.GetUserId()
 
 	if apiKey == "" && userName == "" {
-		rl.Debug("no api key or user name found, skipping rate limit")
+		slog.LogAttrs(context.Background(), slog.LevelDebug, "no api key or user name found, skipping rate limit", rl.logCommonAttrs()...)
 		return filters.NewOK()
 	}
 	if rMeta.MatchRoute == nil || rMeta.MatchRoute.GetRouteConfig() == nil {
@@ -250,17 +233,17 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 
 	allow, err := rl.allowRequest(apiKey, userName, routeName, fPolicy)
 	if err != nil {
-		rl.Error("failed to check rate limit", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "failed to check rate limit", append(rl.logCommonAttrs(), slog.Any("error", err))...)
 		return filters.NewFailed(err)
 	}
 
 	if !allow {
-		rl.Debug("rate limit exceeded",
-			"apiKey", apiKey,
-			"userName", userName,
-			"route", routeName,
-			"limit", fPolicy.GetLimit(),
-			"duration", fPolicy.GetDuration().AsDuration())
+		slog.LogAttrs(context.Background(), slog.LevelDebug, "rate limit exceeded", append(rl.logCommonAttrs(),
+			slog.String("apiKey", apiKey),
+			slog.String("userName", userName),
+			slog.String("route", routeName),
+			slog.Int64("limit", int64(fPolicy.GetLimit())),
+			slog.Duration("duration", fPolicy.GetDuration().AsDuration()))...)
 
 		return filters.NewFailed(object.NewErrorRateLimitExceeded())
 	}

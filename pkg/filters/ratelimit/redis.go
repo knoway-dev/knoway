@@ -90,13 +90,13 @@ func (rl *RateLimiter) checkBucketRedis(key string, window time.Duration, limit 
 
 	result := rl.redisClient.Do(context.Background(), cmd)
 	if err := result.NonRedisError(); err != nil {
-		slog.Error("redis error", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "redis error", append(rl.logCommonAttrs(), slog.Any("error", err))...)
 		return false, err
 	}
 
 	allowed, err := result.AsInt64()
 	if err != nil {
-		slog.Error("failed to parse redis result", "error", err)
+		slog.LogAttrs(context.Background(), slog.LevelError, "failed to parse redis result", append(rl.logCommonAttrs(), slog.Any("error", err))...)
 		return false, err
 	}
 

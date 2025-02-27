@@ -3,6 +3,7 @@ package ratelimit
 import (
 	"context"
 	"hash/fnv"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -73,7 +74,7 @@ func (rl *RateLimiter) initBucket(shard *rateLimitShard, key string, limit int, 
 	bucket.expireAt.Store(expireAt)
 	shard.buckets[key] = bucket
 
-	rl.Debug("created new token bucket", "key", key, "limit", limit)
+	slog.LogAttrs(context.Background(), slog.LevelDebug, "created new token bucket", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int("limit", limit))...)
 
 	return bucket
 }
@@ -83,13 +84,13 @@ func (rl *RateLimiter) updateBucket(shard *rateLimitShard, bucket *tokenBucket, 
 	if now.UnixNano() > bucket.expireAt.Load() {
 		delete(shard.buckets, key)
 		delete(shard.lastAccessTime, key)
-		rl.Debug("bucket expired, creating new one", "key", key)
+		slog.LogAttrs(context.Background(), slog.LevelDebug, "bucket expired, creating new one", append(rl.logCommonAttrs(), slog.String("key", key))...)
 
 		return rl.initBucket(shard, key, limit, newCapacity, newRate, now, expireAt)
 	}
 
 	if bucket.oldLimit.Load() != int64(limit) {
-		rl.Debug("updating bucket limit", "key", key, "oldLimit", bucket.oldLimit.Load(), "newLimit", limit)
+		slog.LogAttrs(context.Background(), slog.LevelDebug, "updating bucket limit", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int64("oldLimit", bucket.oldLimit.Load()), slog.Int("newLimit", limit))...)
 		bucket.oldLimit.Store(int64(limit))
 		bucket.capacity.Store(newCapacity)
 		bucket.rate.Store(newRate)
@@ -112,7 +113,7 @@ func (rl *RateLimiter) evictOldestBucket(shard *rateLimitShard, now time.Time) {
 		}
 	}
 
-	rl.Debug("removing oldest bucket to make space", "key", oldestKey)
+	slog.LogAttrs(context.Background(), slog.LevelDebug, "removing oldest bucket to make space", append(rl.logCommonAttrs(), slog.String("key", oldestKey))...)
 	delete(shard.buckets, oldestKey)
 	delete(shard.lastAccessTime, oldestKey)
 }
@@ -134,14 +135,14 @@ func (rl *RateLimiter) tryConsume(bucket *tokenBucket, now time.Time, key string
 		return true
 	}
 
-	rl.Debug("rate limit exceeded", "key", key, "tokens", bucket.tokens.Load(), "precision", precision)
+	slog.LogAttrs(context.Background(), slog.LevelDebug, "rate limit exceeded", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int64("tokens", bucket.tokens.Load()), slog.Int("precision", precision))...)
 
 	return false
 }
 
 // Cleanup old keys that haven't been accessed for more than 24 hours
 func (rl *RateLimiter) cleanupLoop(ctx context.Context) {
-	rl.Debug("starting cleanup loop", "interval", cleanupInterval)
+	slog.LogAttrs(context.Background(), slog.LevelDebug, "starting cleanup loop", append(rl.logCommonAttrs(), slog.Duration("interval", cleanupInterval))...)
 	ticker := time.NewTicker(cleanupInterval)
 
 	defer ticker.Stop()
@@ -151,14 +152,14 @@ func (rl *RateLimiter) cleanupLoop(ctx context.Context) {
 		case <-ticker.C:
 			rl.cleanup()
 		case <-ctx.Done():
-			rl.Info("stopping cleanup loop")
+			slog.LogAttrs(context.Background(), slog.LevelInfo, "stopping cleanup loop", rl.logCommonAttrs()...)
 			return
 		}
 	}
 }
 
 func (rl *RateLimiter) cleanup() {
-	rl.Debug("cleaning up expired rate limit buckets")
+	slog.LogAttrs(context.Background(), slog.LevelDebug, "cleaning up expired rate limit buckets", rl.logCommonAttrs()...)
 	now := time.Now()
 
 	// Clean each shard
@@ -173,7 +174,7 @@ func (rl *RateLimiter) cleanup() {
 			}
 		}
 		afterCount := len(shard.buckets)
-		rl.Debug("cleaned shard", "shard", i, "removed", beforeCount-afterCount)
+		slog.LogAttrs(context.Background(), slog.LevelDebug, "cleaned shard", append(rl.logCommonAttrs(), slog.Int("shard", i), slog.Int("removed", beforeCount-afterCount))...)
 		shard.mu.Unlock()
 	}
 }

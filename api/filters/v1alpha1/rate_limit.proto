@@ -30,4 +30,18 @@ message RateLimitPolicy {
 // RateLimitConfig defines rate limiting configuration
 message RateLimitConfig {
     repeated RateLimitPolicy policies = 1;
+    RateLimitMode model               = 2;
+    string server_prefix              = 3;
+
+    RedisServer redis_server = 4;
+}
+
+enum RateLimitMode {
+    RATE_LIMIT_MODEL_UNSPECIFIED = 0;
+    LOCAL                        = 1;
+    REDIS                        = 2;
+}
+
+message RedisServer {
+    string url = 1;
 }

@@ -43,20 +43,17 @@ spec:
                 description: Fallback
                 properties:
                   maxRetries:
+                    description: The maximum number of retries
                     format: int64
                     type: integer
                   postDelay:
-                    description: |-
-                      A Duration represents the elapsed time between two instants
-                      as an int64 nanosecond count. The representation limits the
-                      largest representable duration to approximately 290 years.
+                    description: 'The delay time after the request is retried, unit:
+                      second'
                     format: int64
                     type: integer
                   preDelay:
-                    description: |-
-                      A Duration represents the elapsed time between two instants
-                      as an int64 nanosecond count. The representation limits the
-                      largest representable duration to approximately 290 years.
+                    description: 'The delay time before the next retry over request,
+                      unit: second'
                     format: int64
                     type: integer
                 type: object

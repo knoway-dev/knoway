@@ -17,8 +17,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"time"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -108,12 +106,15 @@ type RateLimitPolicy struct {
 }
 
 type ModelRouteFallback struct {
+	// The delay time before the next retry over request, unit: second
 	// +kubebuilder:validation:Optional
 	// +optional
-	PreDelay *time.Duration `json:"preDelay"`
+	PreDelay *int64 `json:"preDelay"`
+	// The delay time after the request is retried, unit: second
 	// +kubebuilder:validation:Optional
 	// +optional
-	PostDelay *time.Duration `json:"postDelay"`
+	PostDelay *int64 `json:"postDelay"`
+	// The maximum number of retries
 	// +kubebuilder:validation:Optional
 	// +optional
 	MaxRetires *uint64 `json:"maxRetries"`

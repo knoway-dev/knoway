@@ -336,10 +336,10 @@ func (r *ModelRouteReconciler) reconcileValidator(ctx context.Context, modelRout
 		}
 	}
 	if modelRoute.Spec.Fallback != nil {
-		if modelRoute.Spec.Fallback.PostDelay != nil && *modelRoute.Spec.Fallback.PostDelay < time.Duration(0) {
+		if modelRoute.Spec.Fallback.PostDelay != nil && *modelRoute.Spec.Fallback.PostDelay < 0 {
 			return errors.New("spec.fallback.postDelay must be greater than or equal to 0")
 		}
-		if modelRoute.Spec.Fallback.PreDelay != nil && *modelRoute.Spec.Fallback.PreDelay < time.Duration(0) {
+		if modelRoute.Spec.Fallback.PreDelay != nil && *modelRoute.Spec.Fallback.PreDelay < 0 {
 			return errors.New("spec.fallback.preDelay must be greater than or equal to 0")
 		}
 		if modelRoute.Spec.Fallback.MaxRetires != nil && *modelRoute.Spec.Fallback.MaxRetires <= 0 {
@@ -501,10 +501,10 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 		fallback = &routev1alpha1.RouteFallback{}
 
 		if modelRoute.Spec.Fallback.PreDelay != nil {
-			fallback.PreDelay = durationpb.New(*modelRoute.Spec.Fallback.PreDelay)
+			fallback.PreDelay = durationpb.New(time.Duration(*modelRoute.Spec.Fallback.PreDelay) * time.Second)
 		}
 		if modelRoute.Spec.Fallback.PostDelay != nil {
-			fallback.PostDelay = durationpb.New(*modelRoute.Spec.Fallback.PostDelay)
+			fallback.PostDelay = durationpb.New(time.Duration(*modelRoute.Spec.Fallback.PostDelay) * time.Second)
 		}
 		if modelRoute.Spec.Fallback.MaxRetires != nil {
 			fallback.MaxRetries = modelRoute.Spec.Fallback.MaxRetires

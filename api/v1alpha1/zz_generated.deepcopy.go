@@ -21,8 +21,6 @@ limitations under the License.
 package v1alpha1
 
 import (
-	timex "time"
-
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -564,12 +562,12 @@ func (in *ModelRouteFallback) DeepCopyInto(out *ModelRouteFallback) {
 	*out = *in
 	if in.PreDelay != nil {
 		in, out := &in.PreDelay, &out.PreDelay
-		*out = new(timex.Duration)
+		*out = new(int64)
 		**out = **in
 	}
 	if in.PostDelay != nil {
 		in, out := &in.PostDelay, &out.PostDelay
-		*out = new(timex.Duration)
+		*out = new(int64)
 		**out = **in
 	}
 	if in.MaxRetires != nil {

@@ -31,7 +31,14 @@ func NewWithConfig(cfg *routev1alpha1.Route) (route.Route, error) {
 }
 
 func (m *routeManager) SelectCluster(ctx context.Context, request object.LLMRequest) (clusters.Cluster, error) {
-	clusterName := m.loadBalancer.Next(ctx, request)
+	var clusterName string
+
+	// default lb policy
+	if m.cfg.GetLoadBalancePolicy() == routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED {
+		clusterName = m.cfg.GetTargets()[0].GetDestination().GetCluster()
+	} else {
+		clusterName = m.loadBalancer.Next(ctx, request)
+	}
 
 	cluster, ok := cluster.FindClusterByName(clusterName)
 	if !ok {

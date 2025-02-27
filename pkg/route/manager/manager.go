@@ -3,46 +3,48 @@ package manager
 import (
 	"context"
 
-	"knoway.dev/pkg/filters/lbfilter/loadbanlance"
-
 	routev1alpha1 "knoway.dev/api/route/v1alpha1"
+	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/registry/cluster"
 	"knoway.dev/pkg/route"
+	"knoway.dev/pkg/route/loadbalance"
 )
 
+var _ route.Route = (*routeManager)(nil)
+
 type routeManager struct {
-	cfg *routev1alpha1.Route
-	// filters []filters.RequestFilter
-	route.Route
-	lb    loadbanlance.LoadBalancer
-	nsMap map[string]string
+	cfg          *routev1alpha1.Route
+	nsMap        map[string]string
+	loadBalancer loadbalance.LoadBalancer
 }
 
 func NewWithConfig(cfg *routev1alpha1.Route) (route.Route, error) {
 	rm := &routeManager{
 		cfg:   cfg,
-		lb:    loadbanlance.New(cfg),
 		nsMap: buildBackendNsMap(cfg),
 	}
+
+	rm.loadBalancer = loadbalance.New(cfg)
 
 	return rm, nil
 }
 
-func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (string, bool) {
-	var (
-		clusterName string
-		found       bool
-	)
+func (m *routeManager) SelectCluster(ctx context.Context, request object.LLMRequest) (clusters.Cluster, error) {
+	clusterName := m.loadBalancer.Next(ctx, request)
 
-	defer func() {
-		if found {
-			m.lb.Done()
-		}
-	}()
+	cluster, ok := cluster.FindClusterByName(clusterName)
+	if !ok {
+		return nil, nil
+	}
 
+	return cluster, nil
+}
+
+func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) bool {
 	matches := m.cfg.GetMatches()
 	if len(matches) == 0 {
-		return "", false
+		return false
 	}
 
 	for _, match := range matches {
@@ -64,20 +66,10 @@ func (m *routeManager) Match(ctx context.Context, request object.LLMRequest) (st
 			continue
 		}
 
-		// default lb policy
-		if m.cfg.GetLoadBalancePolicy() == routev1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED {
-			return m.cfg.GetTargets()[0].GetDestination().GetCluster(), m.cfg.GetTargets()[0].GetDestination().GetCluster() != ""
-		}
-
-		if cluster := m.lb.Next(request); cluster != "" {
-			clusterName = cluster
-			found = true
-
-			break
-		}
+		return true
 	}
 
-	return clusterName, found
+	return false
 }
 
 func buildBackendNsMap(cfg *routev1alpha1.Route) map[string]string {

@@ -44,10 +44,22 @@ enum LoadBalancePolicy {
     LOAD_BALANCE_POLICY_LEAST_REQUEST = 2;
 }
 
+message RouteFallback {
+    // Only valid when previous attempt failed occurred, default: 0s
+    // (immediately)
+    optional google.protobuf.Duration pre_delay = 2;
+    // Only valid when the ongoing attempt failed occurred, default: 0s
+    // (immediately)
+    optional google.protobuf.Duration post_delay = 3;
+    // default: 3
+    optional uint64 max_retries = 1;
+}
+
 message Route {
     string name                           = 1;
     repeated Match matches                = 2;
     repeated RouteFilter filters          = 3;
     LoadBalancePolicy load_balance_policy = 4;
     repeated RouteTarget targets          = 5;
+    optional RouteFallback fallback       = 6;
 }

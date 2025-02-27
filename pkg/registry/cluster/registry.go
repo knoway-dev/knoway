@@ -4,6 +4,8 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/samber/lo"
+
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/bootkit"
 	clusters2 "knoway.dev/pkg/clusters"
@@ -109,4 +111,15 @@ func (cr *Register) ListModels() []*v1alpha1.Cluster {
 	}
 
 	return clusters
+}
+
+func (cr *Register) dumpAllClusters() []*v1alpha1.Cluster {
+	cr.clustersLock.RLock()
+	defer cr.clustersLock.RUnlock()
+
+	return lo.Values(clusterRegister.clustersDetails)
+}
+
+func DebugDumpAllClusters() []*v1alpha1.Cluster {
+	return clusterRegister.dumpAllClusters()
 }

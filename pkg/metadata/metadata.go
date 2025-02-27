@@ -8,10 +8,10 @@ import (
 	"github.com/samber/mo"
 
 	"knoway.dev/api/clusters/v1alpha1"
-	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	servicev1alpha1 "knoway.dev/api/service/v1alpha1"
 	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/object"
+	"knoway.dev/pkg/route"
 )
 
 type RequestMetadata struct {
@@ -27,6 +27,7 @@ type RequestMetadata struct {
 	// the request payload / inference difficulty.
 	ResponseModel string
 	RespondAt     time.Time
+
 	// Egress related metadata
 	StatusCode   int
 	ErrorMessage string
@@ -66,7 +67,7 @@ type RequestMetadata struct {
 	LLMUpstreamTokensUsage mo.Option[object.LLMTokensUsage]
 	LLMUpstreamImagesUsage mo.Option[object.LLMImagesUsage]
 
-	MatchRoute *routev1alpha1.Route
+	MatchRoute route.Route
 }
 
 // RequestMetadataFromCtx retrieves RequestMetadata from context

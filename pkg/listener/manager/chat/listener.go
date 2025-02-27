@@ -13,7 +13,6 @@ import (
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/constants"
 	"knoway.dev/pkg/filters"
-	"knoway.dev/pkg/filters/lbfilter"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/registry/config"
 	"knoway.dev/pkg/types/openai"
@@ -57,12 +56,6 @@ func NewOpenAIChatListenerConfigs(cfg proto.Message, lifecycle bootkit.LifeCycle
 		l.filters = append(l.filters, f)
 	}
 
-	lb, err := lbfilter.NewWithConfig(nil, lifecycle)
-	if err != nil {
-		return nil, err
-	}
-	l.filters = append(l.filters, lb)
-
 	l.reversedFilters = utils.Clone(l.filters)
 	mutable.Reverse(l.reversedFilters)
 
@@ -81,8 +74,8 @@ func (l *OpenAIChatListener) RegisterRoutes(mux *mux.Router) error {
 		listener.WithRejectAfterDrainedWithError(l),
 	)
 
-	mux.HandleFunc("/v1/chat/completions", listener.HTTPHandlerFunc(middlewares(l.chatCompletions)))
-	mux.HandleFunc("/v1/completions", listener.HTTPHandlerFunc(middlewares(l.completions)))
+	mux.HandleFunc("/v1/chat/completions", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalChatCompletionsRequestToLLMRequest, l.clusterDoCompletionsRequest))))
+	mux.HandleFunc("/v1/completions", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalCompletionsRequestToLLMRequest, l.clusterDoCompletionsRequest))))
 	mux.HandleFunc("/v1/models", listener.HTTPHandlerFunc(middlewares(l.listModels)))
 
 	return nil

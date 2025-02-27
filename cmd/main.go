@@ -23,6 +23,13 @@ import (
 	"os"
 	"time"
 
+	"buf.build/go/protoyaml"
+	"github.com/samber/lo"
+	"google.golang.org/protobuf/types/known/anypb"
+	"sigs.k8s.io/yaml"
+
+	"knoway.dev/cmd/admin"
+
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
@@ -50,9 +57,11 @@ func main() {
 	var metricsAddr string
 	var probeAddr string
 	var listenerAddr string
+	var adminAddr string
 	var configPath string
 
 	flag.StringVar(&listenerAddr, "gateway-listener-address", ":8080", "The address the gateway listener binds to.")
+	flag.StringVar(&adminAddr, "admin-listener-address", "127.0.0.1:9080", "The address the admin listener binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metric endpoint binds to. "+
 		"Use the port :8080. If not set, it will be 0 in order to disable the metrics server")
@@ -93,11 +102,29 @@ func main() {
 		})
 	}
 
+	staticListeners := toAnySlice(cfg.StaticListeners)
+
 	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
 		return gateway.StartGateway(ctx, lifeCycle,
 			listenerAddr,
-			cfg.StaticListeners)
+			staticListeners)
+	})
+	app.Add(func(ctx context.Context, lifeCycle bootkit.LifeCycle) error {
+		return admin.NewAdminServer(ctx, staticListeners, adminAddr, lifeCycle)
 	})
 
 	app.Start()
+}
+
+func toAnySlice(cfg []map[string]interface{}) []*anypb.Any {
+	anys := make([]*anypb.Any, 0, len(cfg))
+
+	for _, c := range cfg {
+		bs := lo.Must1(yaml.Marshal(c))
+		n := new(anypb.Any)
+		lo.Must0(protoyaml.Unmarshal(bs, n))
+		anys = append(anys, n)
+	}
+
+	return anys
 }

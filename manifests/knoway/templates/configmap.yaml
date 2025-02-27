@@ -9,7 +9,7 @@ data:
   config.yaml: |-
     debug: {{.Values.debug }}
     staticListeners:
-      chat:
+      - '@type': type.googleapis.com/knoway.listeners.v1alpha1.ChatCompletionListener
         name: openai-chat
         filters:
           - name: api-key-auth
@@ -29,7 +29,7 @@ data:
               policies: {{- toYaml .Values.config.rate_limit.policies | nindent 16 }}
           {{- end }}
         accessLog: {{- toYaml .Values.config.log.access_log | nindent 10 }}
-      image:
+      - '@type': type.googleapis.com/knoway.listeners.v1alpha1.ImageListener
         name: openai-image
         filters:
           - name: api-key-auth

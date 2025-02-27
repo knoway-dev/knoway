@@ -1,6 +1,7 @@
-package loadbanlance
+package loadbalance
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -49,7 +50,7 @@ func TestWeightedRoundRobin_Next(t *testing.T) {
 			defer wg.Done()
 
 			for range 10000 {
-				next := lb.Next(nil)
+				next := lb.Next(context.TODO(), nil)
 				switch next {
 				case "backend1":
 					numBackend1.Add(1)
@@ -114,8 +115,8 @@ func TestWeightedLeastRequest_Next(t *testing.T) {
 	)
 
 	for range 100 {
-		defer lb.Done()
-		bak := lb.Next(nil)
+		defer lb.Done(context.TODO())
+		bak := lb.Next(context.TODO(), nil)
 
 		switch bak {
 		case "backend1":

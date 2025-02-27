@@ -39,6 +39,24 @@ spec:
           spec:
             description: ModelRouteSpec defines the desired state of ModelRoute.
             properties:
+              fallback:
+                description: Fallback
+                properties:
+                  maxRetries:
+                    description: The maximum number of retries
+                    format: int64
+                    type: integer
+                  postDelay:
+                    description: 'The delay time after the request is retried, unit:
+                      second'
+                    format: int64
+                    type: integer
+                  preDelay:
+                    description: 'The delay time before the next retry over request,
+                      unit: second'
+                    format: int64
+                    type: integer
+                type: object
               modelName:
                 type: string
               rateLimit:

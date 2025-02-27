@@ -5,10 +5,7 @@ import (
 	"log/slog"
 	"sync"
 
-	clustersv1alpha1 "knoway.dev/api/clusters/v1alpha1"
-	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/object"
-	registrycluster "knoway.dev/pkg/registry/cluster"
 
 	"knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/route"
@@ -136,13 +133,11 @@ func ForeachRoute(f func(route.Route) bool) {
 	}
 }
 
-func FindRoute(ctx context.Context, llmRequest object.LLMRequest) (route.Route, string) {
+func FindRoute(ctx context.Context, llmRequest object.LLMRequest) route.Route {
 	var r route.Route
-	var clusterName string
 
 	ForeachRoute(func(item route.Route) bool {
-		if cn, ok := item.Match(ctx, llmRequest); ok {
-			clusterName = cn
+		if ok := item.Match(ctx, llmRequest); ok {
 			r = item
 
 			return false
@@ -151,23 +146,14 @@ func FindRoute(ctx context.Context, llmRequest object.LLMRequest) (route.Route, 
 		return true
 	})
 
-	return r, clusterName
+	return r
 }
 
-func FindCluster(ctx context.Context, llmRequest object.LLMRequest, expectedType clustersv1alpha1.ClusterType) (clusters.Cluster, bool) {
-	r, clusterName := FindRoute(ctx, llmRequest)
-	if r == nil {
-		return nil, false
-	}
+func DebugDumpAllRoutes() []*v1alpha1.Route {
+	routeLock.Lock()
+	defer routeLock.Unlock()
 
-	c, ok := registrycluster.FindClusterByName(clusterName)
-	if !ok {
-		return nil, false
-	}
-
-	if expectedType != c.GetClusterType() {
-		return nil, false
-	}
-
-	return c, true
+	return lo.Map(routes, func(r route.Route, _ int) *v1alpha1.Route {
+		return r.GetRouteConfig()
+	})
 }

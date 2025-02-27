@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package knoway.admin.v1alpha1;
+
+import "google/protobuf/any.proto";
+import "google/protobuf/duration.proto";
+
+option go_package = "knoway.dev/api/admin/v1alpha1";
+
+message ConfigDump {
+    repeated google.protobuf.Any listeners = 1;
+    repeated google.protobuf.Any clusters  = 2;
+    repeated google.protobuf.Any routes    = 3;
+}

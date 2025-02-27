@@ -74,6 +74,7 @@ help:
 format: format-proto format-go
 
 format-go:
+	golangci-lint run --fix
 	goimports -local knoway.dev -w .
 	gofmt -w .
 
@@ -113,7 +114,8 @@ gen-proto:
 		--path listeners \
 		--path clusters \
 		--path route \
-		--path service
+		--path service \
+		--path admin
 
 gen: gen-proto gen-crds format
 .PHONY: gen

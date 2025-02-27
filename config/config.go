@@ -19,7 +19,7 @@ type Config struct {
 	// KubeConfig is the path to the kubeconfig file, used for local development, if empty, in-cluster config will be used.
 	KubeConfig string `yaml:"kubeConfig" json:"kubeConfig"`
 
-	StaticListeners map[string]map[string]interface{} `yaml:"staticListeners" json:"staticListeners"`
+	StaticListeners []map[string]interface{} `yaml:"staticListeners" json:"staticListeners"`
 }
 
 // LoadConfig loads the configuration from the specified YAML file

@@ -284,9 +284,12 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 	if apiKey == "" && userName == "" {
 		return filters.NewOK()
 	}
+	if rMeta.MatchRoute == nil || rMeta.MatchRoute.GetRouteConfig() == nil {
+		return filters.NewOK()
+	}
 
 	route := rMeta.MatchRoute
-	routeName := route.GetName()
+	routeName := route.GetRouteConfig().GetName()
 
 	var fPolicy *v1alpha1.RateLimitPolicy
 	if routeName == "" {
@@ -295,7 +298,7 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 
 	var rCfg *v1alpha1.RateLimitConfig
 
-	for _, f := range route.GetFilters() {
+	for _, f := range route.GetRouteConfig().GetFilters() {
 		newRl, _ := NewRateLimitConfigWithFilter(f.GetConfig())
 		if newRl != nil {
 			rCfg = newRl

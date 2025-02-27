@@ -135,6 +135,7 @@ words:
   - tagliatelle
   - testpackage
   - tolerations
+  - ttlcache
   - typecheck
   - unconvert
   - unmarshalled

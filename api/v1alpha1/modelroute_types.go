@@ -105,6 +105,21 @@ type RateLimitPolicy struct {
 	Rules []*RateLimitRule `json:"rules"`
 }
 
+type ModelRouteFallback struct {
+	// The delay time before the next retry over request, unit: second
+	// +kubebuilder:validation:Optional
+	// +optional
+	PreDelay *int64 `json:"preDelay"`
+	// The delay time after the request is retried, unit: second
+	// +kubebuilder:validation:Optional
+	// +optional
+	PostDelay *int64 `json:"postDelay"`
+	// The maximum number of retries
+	// +kubebuilder:validation:Optional
+	// +optional
+	MaxRetires *uint64 `json:"maxRetries"`
+}
+
 // ModelRouteSpec defines the desired state of ModelRoute.
 type ModelRouteSpec struct {
 	ModelName string `json:"modelName"`
@@ -116,6 +131,10 @@ type ModelRouteSpec struct {
 	// +kubebuilder:validation:Optional
 	// +optional
 	Route *ModelRouteRoute `json:"route"`
+	// Fallback
+	// +kubebuilder:validation:Optional
+	// +optional
+	Fallback *ModelRouteFallback `json:"fallback"`
 }
 
 type ModelRouteStatusTarget struct {

@@ -13,7 +13,6 @@ import (
 	"knoway.dev/pkg/bootkit"
 	"knoway.dev/pkg/constants"
 	"knoway.dev/pkg/filters"
-	"knoway.dev/pkg/filters/lbfilter"
 	"knoway.dev/pkg/listener"
 	"knoway.dev/pkg/registry/config"
 	"knoway.dev/pkg/types/openai"
@@ -57,12 +56,6 @@ func NewOpenAIImageListenerConfigs(cfg proto.Message, lifecycle bootkit.LifeCycl
 		l.filters = append(l.filters, f)
 	}
 
-	lb, err := lbfilter.NewWithConfig(nil, lifecycle)
-	if err != nil {
-		return nil, err
-	}
-	l.filters = append(l.filters, lb)
-
 	l.reversedFilters = utils.Clone(l.filters)
 	mutable.Reverse(l.reversedFilters)
 
@@ -81,7 +74,7 @@ func (l *OpenAIImageListener) RegisterRoutes(mux *mux.Router) error {
 		listener.WithRejectAfterDrainedWithError(l),
 	)
 
-	mux.HandleFunc("/v1/images/generations", listener.HTTPHandlerFunc(middlewares(l.imageGeneration)))
+	mux.HandleFunc("/v1/images/generations", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalImageGenerationsRequestToImageGenerationRequest, l.clusterDoImageGenerationRequest))))
 
 	return nil
 }

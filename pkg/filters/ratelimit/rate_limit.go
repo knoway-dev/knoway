@@ -49,13 +49,33 @@ type RateLimiter struct {
 	redisClient rueidis.Client
 }
 
+func (rl *RateLimiter) log(level slog.Level, msg string, args ...any) {
+	commonArgs := []any{
+		"filter", "rate_limit",
+		"serverPrefix", rl.serverPrefix,
+		"mode", rl.mode,
+	}
+	args = append(commonArgs, args...)
+	slog.Log(context.Background(), level, msg, args...)
+}
+
+func (rl *RateLimiter) Info(msg string, args ...any) {
+	rl.log(slog.LevelInfo, msg, args...)
+}
+
+func (rl *RateLimiter) Debug(msg string, args ...any) {
+	rl.log(slog.LevelDebug, msg, args...)
+}
+
+func (rl *RateLimiter) Error(msg string, args ...any) {
+	rl.log(slog.LevelError, msg, args...)
+}
+
 var _ filters.RequestFilter = (*RateLimiter)(nil)
 var _ filters.OnCompletionRequestFilter = (*RateLimiter)(nil)
 var _ filters.OnImageGenerationsRequestFilter = (*RateLimiter)(nil)
 
 func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.RequestFilter, error) {
-	slog.Info("initializing rate limiter")
-
 	rCfg, err := protoutils.FromAny(cfg, &v1alpha1.RateLimitConfig{})
 	if err != nil {
 		slog.Error("invalid rate limit config", "error", err)
@@ -78,20 +98,28 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 		rl.serverPrefix = defaultServerPrefix
 	}
 
-	slog.Info("rate limiter mode", "mode", rl.mode)
+	if rl.mode == v1alpha1.RateLimitMode_RATE_LIMIT_MODEL_UNSPECIFIED {
+		rl.mode = v1alpha1.RateLimitMode_LOCAL
+	}
+
+	rl.Info("initializing rate limiter")
+	rl.Debug("rate limiter default policies",
+		"serverPrefix", rl.serverPrefix,
+		"mode", rl.mode,
+		"pluginPolicies", rl.pluginPolicies)
 
 	if rl.mode == v1alpha1.RateLimitMode_REDIS {
-		slog.Info("initializing redis client", "url", rCfg.GetRedisServer().GetUrl())
+		rl.Info("initializing redis client", "url", rCfg.GetRedisServer().GetUrl())
 
 		redisClient, err := redis.NewRedisClient(rCfg.GetRedisServer().GetUrl())
 		if err != nil {
-			slog.Error("failed to create redis client", "error", err)
+			rl.Error("failed to create redis client", "error", err)
 			return nil, fmt.Errorf("failed to create redis client: %w", err)
 		}
 
 		rl.redisClient = redisClient
 	} else {
-		slog.Info("initializing local rate limiter shards")
+		rl.Info("initializing local rate limiter shards")
 		// init shards for local mode
 		for i := range numShards {
 			rl.shards[i] = &rateLimitShard{
@@ -106,7 +134,7 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 
 	lifecycle.Append(bootkit.LifeCycleHook{
 		OnStop: func(ctx context.Context) error {
-			slog.Info("stopping rate limiter")
+			rl.Info("stopping rate limiter")
 			rl.cancel()
 			if rl.redisClient != nil {
 				rl.redisClient.Close()
@@ -188,7 +216,7 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 	userName := rMeta.AuthInfo.GetUserId()
 
 	if apiKey == "" && userName == "" {
-		slog.Debug("no api key or user name found, skipping rate limit")
+		rl.Debug("no api key or user name found, skipping rate limit")
 		return filters.NewOK()
 	}
 
@@ -219,12 +247,12 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 
 	allow, err := rl.allowRequest(apiKey, userName, routeName, fPolicy)
 	if err != nil {
-		slog.Error("failed to check rate limit", "error", err)
+		rl.Error("failed to check rate limit", "error", err)
 		return filters.NewFailed(err)
 	}
 
 	if !allow {
-		slog.Debug("rate limit exceeded",
+		rl.Debug("rate limit exceeded",
 			"apiKey", apiKey,
 			"userName", userName,
 			"route", routeName,

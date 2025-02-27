@@ -95,8 +95,9 @@ type ImageGenerationBackendUpstream struct {
 	//	  refName: common-gpt4-apikey
 	HeadersFrom []HeaderFromSource `json:"headersFrom,omitempty"`
 
-	DefaultParams  *ImageGenerationModelParams `json:"defaultParams,omitempty"`
-	OverrideParams *ImageGenerationModelParams `json:"overrideParams,omitempty"`
+	DefaultParams   *ImageGenerationModelParams `json:"defaultParams,omitempty"`
+	OverrideParams  *ImageGenerationModelParams `json:"overrideParams,omitempty"`
+	RemoveParamKeys []string                    `json:"RemoveParamKeys,omitempty"`
 
 	Timeout int32 `json:"timeout,omitempty"`
 }

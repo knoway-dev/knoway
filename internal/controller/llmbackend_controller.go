@@ -399,11 +399,12 @@ func (r *LLMBackendReconciler) toRegisterClusterConfig(ctx context.Context, back
 		LoadBalancePolicy: v1alpha1.LoadBalancePolicy_ROUND_ROBIN,
 
 		Upstream: &v1alpha1.Upstream{
-			Url:            backend.Spec.Upstream.BaseURL,
-			Headers:        hs,
-			Timeout:        backend.Spec.Upstream.Timeout,
-			DefaultParams:  defaultParams,
-			OverrideParams: overrideParams,
+			Url:             backend.Spec.Upstream.BaseURL,
+			Headers:         hs,
+			Timeout:         backend.Spec.Upstream.Timeout,
+			DefaultParams:   defaultParams,
+			OverrideParams:  overrideParams,
+			RemoveParamKeys: backend.Spec.Upstream.RemoveParamKeys,
 		},
 		Filters: filters,
 	}, nil

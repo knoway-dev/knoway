@@ -36,6 +36,7 @@ message Upstream {
     int32 timeout                                     = 4;
     map<string, google.protobuf.Value> defaultParams  = 5;
     map<string, google.protobuf.Value> overrideParams = 6;
+    repeated string removeParamKeys                   = 7;
 }
 
 enum ClusterType {

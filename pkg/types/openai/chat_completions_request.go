@@ -149,6 +149,22 @@ func (r *ChatCompletionsRequest) SetOverrideParams(params map[string]*structpb.V
 	return nil
 }
 
+func (r *ChatCompletionsRequest) RemoveParamKeys(keys []string) error {
+	applyOpt := jsonpatch.NewApplyOptions()
+	applyOpt.AllowMissingPathOnRemove = true
+
+	for _, v := range keys {
+		var err error
+
+		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, applyOpt, NewRemove("/"+v))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *ChatCompletionsRequest) GetRequestType() object.RequestType {
 	return object.RequestTypeChatCompletions
 }

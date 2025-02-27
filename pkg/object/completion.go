@@ -23,6 +23,7 @@ type LLMRequest interface {
 
 	SetOverrideParams(params map[string]*structpb.Value) error
 	SetDefaultParams(params map[string]*structpb.Value) error
+	RemoveParamKeys(keys []string) error
 
 	GetRequestType() RequestType
 }

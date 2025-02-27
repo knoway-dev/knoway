@@ -2,8 +2,10 @@ package openai
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -51,7 +53,7 @@ func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, cluster *v1
 		case strings.HasPrefix(contentType, "text/event-stream"):
 			return openai.NewChatCompletionStreamResponse(req, rawResponse, reader)
 		default:
-			return nil, fmt.Errorf("unsupported content type %s", contentType)
+			break
 		}
 	case
 		object.RequestTypeImageGenerations:
@@ -61,11 +63,27 @@ func (f *responseHandler) UnmarshalResponseBody(ctx context.Context, cluster *v1
 				openai.NewImageGenerationsResponseWithUsage(cluster.GetMeteringPolicy()),
 			)
 		default:
-			return nil, fmt.Errorf("unsupported content type %s", contentType)
+			break
 		}
 	default:
 		return nil, fmt.Errorf("unsupported request type %s", req.GetRequestType())
 	}
+
+	if rawResponse.StatusCode >= http.StatusBadRequest {
+		tryReadBody := new(bytes.Buffer)
+
+		_, err := tryReadBody.ReadFrom(rawResponse.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read body: %w", err)
+		}
+
+		rawResponse.Body.Close()
+		rawResponse.Body = io.NopCloser(bytes.NewBuffer(tryReadBody.Bytes()))
+
+		return nil, fmt.Errorf("upstream returned status code %d with body %s", rawResponse.StatusCode, tryReadBody.String())
+	}
+
+	return nil, fmt.Errorf("unsupported content type %s", contentType)
 }
 
 func (f *responseHandler) ResponseModifier(ctx context.Context, cluster *v1alpha12.Cluster, request object.LLMRequest, response object.LLMResponse) (object.LLMResponse, error) {

@@ -125,19 +125,20 @@ func CommonListenerHandler(
 				return resp, err
 			}
 
-			if routeConfig.GetFallback() != nil {
-				if routeConfig.GetFallback().GetPostDelay() != nil {
-					time.Sleep(routeConfig.GetFallback().GetPostDelay().AsDuration())
+			if routeConfig.GetFallback() == nil {
+				return resp, err
+			}
+			if routeConfig.GetFallback().GetPostDelay() != nil {
+				time.Sleep(routeConfig.GetFallback().GetPostDelay().AsDuration())
+			}
+			if routeConfig.GetFallback().MaxRetries != nil {
+				if retriedCount >= lo.CoalesceOrEmpty(routeConfig.GetFallback().GetMaxRetries(), defaultRouteFallbackMaxRetries) {
+					return resp, err
 				}
-				if routeConfig.GetFallback().MaxRetries != nil {
-					if retriedCount >= lo.CoalesceOrEmpty(routeConfig.GetFallback().GetMaxRetries(), defaultRouteFallbackMaxRetries) {
-						return resp, err
-					}
 
-					retriedCount++
+				retriedCount++
 
-					continue
-				}
+				continue
 			}
 		}
 	}

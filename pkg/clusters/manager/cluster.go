@@ -116,7 +116,6 @@ func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 
 	rMeta.UpstreamRequestAt = time.Now()
 
-	// TODO: lb policy
 	// TODO: body close
 	rawResp, buffer, err := doRequest(req) //nolint:bodyclose
 	if err != nil {

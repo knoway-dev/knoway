@@ -335,6 +335,17 @@ func (r *ModelRouteReconciler) reconcileValidator(ctx context.Context, modelRout
 			return errors.New("spec.route.targets.[].destination.weight must be either all set or all unset")
 		}
 	}
+	if modelRoute.Spec.Fallback != nil {
+		if modelRoute.Spec.Fallback.PostDelay != nil && *modelRoute.Spec.Fallback.PostDelay < time.Duration(0) {
+			return errors.New("spec.fallback.postDelay must be greater than or equal to 0")
+		}
+		if modelRoute.Spec.Fallback.PreDelay != nil && *modelRoute.Spec.Fallback.PreDelay < time.Duration(0) {
+			return errors.New("spec.fallback.preDelay must be greater than or equal to 0")
+		}
+		if modelRoute.Spec.Fallback.MaxRetires != nil && *modelRoute.Spec.Fallback.MaxRetires <= 0 {
+			return errors.New("spec.fallback.maxRetries must be greater than 0")
+		}
+	}
 
 	allExistingBackend := &llmv1alpha1.ModelRouteList{}
 	if err := r.Client.List(ctx, allExistingBackend); err != nil {
@@ -485,6 +496,21 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 		})
 	}
 
+	var fallback *routev1alpha1.RouteFallback
+	if modelRoute.Spec.Fallback != nil {
+		fallback = &routev1alpha1.RouteFallback{}
+
+		if modelRoute.Spec.Fallback.PreDelay != nil {
+			fallback.PreDelay = durationpb.New(*modelRoute.Spec.Fallback.PreDelay)
+		}
+		if modelRoute.Spec.Fallback.PostDelay != nil {
+			fallback.PostDelay = durationpb.New(*modelRoute.Spec.Fallback.PostDelay)
+		}
+		if modelRoute.Spec.Fallback.MaxRetires != nil {
+			fallback.MaxRetries = modelRoute.Spec.Fallback.MaxRetires
+		}
+	}
+
 	return &routev1alpha1.Route{
 		Name: modelName,
 		Matches: []*routev1alpha1.Match{
@@ -499,6 +525,7 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 		LoadBalancePolicy: loadBalancePolicy,
 		Targets:           r.mapModelRouteTargetsToBackends(r.getModelRouteTargets(modelRoute), mBackends),
 		Filters:           filters,
+		Fallback:          fallback,
 	}
 }
 

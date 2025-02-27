@@ -35,3 +35,7 @@ spec:
           backend: deepseek-r1-4090
           namespace: public
           weight: 2
+  fallback:
+    preDelay: 5s
+    postDelay: 5s
+    maxRetries: 3

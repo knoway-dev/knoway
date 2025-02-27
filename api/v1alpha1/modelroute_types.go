@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -105,6 +107,18 @@ type RateLimitPolicy struct {
 	Rules []*RateLimitRule `json:"rules"`
 }
 
+type ModelRouteFallback struct {
+	// +kubebuilder:validation:Optional
+	// +optional
+	PreDelay *time.Duration `json:"preDelay"`
+	// +kubebuilder:validation:Optional
+	// +optional
+	PostDelay *time.Duration `json:"postDelay"`
+	// +kubebuilder:validation:Optional
+	// +optional
+	MaxRetires *uint64 `json:"maxRetries"`
+}
+
 // ModelRouteSpec defines the desired state of ModelRoute.
 type ModelRouteSpec struct {
 	ModelName string `json:"modelName"`
@@ -116,6 +130,10 @@ type ModelRouteSpec struct {
 	// +kubebuilder:validation:Optional
 	// +optional
 	Route *ModelRouteRoute `json:"route"`
+	// Fallback
+	// +kubebuilder:validation:Optional
+	// +optional
+	Fallback *ModelRouteFallback `json:"fallback"`
 }
 
 type ModelRouteStatusTarget struct {

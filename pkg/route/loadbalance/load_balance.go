@@ -1,6 +1,7 @@
-package loadbanlance
+package loadbalance
 
 import (
+	"context"
 	"crypto/rand"
 	"log/slog"
 	"math/big"
@@ -14,8 +15,8 @@ import (
 
 type LoadBalancer interface {
 	// Next returns the next destination to send the request to.
-	Next(request object.LLMRequest) string
-	Done()
+	Next(ctx context.Context, request object.LLMRequest) string
+	Done(ctx context.Context)
 }
 
 type server struct {
@@ -51,6 +52,8 @@ func newRequestCounter() requestCounter {
 	}
 }
 
+var _ LoadBalancer = (*WeightedRoundRobin)(nil)
+
 type WeightedRoundRobin struct {
 	servers     []*server
 	current     atomic.Int32
@@ -66,30 +69,37 @@ func NewWeightedRoundRobin(destinations []*v1alpha1.RouteDestination) *WeightedR
 	}
 }
 
-func (r *WeightedRoundRobin) Done() {}
+func (w *WeightedRoundRobin) calculateTotalWeight() int64 {
+	return lo.SumBy(w.servers, func(item *server) int64 {
+		return int64(item.weight)
+	})
+}
 
-func (r *WeightedRoundRobin) Next(_ object.LLMRequest) string {
-	if len(r.servers) == 0 {
+func (w *WeightedRoundRobin) Done(_ context.Context) {}
+
+func (w *WeightedRoundRobin) Next(ctx context.Context, _ object.LLMRequest) string {
+	if len(w.servers) == 0 {
 		return ""
 	}
-
-	if len(r.servers) == 1 {
-		return r.servers[0].name
+	if len(w.servers) == 1 {
+		return w.servers[0].name
 	}
 
-	randomWeight, err := rand.Int(rand.Reader, big.NewInt(int64(r.totalWeight)))
+	knownTotalWeight := w.calculateTotalWeight()
+
+	randomWeight, err := rand.Int(rand.Reader, big.NewInt(knownTotalWeight))
 	if err != nil {
 		return ""
 	}
 
-	currentIndex := r.current.Load()
+	currentIndex := w.current.Load()
 	var currentWeight int32
 	var total int64
 	foundIdx := -1
 
-	for i := range len(r.servers) {
-		idx := (int(currentIndex) + i) % len(r.servers)
-		currentWeight = r.servers[idx].weight
+	for i := range w.servers {
+		idx := (int(currentIndex) + i) % len(w.servers)
+		currentWeight = w.servers[idx].weight
 		total += int64(currentWeight)
 
 		if total > randomWeight.Int64() {
@@ -102,12 +112,14 @@ func (r *WeightedRoundRobin) Next(_ object.LLMRequest) string {
 		foundIdx = int(currentIndex)
 	}
 
-	nextIndex := (int32(foundIdx) + 1) % int32(len(r.servers))
-	r.current.Store(nextIndex)
-	selectedService := r.servers[foundIdx]
+	nextIndex := (int32(foundIdx) + 1) % int32(len(w.servers))
+	w.current.Store(nextIndex)
+	selectedService := w.servers[foundIdx]
 
 	return selectedService.name
 }
+
+var _ LoadBalancer = (*WeightedLeastRequest)(nil)
 
 type WeightedLeastRequest struct {
 	servers []*server
@@ -142,11 +154,10 @@ func (m *memoryRequestCounter) Desc() {
 	}
 }
 
-func (w *WeightedLeastRequest) Next(request object.LLMRequest) string {
+func (w *WeightedLeastRequest) Next(ctx context.Context, request object.LLMRequest) string {
 	if len(w.servers) == 0 {
 		return ""
 	}
-
 	if len(w.servers) == 1 {
 		return w.servers[0].name
 	}
@@ -174,17 +185,19 @@ func (w *WeightedLeastRequest) Next(request object.LLMRequest) string {
 	return selectedServer.name
 }
 
-func (w *WeightedLeastRequest) Done() {
+func (w *WeightedLeastRequest) Done(_ context.Context) {
 	w.servers[w.current].requestCounter.Desc()
 }
 
+var _ LoadBalancer = (*emptyLB)(nil)
+
 type emptyLB struct{}
 
-func (e emptyLB) Next(request object.LLMRequest) string {
+func (e emptyLB) Next(context.Context, object.LLMRequest) string {
 	return ""
 }
 
-func (e emptyLB) Done() {
+func (e emptyLB) Done(context.Context) {
 }
 
 func New(router *v1alpha1.Route) LoadBalancer {

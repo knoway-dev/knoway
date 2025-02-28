@@ -3,6 +3,7 @@ package openai
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -202,6 +203,11 @@ type ChatCompletionStreamResponse struct {
 	errorEventBuffer *bytes.Buffer
 	isDone           bool
 	chunkNum         int
+	eofCancelCtx     context.Context
+	eofCancelFunc    context.CancelFunc
+
+	onChunkCallbacks      []func(ctx context.Context, stream object.LLMStreamResponse, chunk object.LLMChunkResponse)
+	onChunkCallbacksMutex sync.Mutex
 
 	// Mutex for locking
 	mu sync.Mutex
@@ -214,6 +220,7 @@ func NewChatCompletionStreamResponse(request object.LLMRequest, response *http.R
 	resp.request = request
 	resp.outgoingResponse = response
 	resp.errorEventBuffer = new(bytes.Buffer)
+	resp.eofCancelCtx, resp.eofCancelFunc = context.WithCancel(context.Background())
 
 	return resp, nil
 }
@@ -237,11 +244,47 @@ func (r *ChatCompletionStreamResponse) IsEOF() bool {
 	return r.isDone
 }
 
+func (r *ChatCompletionStreamResponse) WaitUntilEOF() <-chan object.LLMStreamResponse {
+	ch := make(chan object.LLMStreamResponse)
+
+	go func() {
+		<-r.eofCancelCtx.Done()
+		close(ch)
+	}()
+
+	return ch
+}
+
+func (r *ChatCompletionStreamResponse) OnChunk(cb func(ctx context.Context, stream object.LLMStreamResponse, chunk object.LLMChunkResponse)) {
+	r.onChunkCallbacksMutex.Lock()
+	defer r.onChunkCallbacksMutex.Unlock()
+
+	r.onChunkCallbacks = append(r.onChunkCallbacks, cb)
+}
+
 func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, error) {
+	var chunk object.LLMChunkResponse
+
+	defer func() {
+		r.onChunkCallbacksMutex.Lock()
+
+		for _, cb := range r.onChunkCallbacks {
+			cb(r.eofCancelCtx, r, chunk)
+		}
+
+		r.onChunkCallbacksMutex.Unlock()
+	}()
+
 	line, err := r.reader.ReadBytes('\n')
 	if err != nil || r.hasErrorPrefix {
+		r.mu.Lock()
+		r.eofCancelFunc()
+		r.mu.Unlock()
+
 		// TODO: handle error
-		return NewEmptyChatCompletionStreamChunk(r), err
+		chunk = NewEmptyChatCompletionStreamChunk(r)
+
+		return chunk, err
 	}
 
 	noSpaceLine := bytes.TrimSpace(line)
@@ -258,11 +301,19 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 
 		_, writeErr := r.errorEventBuffer.Write(noSpaceLine)
 		if writeErr != nil {
-			return NewEmptyChatCompletionStreamChunk(r), writeErr
+			r.mu.Lock()
+			r.eofCancelFunc()
+			r.mu.Unlock()
+
+			chunk = NewEmptyChatCompletionStreamChunk(r)
+
+			return chunk, writeErr
 		}
 
 		// TODO: Empty message handling
-		return NewEmptyChatCompletionStreamChunk(r), nil
+		chunk = NewEmptyChatCompletionStreamChunk(r)
+
+		return chunk, nil
 	}
 
 	r.mu.Lock()
@@ -273,25 +324,43 @@ func (r *ChatCompletionStreamResponse) NextChunk() (object.LLMChunkResponse, err
 	if string(noPrefixLine) == "[DONE]" {
 		r.mu.Lock()
 		r.isDone = true
+		r.eofCancelFunc()
 		r.mu.Unlock()
 
-		return NewDoneChatCompletionStreamChunk(r), io.EOF
+		chunk = NewDoneChatCompletionStreamChunk(r)
+
+		return chunk, io.EOF
 	}
 
 	if bytes.Contains(noPrefixLine, usageCompletionTokens) {
-		chunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine)
+		usageChunk, err := NewUsageChatCompletionStreamChunk(r, noPrefixLine)
 		if err != nil {
+			r.mu.Lock()
+			r.eofCancelFunc()
+			r.mu.Unlock()
+
 			return chunk, err
 		}
 
 		r.mu.Lock()
-		r.Usage = chunk.Usage
+		r.Usage = usageChunk.Usage
 		r.mu.Unlock()
+
+		chunk = usageChunk
 
 		return chunk, nil
 	}
 
-	return NewChatCompletionStreamChunk(r, noPrefixLine)
+	chunk, err = NewChatCompletionStreamChunk(r, noPrefixLine)
+	if err != nil {
+		r.mu.Lock()
+		r.eofCancelFunc()
+		r.mu.Unlock()
+
+		return chunk, err
+	}
+
+	return chunk, nil
 }
 
 func (r *ChatCompletionStreamResponse) IsStream() bool {

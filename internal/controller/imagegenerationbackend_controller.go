@@ -37,9 +37,9 @@ import (
 	"knoway.dev/api/clusters/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/clusters/manager"
-	"knoway.dev/pkg/registry/cluster"
-	"knoway.dev/pkg/registry/route"
+	"knoway.dev/pkg/clusters/cluster"
+	clustermanager "knoway.dev/pkg/clusters/manager"
+	routemanager "knoway.dev/pkg/route/manager"
 )
 
 // ImageGenerationBackendReconciler reconciles a ImageGenerationBackend object
@@ -126,10 +126,10 @@ func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context
 
 	removeBackendFunc := func() {
 		if modelName != "" {
-			cluster.RemoveCluster(&v1alpha1.Cluster{
+			clustermanager.RemoveCluster(&v1alpha1.Cluster{
 				Name: modelName,
 			})
-			route.RemoveBaseRoute(modelName)
+			routemanager.RemoveBaseRoute(modelName)
 		}
 	}
 	if isBackendDeleted(BackendFromImageGenerationBackend(backend)) {
@@ -142,17 +142,17 @@ func (r *ImageGenerationBackendReconciler) reconcileRegister(ctx context.Context
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
-	routeCfg := route.InitDirectModelRoute(modelName)
+	routeCfg := routemanager.InitDirectModelRoute(modelName)
 
 	mulErrs := &multierror.Error{}
 	if clusterCfg != nil {
-		err = cluster.UpsertAndRegisterCluster(clusterCfg, r.LifeCycle)
+		err = clustermanager.UpsertAndRegisterCluster(clusterCfg, r.LifeCycle)
 		if err != nil {
 			log.Log.Error(err, "Failed to upsert ImageGenerationBackend", "cluster", clusterCfg)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ImageGenerationBackend %s: %w", backend.GetName(), err))
 		}
 
-		if err = route.RegisterBaseRouteWithConfig(routeCfg); err != nil {
+		if err = routemanager.RegisterBaseRouteWithConfig(routeCfg, r.LifeCycle); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ImageGenerationBackend %s route: %w", backend.GetName(), err))
 		}
@@ -283,7 +283,7 @@ func (r *ImageGenerationBackendReconciler) reconcileValidator(ctx context.Contex
 		return fmt.Errorf("failed to convert ImageGenerationBackend to cluster config: %w", err)
 	}
 
-	_, err = manager.NewWithConfigs(clusterCfg, nil)
+	_, err = cluster.NewWithConfigs(clusterCfg, nil)
 	if err != nil {
 		return fmt.Errorf("invalid cluster configuration: %w", err)
 	}

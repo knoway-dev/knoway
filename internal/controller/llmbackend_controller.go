@@ -37,9 +37,9 @@ import (
 	"knoway.dev/api/clusters/v1alpha1"
 	knowaydevv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/clusters/manager"
-	"knoway.dev/pkg/registry/cluster"
-	"knoway.dev/pkg/registry/route"
+	cluster "knoway.dev/pkg/clusters/cluster"
+	clustermanager "knoway.dev/pkg/clusters/manager"
+	routemanager "knoway.dev/pkg/route/manager"
 )
 
 // LLMBackendReconciler reconciles a LLMBackend object
@@ -109,7 +109,7 @@ func (r *LLMBackendReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		log.Log.Error(err, "reconcile LLMBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if !statusEqual[knowaydevv1alpha1.StatusEnum](BackendFromLLMBackend(currentBackend).GetStatus(), BackendFromLLMBackend(newBackend).GetStatus()) {
+	if !statusEqual(BackendFromLLMBackend(currentBackend).GetStatus(), BackendFromLLMBackend(newBackend).GetStatus()) {
 		newBackend.Status = currentBackend.Status
 		if err := r.Status().Update(ctx, newBackend); err != nil {
 			log.Log.Error(err, "update LLMBackend status error", "name", currentBackend.GetName())
@@ -125,10 +125,10 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 
 	removeBackendFunc := func() {
 		if modelName != "" {
-			cluster.RemoveCluster(&v1alpha1.Cluster{
+			clustermanager.RemoveCluster(&v1alpha1.Cluster{
 				Name: modelName,
 			})
-			route.RemoveBaseRoute(modelName)
+			routemanager.RemoveBaseRoute(modelName)
 		}
 	}
 	if isBackendDeleted(BackendFromLLMBackend(llmBackend)) {
@@ -141,17 +141,17 @@ func (r *LLMBackendReconciler) reconcileRegister(ctx context.Context, llmBackend
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
-	routeCfg := route.InitDirectModelRoute(modelName)
+	routeCfg := routemanager.InitDirectModelRoute(modelName)
 
 	mulErrs := &multierror.Error{}
 	if clusterCfg != nil {
-		err = cluster.UpsertAndRegisterCluster(clusterCfg, r.LifeCycle)
+		err = clustermanager.UpsertAndRegisterCluster(clusterCfg, r.LifeCycle)
 		if err != nil {
 			log.Log.Error(err, "Failed to upsert LLMBackend", "cluster", clusterCfg)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s: %w", llmBackend.GetName(), err))
 		}
 
-		if err = route.RegisterBaseRouteWithConfig(routeCfg); err != nil {
+		if err = routemanager.RegisterBaseRouteWithConfig(routeCfg, r.LifeCycle); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert LLMBackend %s route: %w", llmBackend.GetName(), err))
 		}
@@ -195,7 +195,7 @@ func (r *LLMBackendReconciler) reconcileValidator(ctx context.Context, llmBacken
 		return fmt.Errorf("failed to convert LLMBackend to cluster config: %w", err)
 	}
 
-	_, err = manager.NewWithConfigs(clusterCfg, nil)
+	_, err = cluster.NewWithConfigs(clusterCfg, nil)
 	if err != nil {
 		return fmt.Errorf("invalid cluster configuration: %w", err)
 	}

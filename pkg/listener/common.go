@@ -3,35 +3,30 @@ package listener
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/samber/lo"
 	"github.com/samber/mo"
-
-	"knoway.dev/pkg/clusters"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/registry/route"
+	"knoway.dev/pkg/route/manager"
 	"knoway.dev/pkg/types/openai"
-)
-
-const (
-	defaultRouteFallbackMaxRetries uint64 = 3
+	"knoway.dev/pkg/utils"
 )
 
 func CommonListenerHandler(
-	filters filters.RequestFilters,
+	listenerFilters filters.RequestFilters,
 	reversedFilters filters.RequestFilters,
 	parseRequest func(request *http.Request) (object.LLMRequest, error),
-	doRequest func(ctx context.Context, cluster clusters.Cluster, writer http.ResponseWriter, request *http.Request, llmRequest object.LLMRequest) (object.LLMResponse, error),
 ) func(writer http.ResponseWriter, request *http.Request) (any, error) {
 	return func(writer http.ResponseWriter, request *http.Request) (any, error) {
 		var err error
 
-		for _, f := range filters.OnRequestPreFilters() {
+		for _, f := range listenerFilters.OnRequestPreFilters() {
 			fResult := f.OnRequestPre(request.Context(), request)
 			if fResult.IsFailed() {
 				return nil, fResult.Error
@@ -51,27 +46,16 @@ func CommonListenerHandler(
 			return nil, err
 		}
 
-		rMeta := metadata.RequestMetadataFromCtx(request.Context())
-		rMeta.RequestModel = llmRequest.GetModel()
-
-		matchedRoute := route.FindRoute(request.Context(), llmRequest)
-		if matchedRoute == nil || matchedRoute.GetRouteConfig() == nil {
-			return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
-		}
-
-		rMeta.MatchRoute = matchedRoute
-		routeConfig := matchedRoute.GetRouteConfig()
-
 		switch llmRequest.GetRequestType() {
 		case object.RequestTypeChatCompletions, object.RequestTypeCompletions:
-			for _, f := range filters.OnCompletionRequestFilters() {
+			for _, f := range listenerFilters.OnCompletionRequestFilters() {
 				fResult := f.OnCompletionRequest(request.Context(), llmRequest, request)
 				if fResult.IsFailed() {
 					return nil, fResult.Error
 				}
 			}
 		case object.RequestTypeImageGenerations:
-			for _, f := range filters.OnImageGenerationsRequestFilters() {
+			for _, f := range listenerFilters.OnImageGenerationsRequestFilters() {
 				fResult := f.OnImageGenerationsRequest(request.Context(), llmRequest, request)
 				if fResult.IsFailed() {
 					return nil, fResult.Error
@@ -79,68 +63,94 @@ func CommonListenerHandler(
 			}
 		}
 
-		var retriedCount uint64
+		resp, err = manager.HandleRequest(request.Context(), llmRequest)
+		if err != nil {
+			return resp, err
+		}
 
-		// Fallback loop
-		for {
-			// Re-select cluster from route (by Load Balancer)
-			selected, err := matchedRoute.SelectCluster(request.Context(), llmRequest)
-			if err != nil {
-				return nil, err
-			}
-			if selected == nil {
-				return nil, openai.NewErrorModelNotFoundOrNotAccessible(llmRequest.GetModel())
-			}
+		// Non-streaming responses
+		if !resp.IsStream() {
+			return resp, err
+		}
 
-			rMeta.SelectedCluster = mo.Some(selected)
+		// Streaming responses
+		streamResp, ok := resp.(object.LLMStreamResponse)
+		if !ok {
+			return resp, openai.NewErrorInternalError().WithCausef("failed to cast %T to object.LLMStreamResponse", resp)
+		}
 
-			if routeConfig.GetFallback() != nil && routeConfig.GetFallback().GetPreDelay() != nil && retriedCount > 0 {
-				time.Sleep(routeConfig.GetFallback().GetPreDelay().AsDuration())
-			}
-
-			resp, err = doRequest(request.Context(), rMeta.SelectedCluster.MustGet(), writer, request, llmRequest)
-
-			switch llmRequest.GetRequestType() {
-			case object.RequestTypeChatCompletions, object.RequestTypeCompletions:
-				if !llmRequest.IsStream() && !lo.IsNil(resp) {
-					for _, f := range reversedFilters.OnCompletionResponseFilters() {
-						fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
-						if fResult.IsFailed() {
-							slog.Error("error occurred during invoking of OnCompletionResponse filters", "error", fResult.Error)
-						}
-					}
-				}
-			case object.RequestTypeImageGenerations:
-				if !lo.IsNil(resp) {
-					for _, f := range reversedFilters.OnImageGenerationsResponseFilters() {
-						fResult := f.OnImageGenerationsResponse(request.Context(), llmRequest, resp)
-						if fResult.IsFailed() {
-							slog.Error("error occurred during invoking of OnImageGenerationsResponse filters", "error", fResult.Error)
-						}
-					}
+		streamResp.OnChunk(func(ctx context.Context, stream object.LLMStreamResponse, chunk object.LLMChunkResponse) {
+			for _, f := range reversedFilters.OnCompletionStreamResponseFilters() {
+				fResult := f.OnCompletionStreamResponse(ctx, llmRequest, streamResp, chunk)
+				if fResult.IsFailed() {
+					// REVIEW: ignore? Or should fResult be returned?
+					// Related topics: moderation, censorship, or filter keywords from the response
+					slog.Error("error occurred during invoking of OnCompletionStreamResponse filters", "error", fResult.Error)
 				}
 			}
+		})
 
-			rMeta.ResponseModel = llmRequest.GetModel()
-			if err == nil || errors.Is(err, openai.SkipStreamResponse) {
-				return resp, err
+		utils.WriteEventStreamHeadersForHTTP(writer)
+		// NOTICE: from now on, there should not have any explicit error get returned
+		// since the status code will be written by above call. If there is any error
+		// it should be written as a chunk in the stream response.
+		pipeCompletionsStream(request.Context(), listenerFilters, reversedFilters, llmRequest, streamResp, writer)
+
+		return resp, openai.SkipStreamResponse
+	}
+}
+
+func pipeCompletionsStream(ctx context.Context, _ filters.RequestFilters, reversedFilters filters.RequestFilters, request object.LLMRequest, streamResp object.LLMStreamResponse, writer http.ResponseWriter) {
+	rMeta := metadata.RequestMetadataFromCtx(ctx)
+
+	handleChunk := func(chunk object.LLMChunkResponse) error {
+		event, err := chunk.ToServerSentEvent()
+		if err != nil {
+			slog.Error("failed to convert chunk body to server sent event payload", "error", err)
+			return err
+		}
+
+		err = event.MarshalTo(writer)
+		if err != nil {
+			slog.Error("failed to write SSE event into http.ResponseWriter", "error", err)
+			return err
+		}
+
+		return nil
+	}
+
+	for {
+		chunk, err := streamResp.NextChunk()
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				slog.Error("failed to get next chunk from stream response", slog.Any("error", err))
+				return
 			}
 
-			if routeConfig.GetFallback() == nil {
-				return resp, err
+			// EOF, send last chunk
+			if err := handleChunk(chunk); err != nil {
+				// Ignore, terminate stream reading
+				return
 			}
-			if routeConfig.GetFallback().GetPostDelay() != nil {
-				time.Sleep(routeConfig.GetFallback().GetPostDelay().AsDuration())
-			}
-			if routeConfig.GetFallback().MaxRetries != nil {
-				if retriedCount >= lo.CoalesceOrEmpty(routeConfig.GetFallback().GetMaxRetries(), defaultRouteFallbackMaxRetries) {
-					return resp, err
-				}
 
-				retriedCount++
+			// Then terminate the stream
+			break
+		}
 
-				continue
-			}
+		if chunk.IsEmpty() {
+			continue
+		}
+		if chunk.IsUsage() && !lo.IsNil(chunk.GetUsage()) {
+			rMeta.LLMUpstreamTokensUsage = mo.Some(lo.Must(object.AsLLMTokensUsage(chunk.GetUsage())))
+		}
+		if chunk.IsFirst() {
+			rMeta.UpstreamFirstValidChunkAt = time.Now()
+			rMeta.UpstreamResponseModel = chunk.GetModel()
+		}
+
+		if err := handleChunk(chunk); err != nil {
+			// Ignore, terminate stream reading
+			return
 		}
 	}
 }

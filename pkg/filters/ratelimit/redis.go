@@ -43,7 +43,7 @@ else
     for i = 1, #bucket, 2 do
         state[bucket[i]] = tonumber(bucket[i + 1])
     end
-    
+
     -- Handle rate limit changes
     if state.limit ~= capacity then
         state = init_bucket(capacity, now)
@@ -90,13 +90,13 @@ func (rl *RateLimiter) checkBucketRedis(key string, window time.Duration, limit 
 
 	result := rl.redisClient.Do(context.Background(), cmd)
 	if err := result.NonRedisError(); err != nil {
-		slog.LogAttrs(context.Background(), slog.LevelError, "redis error", append(rl.logCommonAttrs(), slog.Any("error", err))...)
+		slog.ErrorContext(context.Background(), "redis error", append(rl.logCommonAttrs(), slog.Any("error", err))...)
 		return false, err
 	}
 
 	allowed, err := result.AsInt64()
 	if err != nil {
-		slog.LogAttrs(context.Background(), slog.LevelError, "failed to parse redis result", append(rl.logCommonAttrs(), slog.Any("error", err))...)
+		slog.ErrorContext(context.Background(), "failed to parse redis result", append(rl.logCommonAttrs(), slog.Any("error", err))...)
 		return false, err
 	}
 

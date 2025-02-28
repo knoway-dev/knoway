@@ -9,10 +9,34 @@ import (
 	goopenai "github.com/sashabaranov/go-openai"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
+	"knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/filters/auth"
 	"knoway.dev/pkg/metadata"
-	"knoway.dev/pkg/registry/cluster"
 )
+
+func ClustersToOpenAIModels(clusters []*v1alpha4.Cluster) []goopenai.Model {
+	res := make([]goopenai.Model, 0)
+	for _, c := range clusters {
+		res = append(res, ClusterToOpenAIModel(c))
+	}
+
+	return res
+}
+
+func ClusterToOpenAIModel(c *v1alpha4.Cluster) goopenai.Model {
+	// from https://platform.openai.com/docs/api-reference/models/object
+	return goopenai.Model{
+		CreatedAt: c.GetCreated(),
+		ID:        c.GetName(),
+		// The object type, which is always "model".
+		Object:  "model",
+		OwnedBy: c.GetProvider().String(),
+		// todo
+		Permission: nil,
+		Root:       "",
+		Parent:     "",
+	}
+}
 
 func (l *OpenAIChatListener) listModels(writer http.ResponseWriter, request *http.Request) (any, error) {
 	for _, f := range l.filters.OnRequestPreFilters() {
@@ -22,7 +46,7 @@ func (l *OpenAIChatListener) listModels(writer http.ResponseWriter, request *htt
 		}
 	}
 
-	clusters := cluster.ListModels()
+	clusters := manager.ListModels()
 
 	// auth filters
 	rMeta := metadata.RequestMetadataFromCtx(request.Context())

@@ -45,7 +45,7 @@ func ResponseHandler() func(resp any, err error, writer http.ResponseWriter, req
 				"type", openAIError.ErrorBody.Type,
 			)
 		} else if openAIError.Status >= http.StatusInternalServerError {
-			slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause)
+			slog.Error("failed to handle request", "error", openAIError, "cause", openAIError.Cause, "source_error", err.Error())
 		}
 
 		rMeta.StatusCode = openAIError.Status

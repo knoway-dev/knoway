@@ -1,7 +1,9 @@
 package object
 
 import (
+	"context"
 	"encoding/json"
+	"net/http"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 
@@ -25,6 +27,7 @@ type LLMRequest interface {
 	SetDefaultParams(params map[string]*structpb.Value) error
 
 	GetRequestType() RequestType
+	GetRawRequest() *http.Request
 }
 
 type LLMResponse interface {
@@ -49,6 +52,8 @@ type LLMStreamResponse interface {
 
 	IsEOF() bool
 	NextChunk() (LLMChunkResponse, error)
+	WaitUntilEOF() <-chan LLMStreamResponse
+	OnChunk(cb func(ctx context.Context, stream LLMStreamResponse, chunk LLMChunkResponse))
 }
 
 func IsLLMStreamResponse(r any) bool {
@@ -78,13 +83,6 @@ type LLMChunkResponse interface {
 	ToServerSentEvent() (*sse.Event, error)
 }
 
-type ImageGenerationsUsageImage interface {
-	GetWidth() uint64
-	GetHeight() uint64
-	GetStyle() string
-	GetQuality() string
-}
-
 type LLMUsage interface {
 	isLLMUsage()
 }
@@ -99,17 +97,6 @@ type LLMTokensUsage interface {
 
 func AsLLMTokensUsage(u LLMUsage) (LLMTokensUsage, bool) {
 	t, ok := u.(LLMTokensUsage)
-	return t, ok
-}
-
-type LLMImagesUsage interface {
-	LLMUsage
-
-	GetOutputImages() []ImageGenerationsUsageImage
-}
-
-func AsLLMImagesUsage(u LLMUsage) (LLMImagesUsage, bool) {
-	t, ok := u.(LLMImagesUsage)
 	return t, ok
 }
 

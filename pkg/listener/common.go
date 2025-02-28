@@ -2,6 +2,7 @@ package listener
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 	"time"
@@ -121,7 +122,7 @@ func CommonListenerHandler(
 			}
 
 			rMeta.ResponseModel = llmRequest.GetModel()
-			if err == nil {
+			if err == nil || errors.Is(err, openai.SkipStreamResponse) {
 				return resp, err
 			}
 

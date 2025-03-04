@@ -9,7 +9,7 @@ import (
 	goopenai "github.com/sashabaranov/go-openai"
 
 	v1alpha4 "knoway.dev/api/clusters/v1alpha1"
-	"knoway.dev/pkg/clusters/manager"
+	clustermanager "knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/filters/auth"
 	"knoway.dev/pkg/metadata"
 )
@@ -46,7 +46,7 @@ func (l *OpenAIChatListener) listModels(writer http.ResponseWriter, request *htt
 		}
 	}
 
-	clusters := manager.ListModels()
+	clusters := clustermanager.ListModels()
 
 	// auth filters
 	rMeta := metadata.RequestMetadataFromCtx(request.Context())

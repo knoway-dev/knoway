@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nekomeowww/fo"
 	"github.com/samber/lo"
 	"github.com/samber/lo/mutable"
 	"github.com/samber/mo"
@@ -154,7 +155,8 @@ func (m *clusterDefault) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 			return llmResp, err
 		}
 	} else if streamResp, ok := llmResp.(object.LLMStreamResponse); ok {
-		go func() {
+		// TODO: do we need to handle the error here?
+		go fo.Invoke0(ctx, func() error { //nolint:errcheck
 			<-streamResp.WaitUntilEOF()
 
 			// For streaming responses, accumulated usage from object.LLMResponse should be set after the stream is done
@@ -162,9 +164,8 @@ func (m *clusterDefault) DoUpstreamRequest(ctx context.Context, llmReq object.LL
 				rMeta.LLMUpstreamTokensUsage = mo.Some(lo.Must(object.AsLLMTokensUsage(llmResp.GetUsage())))
 			}
 
-			// TODO: do we need to handle the error here?
-			_ = m.doUpstreamResponseComplete(ctx, llmReq, llmResp)
-		}()
+			return m.doUpstreamResponseComplete(ctx, llmReq, llmResp)
+		})
 	}
 
 	switch llmReq.GetRequestType() {

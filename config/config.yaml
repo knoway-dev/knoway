@@ -4,85 +4,41 @@ controller:
   enable_http2: false
 kubeConfig: ""
 staticListeners:
-  - '@type': type.googleapis.com/knoway.listeners.v1alpha1.ChatCompletionListener
+  - "@type": type.googleapis.com/knoway.listeners.v1alpha1.ChatCompletionListener
     name: openai-chat
-    # filters:
-    #   - name: api-key-auth
-    #     config:
-    #       '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
-    #       authServer:
-    #         url: console.d.run:443
-    #         timeout: 0s
-    #   - config:
-    #       '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
-    #       statsServer:
-    #         url: console.d.run:443
-    #         timeout: 0s
-    #   - config:
-    #       '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
-    #       policies:
-    #         - limit: 0
-    #           based_on: USER_ID
-    #           duration: 30s
     filters:
       - name: api-key-auth
         config:
-          '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
+          "@type": type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
           authServer:
-            url: console.d.run:443
-            timeout: 0s
+            url: localhost:8083
+            timeout: 3s
       - config:
-          '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
+          "@type": type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
           statsServer:
-            url: console.d.run:443
-            timeout: 0s
-      - config:
-          '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
-          model: REDIS
-          redis_server:
-            url: redis://:xxx@10.6.229.81:31863/1
-          policies:
-            - basedOn: USER_ID
-              duration: 30s
+            url: localhost:8083
+            timeout: 3s
+      # - config:
+      #     "@type": type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
+      #     policies:
+      #       - basedOn: USER_ID
+      #         duration: 30s
+
     accessLog:
       enable: true
-  - '@type': type.googleapis.com/knoway.listeners.v1alpha1.ImageListener
+  - "@type": type.googleapis.com/knoway.listeners.v1alpha1.ImageListener
     name: openai-image
-    # filters:
-    #   - name: api-key-auth
-    #     config:
-    #       '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
-    #       authServer:
-    #         url: console.d.run:443
-    #         timeout: 0s
-    #   - config:
-    #       '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
-    #       statsServer:
-    #         url: console.d.run:443
-    #         timeout: 0s
-    #   - config:
-    #       '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
-    #       policies:
-    #         - limit: 0
-    #           based_on: USER_ID
-    #           duration: 30s
     filters:
       - name: api-key-auth
         config:
-          '@type': type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
+          "@type": type.googleapis.com/knoway.filters.v1alpha1.APIKeyAuthConfig
           authServer:
-            url: console.d.run:443
-            timeout: 0s
+            url: localhost:8083
+            timeout: 3s
       - config:
-          '@type': type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
+          "@type": type.googleapis.com/knoway.filters.v1alpha1.UsageStatsConfig
           statsServer:
-            url: console.d.run:443
-            timeout: 0s
-      - config:
-          '@type': type.googleapis.com/knoway.filters.v1alpha1.RateLimitConfig
-          model: LOCAL
-          policies:
-            - basedOn: USER_ID
-              duration: 30s
+            url: localhost:8083
+            timeout: 3s
     accessLog:
       enable: true

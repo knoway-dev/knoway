@@ -10,10 +10,11 @@ import (
 
 	"github.com/samber/lo"
 	"github.com/samber/mo"
+
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
-	"knoway.dev/pkg/route/manager"
+	routemanager "knoway.dev/pkg/route/manager"
 	"knoway.dev/pkg/types/openai"
 	"knoway.dev/pkg/utils"
 )
@@ -63,7 +64,20 @@ func CommonListenerHandler(
 			}
 		}
 
-		resp, err = manager.HandleRequest(request.Context(), llmRequest)
+		defer func() {
+			if !resp.IsStream() {
+				for _, f := range reversedFilters.OnCompletionResponseFilters() {
+					fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
+					if fResult.IsFailed() {
+						// REVIEW: ignore? Or should fResult be returned?
+						// Related topics: moderation, censorship, or filter keywords from the response
+						slog.Error("error occurred during invoking of OnCompletionResponse filters", "error", fResult.Error)
+					}
+				}
+			}
+		}()
+
+		resp, err = routemanager.HandleRequest(request.Context(), llmRequest)
 		if err != nil {
 			return resp, err
 		}
@@ -100,7 +114,7 @@ func CommonListenerHandler(
 	}
 }
 
-func pipeCompletionsStream(ctx context.Context, _ filters.RequestFilters, reversedFilters filters.RequestFilters, request object.LLMRequest, streamResp object.LLMStreamResponse, writer http.ResponseWriter) {
+func pipeCompletionsStream(ctx context.Context, _ filters.RequestFilters, _ filters.RequestFilters, _ object.LLMRequest, streamResp object.LLMStreamResponse, writer http.ResponseWriter) {
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
 
 	handleChunk := func(chunk object.LLMChunkResponse) error {

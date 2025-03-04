@@ -110,7 +110,7 @@ func (r *ImageGenerationBackendReconciler) Reconcile(ctx context.Context, req ct
 		log.Log.Error(err, "reconcile ImageGenerationBackend", "name", req.String())
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	if !statusEqual[knowaydevv1alpha1.StatusEnum](BackendFromImageGenerationBackend(currentBackend).GetStatus(), BackendFromImageGenerationBackend(newBackend).GetStatus()) {
+	if !statusEqual(BackendFromImageGenerationBackend(currentBackend).GetStatus(), BackendFromImageGenerationBackend(newBackend).GetStatus()) {
 		newBackend.Status = currentBackend.Status
 		if err := r.Status().Update(ctx, newBackend); err != nil {
 			log.Log.Error(err, "update ImageGenerationBackend status error", "name", currentBackend.GetName())

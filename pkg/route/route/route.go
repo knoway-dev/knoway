@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/samber/lo"
+
 	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/clusters/manager"
+	clustermanager "knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/filters"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
@@ -131,7 +132,7 @@ func (m *routeDefault) HandleRequest(ctx context.Context, request object.LLMRequ
 			time.Sleep(m.cfg.GetFallback().GetPreDelay().AsDuration())
 		}
 
-		resp, err := manager.HandleRequest(ctx, clusterName, request)
+		resp, err := clustermanager.HandleRequest(ctx, clusterName, request)
 
 		switch request.GetRequestType() {
 		case object.RequestTypeChatCompletions, object.RequestTypeCompletions:

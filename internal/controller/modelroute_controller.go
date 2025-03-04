@@ -168,7 +168,10 @@ func (r *ModelRouteReconciler) reconcileRegister(ctx context.Context, modelRoute
 		return err
 	}
 
-	routeConfig := r.toRegisterRouteConfig(ctx, modelRoute, mBackends)
+	routeConfig, err := r.toRegisterRouteConfig(ctx, modelRoute, mBackends)
+	if err != nil {
+		return err
+	}
 
 	mulErrs := &multierror.Error{}
 	if routeConfig != nil {
@@ -366,7 +369,10 @@ func (r *ModelRouteReconciler) reconcileValidator(ctx context.Context, modelRout
 	}
 
 	// validator cluster filter by new
-	routeConfig := r.toRegisterRouteConfig(ctx, modelRoute, mBackends)
+	routeConfig, err := r.toRegisterRouteConfig(ctx, modelRoute, mBackends)
+	if err != nil {
+		return err
+	}
 
 	_, err = manager.NewWithConfig(routeConfig)
 	if err != nil {
@@ -472,9 +478,9 @@ func (r *ModelRouteReconciler) buildRateLimitPolicies(rateLimits []*llmv1alpha1.
 	return res
 }
 
-func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRoute *llmv1alpha1.ModelRoute, mBackends map[string]Backend) *routev1alpha1.Route {
+func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRoute *llmv1alpha1.ModelRoute, mBackends map[string]Backend) (*routev1alpha1.Route, error) {
 	if modelRoute == nil {
-		return nil
+		return nil, errors.New("modelRoute cannot be nil")
 	}
 
 	modelName := modelRoute.Spec.ModelName
@@ -485,15 +491,23 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 	}
 
 	var filters []*routev1alpha1.RouteFilter
-	if modelRoute.Spec.RateLimit != nil {
-		filters = make([]*routev1alpha1.RouteFilter, 0)
 
-		filters = append(filters, &routev1alpha1.RouteFilter{
-			Name: "route-rate-limits",
-			Config: lo.Must(anypb.New(&filtersv1alpha1.RateLimitConfig{
-				Policies: r.buildRateLimitPolicies(modelRoute.Spec.RateLimit.Rules),
-			})),
-		})
+	for _, filter := range modelRoute.Spec.Filters {
+		switch filter.Type {
+		case llmv1alpha1.FilterTypeRateLimit:
+			if filter.RateLimit == nil {
+				return nil, errors.New("rate limit filter cannot be nil")
+			}
+			name, _ := lo.Coalesce(filter.Name, "route-rate-limits")
+			filters = append(filters, &routev1alpha1.RouteFilter{
+				Name: name,
+				Config: lo.Must(anypb.New(&filtersv1alpha1.RateLimitConfig{
+					Policies: r.buildRateLimitPolicies(filter.RateLimit.Rules),
+				})),
+			})
+		default:
+			return nil, fmt.Errorf("unknown filter type: %s", filter.Type)
+		}
 	}
 
 	var fallback *routev1alpha1.RouteFallback
@@ -526,7 +540,7 @@ func (r *ModelRouteReconciler) toRegisterRouteConfig(_ context.Context, modelRou
 		Targets:           r.mapModelRouteTargetsToBackends(r.getModelRouteTargets(modelRoute), mBackends),
 		Filters:           filters,
 		Fallback:          fallback,
-	}
+	}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -152,3 +152,7 @@ func (r *ChatCompletionsRequest) SetOverrideParams(params map[string]*structpb.V
 func (r *ChatCompletionsRequest) GetRequestType() object.RequestType {
 	return object.RequestTypeChatCompletions
 }
+
+func (r *ChatCompletionsRequest) GetRawRequest() *http.Request {
+	return r.incomingRequest
+}

@@ -74,7 +74,7 @@ func (l *OpenAIImageListener) RegisterRoutes(mux *mux.Router) error {
 		listener.WithRejectAfterDrainedWithError(l),
 	)
 
-	mux.HandleFunc("/v1/images/generations", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalImageGenerationsRequestToImageGenerationRequest, l.clusterDoImageGenerationRequest))))
+	mux.HandleFunc("/v1/images/generations", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalImageGenerationsRequestToImageGenerationRequest))))
 
 	return nil
 }

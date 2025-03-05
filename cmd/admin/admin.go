@@ -18,9 +18,9 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
 
+	clustermanager "knoway.dev/pkg/clusters/manager"
 	"knoway.dev/pkg/listener"
-	"knoway.dev/pkg/registry/cluster"
-	"knoway.dev/pkg/registry/route"
+	routemanager "knoway.dev/pkg/route/manager"
 )
 
 type debugListener struct {
@@ -40,7 +40,7 @@ func (d *debugListener) HasDrained() bool {
 }
 
 func sliceToAny[T proto.Message](s []T) []*anypb.Any {
-	anys := make([]*anypb.Any, 0, len(s))
+	anySlice := make([]*anypb.Any, 0, len(s))
 
 	for _, v := range s {
 		a, err := anypb.New(v)
@@ -49,15 +49,15 @@ func sliceToAny[T proto.Message](s []T) []*anypb.Any {
 			continue
 		}
 
-		anys = append(anys, a)
+		anySlice = append(anySlice, a)
 	}
 
-	return anys
+	return anySlice
 }
 
 func (d *debugListener) configDump(writer http.ResponseWriter, request *http.Request) {
-	clusters := cluster.DebugDumpAllClusters()
-	routes := route.DebugDumpAllRoutes()
+	clusters := clustermanager.DebugDumpAllClusters()
+	routes := routemanager.DebugDumpAllRoutes()
 	listeners := d.staticListeners
 	cd := &v1alpha1.ConfigDump{
 		Clusters:  sliceToAny(clusters),

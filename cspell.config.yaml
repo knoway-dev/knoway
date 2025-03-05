@@ -16,6 +16,7 @@ words:
   - clientcmd
   - clientgoscheme
   - clusterfilters
+  - clustermanager
   - containedctx
   - contextcheck
   - copyloopvar
@@ -88,6 +89,7 @@ words:
   - metricsserver
   - misspell
   - modelroute
+  - modelroutes
   - multierror
   - nakedret
   - nekomeowww
@@ -109,6 +111,7 @@ words:
   - Preflights
   - printcolumn
   - protogetter
+  - protojson
   - protoutils
   - ptypes
   - qwen
@@ -118,7 +121,10 @@ words:
   - registryfilters
   - registryroute
   - revive
+  - routemanager
   - routev1alpha1
+  - rroute
+  - rueidis
   - samber
   - sashabaranov
   - servicev1alpha1
@@ -126,6 +132,7 @@ words:
   - staticcheck
   - Statusable
   - Statuser
+  - stoewer
   - strcase
   - stretchr
   - structpb

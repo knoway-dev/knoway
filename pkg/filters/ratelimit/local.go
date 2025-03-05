@@ -74,7 +74,7 @@ func (rl *RateLimiter) initBucket(shard *rateLimitShard, key string, limit int, 
 	bucket.expireAt.Store(expireAt)
 	shard.buckets[key] = bucket
 
-	slog.LogAttrs(context.Background(), slog.LevelDebug, "created new token bucket", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int("limit", limit))...)
+	slog.DebugContext(context.Background(), "created new token bucket", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int("limit", limit))...)
 
 	return bucket
 }
@@ -84,13 +84,13 @@ func (rl *RateLimiter) updateBucket(shard *rateLimitShard, bucket *tokenBucket, 
 	if now.UnixNano() > bucket.expireAt.Load() {
 		delete(shard.buckets, key)
 		delete(shard.lastAccessTime, key)
-		slog.LogAttrs(context.Background(), slog.LevelDebug, "bucket expired, creating new one", append(rl.logCommonAttrs(), slog.String("key", key))...)
+		slog.DebugContext(context.Background(), "bucket expired, creating new one", append(rl.logCommonAttrs(), slog.String("key", key))...)
 
 		return rl.initBucket(shard, key, limit, newCapacity, newRate, now, expireAt)
 	}
 
 	if bucket.oldLimit.Load() != int64(limit) {
-		slog.LogAttrs(context.Background(), slog.LevelDebug, "updating bucket limit", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int64("oldLimit", bucket.oldLimit.Load()), slog.Int("newLimit", limit))...)
+		slog.DebugContext(context.Background(), "updating bucket limit", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int64("oldLimit", bucket.oldLimit.Load()), slog.Int("newLimit", limit))...)
 		bucket.oldLimit.Store(int64(limit))
 		bucket.capacity.Store(newCapacity)
 		bucket.rate.Store(newRate)
@@ -113,7 +113,7 @@ func (rl *RateLimiter) evictOldestBucket(shard *rateLimitShard, now time.Time) {
 		}
 	}
 
-	slog.LogAttrs(context.Background(), slog.LevelDebug, "removing oldest bucket to make space", append(rl.logCommonAttrs(), slog.String("key", oldestKey))...)
+	slog.DebugContext(context.Background(), "removing oldest bucket to make space", append(rl.logCommonAttrs(), slog.String("key", oldestKey))...)
 	delete(shard.buckets, oldestKey)
 	delete(shard.lastAccessTime, oldestKey)
 }
@@ -135,14 +135,14 @@ func (rl *RateLimiter) tryConsume(bucket *tokenBucket, now time.Time, key string
 		return true
 	}
 
-	slog.LogAttrs(context.Background(), slog.LevelDebug, "rate limit exceeded", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int64("tokens", bucket.tokens.Load()), slog.Int("precision", precision))...)
+	slog.DebugContext(context.Background(), "rate limit exceeded", append(rl.logCommonAttrs(), slog.String("key", key), slog.Int64("tokens", bucket.tokens.Load()), slog.Int("precision", precision))...)
 
 	return false
 }
 
 // Cleanup old keys that haven't been accessed for more than 24 hours
 func (rl *RateLimiter) cleanupLoop(ctx context.Context) {
-	slog.LogAttrs(context.Background(), slog.LevelDebug, "starting cleanup loop", append(rl.logCommonAttrs(), slog.Duration("interval", cleanupInterval))...)
+	slog.DebugContext(context.Background(), "starting cleanup loop", append(rl.logCommonAttrs(), slog.Duration("interval", cleanupInterval))...)
 	ticker := time.NewTicker(cleanupInterval)
 
 	defer ticker.Stop()
@@ -152,14 +152,14 @@ func (rl *RateLimiter) cleanupLoop(ctx context.Context) {
 		case <-ticker.C:
 			rl.cleanup()
 		case <-ctx.Done():
-			slog.LogAttrs(context.Background(), slog.LevelInfo, "stopping cleanup loop", rl.logCommonAttrs()...)
+			slog.InfoContext(context.Background(), "stopping cleanup loop", rl.logCommonAttrs()...)
 			return
 		}
 	}
 }
 
 func (rl *RateLimiter) cleanup() {
-	slog.LogAttrs(context.Background(), slog.LevelDebug, "cleaning up expired rate limit buckets", rl.logCommonAttrs()...)
+	slog.DebugContext(context.Background(), "cleaning up expired rate limit buckets", rl.logCommonAttrs()...)
 	now := time.Now()
 
 	// Clean each shard
@@ -174,7 +174,7 @@ func (rl *RateLimiter) cleanup() {
 			}
 		}
 		afterCount := len(shard.buckets)
-		slog.LogAttrs(context.Background(), slog.LevelDebug, "cleaned shard", append(rl.logCommonAttrs(), slog.Int("shard", i), slog.Int("removed", beforeCount-afterCount))...)
+		slog.DebugContext(context.Background(), "cleaned shard", append(rl.logCommonAttrs(), slog.Int("shard", i), slog.Int("removed", beforeCount-afterCount))...)
 		shard.mu.Unlock()
 	}
 }

@@ -74,8 +74,8 @@ func (l *OpenAIChatListener) RegisterRoutes(mux *mux.Router) error {
 		listener.WithRejectAfterDrainedWithError(l),
 	)
 
-	mux.HandleFunc("/v1/chat/completions", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalChatCompletionsRequestToLLMRequest, l.clusterDoCompletionsRequest))))
-	mux.HandleFunc("/v1/completions", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalCompletionsRequestToLLMRequest, l.clusterDoCompletionsRequest))))
+	mux.HandleFunc("/v1/chat/completions", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalChatCompletionsRequestToLLMRequest))))
+	mux.HandleFunc("/v1/completions", listener.HTTPHandlerFunc(middlewares(listener.CommonListenerHandler(l.filters, l.reversedFilters, l.unmarshalCompletionsRequestToLLMRequest))))
 	mux.HandleFunc("/v1/models", listener.HTTPHandlerFunc(middlewares(l.listModels)))
 
 	return nil

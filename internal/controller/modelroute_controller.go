@@ -42,8 +42,8 @@ import (
 	routev1alpha1 "knoway.dev/api/route/v1alpha1"
 	llmv1alpha1 "knoway.dev/api/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/registry/route"
-	"knoway.dev/pkg/route/manager"
+	routemanager "knoway.dev/pkg/route/manager"
+	"knoway.dev/pkg/route/route"
 )
 
 // ModelRouteReconciler reconciles a ModelRoute object
@@ -153,7 +153,7 @@ func (r *ModelRouteReconciler) reconcileRegister(ctx context.Context, modelRoute
 
 	removeBackendFunc := func() {
 		if modelName != "" {
-			route.RemoveMatchRoute(modelName)
+			routemanager.RemoveMatchRoute(modelName)
 		}
 	}
 	if isModelRouteDeleted(modelRoute) {
@@ -175,7 +175,7 @@ func (r *ModelRouteReconciler) reconcileRegister(ctx context.Context, modelRoute
 
 	mulErrs := &multierror.Error{}
 	if routeConfig != nil {
-		if err := route.RegisterMatchRouteWithConfig(routeConfig); err != nil {
+		if err := routemanager.RegisterMatchRouteWithConfig(routeConfig, r.LifeCycle); err != nil {
 			log.Log.Error(err, "Failed to register route", "route", modelName)
 			mulErrs = multierror.Append(mulErrs, fmt.Errorf("failed to upsert ModelRoute %s route: %w", modelRoute.GetName(), err))
 		}
@@ -374,7 +374,7 @@ func (r *ModelRouteReconciler) reconcileValidator(ctx context.Context, modelRout
 		return err
 	}
 
-	_, err = manager.NewWithConfig(routeConfig)
+	_, err = route.NewWithConfig(routeConfig, r.LifeCycle)
 	if err != nil {
 		return fmt.Errorf("invalid route configuration: %w", err)
 	}

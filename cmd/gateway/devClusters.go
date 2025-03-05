@@ -7,8 +7,8 @@ import (
 	clusters "knoway.dev/api/clusters/v1alpha1"
 	filters "knoway.dev/api/filters/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/registry/cluster"
-	"knoway.dev/pkg/registry/route"
+	clustermanager "knoway.dev/pkg/clusters/manager"
+	routemanager "knoway.dev/pkg/route/manager"
 )
 
 var StaticClustersConfig = map[string]*clusters.Cluster{
@@ -46,10 +46,10 @@ var StaticClustersConfig = map[string]*clusters.Cluster{
 
 func StaticRegisterClusters(clusterDetails map[string]*clusters.Cluster, lifecycle bootkit.LifeCycle) error {
 	for _, c := range clusterDetails {
-		if err := cluster.UpsertAndRegisterCluster(c, lifecycle); err != nil {
+		if err := clustermanager.UpsertAndRegisterCluster(c, lifecycle); err != nil {
 			return err
 		}
-		if err := route.RegisterBaseRouteWithConfig(route.InitDirectModelRoute(c.GetName())); err != nil {
+		if err := routemanager.RegisterBaseRouteWithConfig(routemanager.InitDirectModelRoute(c.GetName()), lifecycle); err != nil {
 			return err
 		}
 	}

@@ -1,170 +1,147 @@
 package manager
 
 import (
-	"bufio"
 	"context"
-	"errors"
-	"fmt"
-	"net/http"
-	"time"
+	"log/slog"
+	"sync"
 
 	"github.com/samber/lo"
-	"github.com/samber/lo/mutable"
 	"github.com/samber/mo"
-	"google.golang.org/protobuf/proto"
 
 	"knoway.dev/api/clusters/v1alpha1"
 	"knoway.dev/pkg/bootkit"
-	"knoway.dev/pkg/clusters"
-	"knoway.dev/pkg/clusters/filters"
+	clusters2 "knoway.dev/pkg/clusters"
+	cluster "knoway.dev/pkg/clusters/cluster"
 	"knoway.dev/pkg/metadata"
 	"knoway.dev/pkg/object"
-	registryfilters "knoway.dev/pkg/registry/config"
-	"knoway.dev/pkg/utils"
 )
 
-var _ clusters.Cluster = (*clusterManager)(nil)
+var clusterRegister *Register
 
-type clusterManager struct {
-	cluster         *v1alpha1.Cluster
-	filters         filters.ClusterFilters
-	reversedFilters filters.ClusterFilters
-}
-
-func NewWithConfigs(clusterProtoMsg proto.Message, lifecycle bootkit.LifeCycle) (clusters.Cluster, error) {
-	cluster, ok := clusterProtoMsg.(*v1alpha1.Cluster)
+func HandleRequest(ctx context.Context, clusterName string, request object.LLMRequest) (object.LLMResponse, error) {
+	foundCluster, ok := clusterRegister.FindClusterByName(clusterName)
 	if !ok {
-		return nil, fmt.Errorf("invalid config type %T", cluster)
+		return nil, object.NewErrorModelNotFoundOrNotAccessible(request.GetModel())
 	}
-
-	var clusterFilters []filters.ClusterFilter
-
-	for _, fc := range cluster.GetFilters() {
-		if f, err := registryfilters.NewClusterFilterWithConfig(fc.GetName(), fc.GetConfig(), lifecycle); err != nil {
-			return nil, err
-		} else {
-			clusterFilters = append(clusterFilters, f)
-		}
-	}
-
-	// check lb
-	switch cluster.GetLoadBalancePolicy() {
-	case v1alpha1.LoadBalancePolicy_IP_HASH:
-		// TODO: implement
-	case v1alpha1.LoadBalancePolicy_LEAST_CONNECTION:
-		// TODO: implement
-	case v1alpha1.LoadBalancePolicy_ROUND_ROBIN:
-		// TODO: implement
-	case v1alpha1.LoadBalancePolicy_CUSTOM, v1alpha1.LoadBalancePolicy_LOAD_BALANCE_POLICY_UNSPECIFIED:
-		_, ok := lo.Find(clusterFilters, func(f filters.ClusterFilter) bool {
-			selector, ok := f.(filters.ClusterFilterEndpointSelector)
-			return ok && selector != nil
-		})
-		if !ok {
-			return nil, errors.New("custom load balance policy must be implemented")
-		}
-	default:
-		// if use internal lb, filter must NOT implement SelectEndpoint
-		if lo.SomeBy(clusterFilters, func(f filters.ClusterFilter) bool {
-			selector, ok := f.(filters.ClusterFilterEndpointSelector)
-			return ok && selector != nil
-		}) {
-			return nil, errors.New("internal load balance policy must NOT be implemented")
-		}
-	}
-
-	// Add default filters
-	clusterFilters = append(clusterFilters, registryfilters.ClusterDefaultFilters(lifecycle)...)
-	reversedClusterFilters := utils.Clone(clusterFilters)
-	// NOTICE: mutable.Reverse will modify the original slice, so we need to clone it
-	mutable.Reverse(reversedClusterFilters)
-
-	return &clusterManager{
-		cluster:         cluster,
-		filters:         clusterFilters,
-		reversedFilters: reversedClusterFilters,
-	}, nil
-}
-
-func (m *clusterManager) GetClusterType() v1alpha1.ClusterType {
-	return m.cluster.GetType()
-}
-
-func (m *clusterManager) GetClusterConfig() *v1alpha1.Cluster {
-	return m.cluster
-}
-
-func (m *clusterManager) DoUpstreamRequest(ctx context.Context, llmReq object.LLMRequest) (object.LLMResponse, error) {
-	var err error
 
 	rMeta := metadata.RequestMetadataFromCtx(ctx)
-	rMeta.UpstreamProvider = m.cluster.GetProvider()
+	rMeta.SelectedCluster = mo.Some(foundCluster)
 
-	llmReq, err = m.filters.ForEachRequestModifier(ctx, m.cluster, llmReq)
+	resp, err := foundCluster.DoUpstreamRequest(ctx, request)
 	if err != nil {
-		return nil, object.LLMErrorOrInternalError(err)
+		// Cluster will ensure that error will always be LLMError
+		return resp, err
+	}
+	if resp.GetError() != nil {
+		return resp, resp.GetError()
 	}
 
-	rMeta.UpstreamRequestModel = llmReq.GetModel()
-
-	var req *http.Request
-
-	req, err = m.filters.ForEachUpstreamRequestMarshaller(ctx, m.cluster, llmReq, req)
-	if err != nil {
-		return nil, object.LLMErrorOrInternalError(err)
-	}
-
-	rMeta.UpstreamRequestAt = time.Now()
-
-	// TODO: body close
-	rawResp, buffer, err := doRequest(req) //nolint:bodyclose
-	if err != nil {
-		return nil, object.NewErrorBadGateway(err)
-	}
-
-	// err != nil means the connection is not possible to establish
-	// or find it's way to the destination, or upstream timeout
-	rMeta.UpstreamRespondAt = time.Now()
-
-	var llmResp object.LLMResponse
-
-	llmResp, err = m.reversedFilters.ForEachResponseUnmarshaller(ctx, m.cluster, llmReq, rawResp, buffer, llmResp)
-	if err != nil {
-		return nil, object.LLMErrorOrInternalError(err)
-	}
-
-	rMeta.UpstreamResponseModel = llmResp.GetModel()
-
-	llmResp, err = m.reversedFilters.ForEachResponseModifier(ctx, m.cluster, llmReq, llmResp)
-	if err != nil {
-		return nil, object.LLMErrorOrInternalError(err)
-	}
-
-	rMeta.UpstreamResponseStatusCode = rawResp.StatusCode
-	rMeta.UpstreamResponseHeader = mo.Some(rawResp.Header)
-
-	if !lo.IsNil(llmResp.GetError()) {
-		rMeta.UpstreamResponseErrorMessage = llmResp.GetError().Error()
-	}
-
-	return llmResp, nil
+	return resp, err
 }
 
-func (m *clusterManager) DoUpstreamResponseComplete(ctx context.Context, req object.LLMRequest, res object.LLMResponse) error {
-	err := m.reversedFilters.ForEachResponseComplete(ctx, req, res)
-	if err != nil {
-		return object.LLMErrorOrInternalError(err)
+func RemoveCluster(cluster *v1alpha1.Cluster) {
+	clusterRegister.DeleteCluster(cluster.GetName())
+}
+
+func UpsertAndRegisterCluster(cluster *v1alpha1.Cluster, lifecycle bootkit.LifeCycle) error {
+	return clusterRegister.UpsertAndRegisterCluster(cluster, lifecycle)
+}
+
+func ListModels() []*v1alpha1.Cluster {
+	if clusterRegister == nil {
+		return nil
 	}
+
+	return clusterRegister.ListModels()
+}
+
+func init() { //nolint:gochecknoinits
+	if clusterRegister == nil {
+		InitClusterRegister()
+	}
+}
+
+type Register struct {
+	clusters        map[string]clusters2.Cluster
+	clustersDetails map[string]*v1alpha1.Cluster
+	clustersLock    sync.RWMutex
+}
+
+type RegisterOptions struct {
+	DevConfig bool
+}
+
+func NewClusterRegister() *Register {
+	r := &Register{
+		clusters:        make(map[string]clusters2.Cluster),
+		clustersDetails: make(map[string]*v1alpha1.Cluster),
+		clustersLock:    sync.RWMutex{},
+	}
+
+	return r
+}
+
+func InitClusterRegister() {
+	c := NewClusterRegister()
+	clusterRegister = c
+}
+
+func (cr *Register) DeleteCluster(name string) {
+	cr.clustersLock.Lock()
+	defer cr.clustersLock.Unlock()
+
+	delete(cr.clusters, name)
+	delete(cr.clustersDetails, name)
+	slog.Info("remove cluster", "name", name)
+}
+
+func (cr *Register) FindClusterByName(name string) (clusters2.Cluster, bool) {
+	cr.clustersLock.RLock()
+	defer cr.clustersLock.RUnlock()
+
+	c, ok := cr.clusters[name]
+
+	return c, ok
+}
+
+func (cr *Register) UpsertAndRegisterCluster(c *v1alpha1.Cluster, lifecycle bootkit.LifeCycle) error {
+	cr.clustersLock.Lock()
+	defer cr.clustersLock.Unlock()
+
+	name := c.GetName()
+
+	newCluster, err := cluster.NewWithConfigs(c, lifecycle)
+	if err != nil {
+		return err
+	}
+
+	cr.clustersDetails[c.GetName()] = c
+	cr.clusters[name] = newCluster
+
+	slog.Info("register cluster", "name", name)
 
 	return nil
 }
 
-func doRequest(req *http.Request) (*http.Response, *bufio.Reader, error) {
-	// send request
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, nil, err
+func (cr *Register) ListModels() []*v1alpha1.Cluster {
+	cr.clustersLock.RLock()
+	defer cr.clustersLock.RUnlock()
+
+	clusters := make([]*v1alpha1.Cluster, 0, len(cr.clusters))
+	for _, cluster := range cr.clustersDetails {
+		clusters = append(clusters, cluster)
 	}
 
-	return resp, bufio.NewReader(resp.Body), nil
+	return clusters
+}
+
+func (cr *Register) dumpAllClusters() []*v1alpha1.Cluster {
+	cr.clustersLock.RLock()
+	defer cr.clustersLock.RUnlock()
+
+	return lo.Values(clusterRegister.clustersDetails)
+}
+
+func DebugDumpAllClusters() []*v1alpha1.Cluster {
+	return clusterRegister.dumpAllClusters()
 }

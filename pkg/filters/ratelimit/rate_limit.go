@@ -49,8 +49,8 @@ type RateLimiter struct {
 	redisClient rueidis.Client
 }
 
-func (rl *RateLimiter) logCommonAttrs() []slog.Attr {
-	return []slog.Attr{
+func (rl *RateLimiter) logCommonAttrs() []any {
+	return []any{
 		slog.String("filter", "rate_limit"),
 		slog.String("serverPrefix", rl.serverPrefix),
 		slog.Any("mode", rl.mode),
@@ -88,21 +88,21 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 		rl.mode = v1alpha1.RateLimitMode_LOCAL
 	}
 
-	slog.LogAttrs(context.Background(), slog.LevelInfo, "initializing rate limiter", rl.logCommonAttrs()...)
-	slog.LogAttrs(context.Background(), slog.LevelDebug, "rate limiter default policies", append(rl.logCommonAttrs(), slog.Any("pluginPolicies", rl.pluginPolicies))...)
+	slog.InfoContext(context.Background(), "initializing rate limiter", rl.logCommonAttrs()...)
+	slog.DebugContext(context.Background(), "rate limiter default policies", append(rl.logCommonAttrs(), slog.Any("pluginPolicies", rl.pluginPolicies))...)
 
 	if rl.mode == v1alpha1.RateLimitMode_REDIS {
-		slog.LogAttrs(context.Background(), slog.LevelInfo, "initializing redis client", append(rl.logCommonAttrs(), slog.String("url", rCfg.GetRedisServer().GetUrl()))...)
+		slog.InfoContext(context.Background(), "initializing redis client", append(rl.logCommonAttrs(), slog.String("url", rCfg.GetRedisServer().GetUrl()))...)
 
 		redisClient, err := redis.NewRedisClient(rCfg.GetRedisServer().GetUrl())
 		if err != nil {
-			slog.LogAttrs(context.Background(), slog.LevelError, "failed to create redis client", append(rl.logCommonAttrs(), slog.Any("error", err))...)
+			slog.ErrorContext(context.Background(), "failed to create redis client", append(rl.logCommonAttrs(), slog.Any("error", err))...)
 			return nil, fmt.Errorf("failed to create redis client: %w", err)
 		}
 
 		rl.redisClient = redisClient
 	} else {
-		slog.LogAttrs(context.Background(), slog.LevelInfo, "initializing local rate limiter shards", rl.logCommonAttrs()...)
+		slog.InfoContext(context.Background(), "initializing local rate limiter shards", rl.logCommonAttrs()...)
 		// init shards for local mode
 		for i := range numShards {
 			rl.shards[i] = &rateLimitShard{
@@ -117,7 +117,7 @@ func NewWithConfig(cfg *anypb.Any, lifecycle bootkit.LifeCycle) (filters.Request
 
 	lifecycle.Append(bootkit.LifeCycleHook{
 		OnStop: func(ctx context.Context) error {
-			slog.LogAttrs(context.Background(), slog.LevelInfo, "stopping rate limiter", rl.logCommonAttrs()...)
+			slog.InfoContext(context.Background(), "stopping rate limiter", rl.logCommonAttrs()...)
 			rl.cancel()
 			if rl.redisClient != nil {
 				rl.redisClient.Close()
@@ -199,51 +199,31 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 	userName := rMeta.AuthInfo.GetUserId()
 
 	if apiKey == "" && userName == "" {
-		slog.LogAttrs(context.Background(), slog.LevelDebug, "no api key or user name found, skipping rate limit", rl.logCommonAttrs()...)
-		return filters.NewOK()
-	}
-	if rMeta.MatchRoute == nil || rMeta.MatchRoute.GetRouteConfig() == nil {
+		slog.DebugContext(context.Background(), "no api key or user name found, skipping rate limit", rl.logCommonAttrs()...)
 		return filters.NewOK()
 	}
 
-	route := rMeta.MatchRoute
-	routeName := route.GetRouteConfig().GetName()
-
-	var fPolicy *v1alpha1.RateLimitPolicy
-	if routeName == "" {
-		routeName = request.GetModel()
-	}
-
-	var rCfg *v1alpha1.RateLimitConfig
-
-	for _, f := range route.GetRouteConfig().GetFilters() {
-		newRl, _ := NewRateLimitConfigWithFilter(f.GetConfig())
-		if newRl != nil {
-			rCfg = newRl
-			break
-		}
-	}
-
-	if rCfg != nil {
-		fPolicy = rl.findMatchingPolicy(apiKey, userName, rCfg.GetPolicies())
-	}
+	fPolicy := rl.findMatchingPolicy(apiKey, userName, rl.pluginPolicies)
 	if fPolicy == nil {
-		fPolicy = rl.findMatchingPolicy(apiKey, userName, rl.pluginPolicies)
+		slog.DebugContext(ctx, "no matching policy found, skipping rate limit", append(rl.logCommonAttrs(), slog.String("apiKey", apiKey), slog.String("userName", userName))...)
+		return filters.NewOK()
 	}
 
-	allow, err := rl.allowRequest(apiKey, userName, routeName, fPolicy)
+	allow, err := rl.allowRequest(apiKey, userName, request.GetModel(), fPolicy)
 	if err != nil {
-		slog.LogAttrs(context.Background(), slog.LevelError, "failed to check rate limit", append(rl.logCommonAttrs(), slog.Any("error", err))...)
+		slog.ErrorContext(ctx, "failed to check rate limit", append(rl.logCommonAttrs(), slog.Any("error", err))...)
 		return filters.NewFailed(err)
 	}
 
 	if !allow {
-		slog.LogAttrs(context.Background(), slog.LevelDebug, "rate limit exceeded", append(rl.logCommonAttrs(),
+		slog.DebugContext(ctx, "rate limit exceeded", append(
+			rl.logCommonAttrs(),
 			slog.String("apiKey", apiKey),
 			slog.String("userName", userName),
-			slog.String("route", routeName),
+			slog.String("model", request.GetModel()),
 			slog.Int64("limit", int64(fPolicy.GetLimit())),
-			slog.Duration("duration", fPolicy.GetDuration().AsDuration()))...)
+			slog.Duration("duration", fPolicy.GetDuration().AsDuration()),
+		)...)
 
 		return filters.NewFailed(object.NewErrorRateLimitExceeded())
 	}
@@ -251,7 +231,7 @@ func (rl *RateLimiter) onRequest(ctx context.Context, request object.LLMRequest)
 	return filters.NewOK()
 }
 
-func (rl *RateLimiter) allowRequest(apiKey, userName string, routeName string, policy *v1alpha1.RateLimitPolicy) (bool, error) {
+func (rl *RateLimiter) allowRequest(apiKey, userName string, modelName string, policy *v1alpha1.RateLimitPolicy) (bool, error) {
 	if policy == nil {
 		return true, nil
 	}
@@ -295,7 +275,7 @@ func (rl *RateLimiter) allowRequest(apiKey, userName string, routeName string, p
 		duration = defaultDuration
 	}
 
-	key := rl.buildKey(policy.GetBasedOn(), value, routeName)
+	key := rl.buildKey(policy.GetBasedOn(), value, modelName)
 
 	return rl.checkBucket(key, duration, int(policy.GetLimit()))
 }

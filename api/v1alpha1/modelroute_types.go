@@ -32,6 +32,8 @@ const (
 	ModelRouteRateLimitBasedOnAPIKey RateLimitBasedOn = "APIKey"
 	// ModelRouteRateLimitBasedOnUserID indicates rate limiting based on user identity
 	ModelRouteRateLimitBasedOnUserID RateLimitBasedOn = "UserID"
+
+	FilterTypeRateLimit string = "RateLimit"
 )
 
 type StringMatch struct {
@@ -120,13 +122,26 @@ type ModelRouteFallback struct {
 	MaxRetires *uint64 `json:"maxRetries"`
 }
 
-// ModelRouteSpec defines the desired state of ModelRoute.
-type ModelRouteSpec struct {
-	ModelName string `json:"modelName"`
-	// Rate limit
+type ModelRouteFilter struct {
+	// Filter name
+	// +optional
+	Name string `json:"name,omitempty"`
+	// Filter type
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Enum=RateLimit
+	Type string `json:"type,omitempty"`
+	// Rate limit Filter, if the type is RateLimit
 	// +kubebuilder:validation:Optional
 	// +optional
 	RateLimit *RateLimitPolicy `json:"rateLimit"`
+}
+
+// ModelRouteSpec defines the desired state of ModelRoute.
+type ModelRouteSpec struct {
+	ModelName string `json:"modelName"`
+	// Filters for the route
+	// +kubebuilder:validation:Optional
+	Filters []ModelRouteFilter `json:"filters,omitempty"`
 	// Route policy
 	// +kubebuilder:validation:Optional
 	// +optional

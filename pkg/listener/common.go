@@ -65,7 +65,7 @@ func CommonListenerHandler(
 		}
 
 		defer func() {
-			if !resp.IsStream() {
+			if !lo.IsNil(resp) && !resp.IsStream() {
 				for _, f := range reversedFilters.OnCompletionResponseFilters() {
 					fResult := f.OnCompletionResponse(request.Context(), llmRequest, resp)
 					if fResult.IsFailed() {

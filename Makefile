@@ -74,7 +74,7 @@ help:
 format: format-proto format-go
 
 format-go:
-	golangci-lint run --fix
+	golangci-lint run --fix --timeout=5m
 	goimports -local knoway.dev -w .
 	gofmt -w .
 

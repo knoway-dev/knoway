@@ -154,6 +154,22 @@ func (r *ImageGenerationsRequest) SetOverrideParams(params map[string]*structpb.
 	return nil
 }
 
+func (r *ImageGenerationsRequest) RemoveParamKeys(keys []string) error {
+	applyOpt := jsonpatch.NewApplyOptions()
+	applyOpt.AllowMissingPathOnRemove = true
+
+	for _, v := range keys {
+		var err error
+
+		r.bodyBuffer, r.bodyParsed, err = modifyBufferBodyAndParsed(r.bodyBuffer, applyOpt, NewRemove("/"+v))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *ImageGenerationsRequest) GetRequestType() object.RequestType {
 	return object.RequestTypeImageGenerations
 }

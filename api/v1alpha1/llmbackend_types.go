@@ -91,8 +91,9 @@ type BackendUpstream struct {
 	//	  refName: common-gpt4-apikey
 	HeadersFrom []HeaderFromSource `json:"headersFrom,omitempty"`
 
-	DefaultParams  *ModelParams `json:"defaultParams,omitempty"`
-	OverrideParams *ModelParams `json:"overrideParams,omitempty"`
+	DefaultParams   *ModelParams `json:"defaultParams,omitempty"`
+	OverrideParams  *ModelParams `json:"overrideParams,omitempty"`
+	RemoveParamKeys []string     `json:"RemoveParamKeys,omitempty"`
 
 	Timeout int32 `json:"timeout,omitempty"`
 }

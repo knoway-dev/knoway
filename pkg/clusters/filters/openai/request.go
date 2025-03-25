@@ -57,6 +57,11 @@ func (f *requestHandler) RequestModifier(ctx context.Context, cluster *v1alpha1c
 		return request, err
 	}
 
+	err = request.RemoveParamKeys(cluster.GetUpstream().GetRemoveParamKeys())
+	if err != nil {
+		return request, err
+	}
+
 	return request, nil
 }
 

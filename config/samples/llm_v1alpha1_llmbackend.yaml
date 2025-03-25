@@ -23,6 +23,8 @@ spec:
       openai:
         # upstream model
         model: "openai/gpt-3.5-turbo"
+    removeParamKeys:
+      - negative_prompt
   filters:
     - custom:
         pluginName: "examplePlugin"

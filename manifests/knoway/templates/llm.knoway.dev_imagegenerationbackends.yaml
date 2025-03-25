@@ -95,6 +95,10 @@ spec:
               upstream:
                 description: Upstream contains information about the upstream configuration
                 properties:
+                  RemoveParamKeys:
+                    items:
+                      type: string
+                    type: array
                   baseUrl:
                     description: "BaseUrl define upstream endpoint url\nExample:\n\t\thttps://openrouter.ai/api/v1/chat/completions\n\n
                       \thttp://phi3-mini.default.svc.cluster.local:8000/api/v1/chat/completions"

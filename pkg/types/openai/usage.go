@@ -77,7 +77,7 @@ var _ object.LLMImagesUsage = (*ImageGenerationsUsage)(nil)
 type ImageGenerationsUsage struct {
 	object.IsLLMUsage
 
-	Images []ImageGenerationsUsageImage `json:"images,omitempty"` // Usage information for each generated image.
+	Images []*ImageGenerationsUsageImage `json:"images,omitempty"` // Usage information for each generated image.
 }
 
 func (u *ImageGenerationsUsage) GetTotalTokens() uint64 {
@@ -93,5 +93,5 @@ func (u *ImageGenerationsUsage) GetPromptTokens() uint64 {
 }
 
 func (u *ImageGenerationsUsage) GetOutputImages() []object.ImageGenerationsUsageImage {
-	return utils.TypeAssertFrom[ImageGenerationsUsageImage, object.ImageGenerationsUsageImage](u.Images)
+	return utils.TypeAssertFrom[*ImageGenerationsUsageImage, object.ImageGenerationsUsageImage](u.Images)
 }

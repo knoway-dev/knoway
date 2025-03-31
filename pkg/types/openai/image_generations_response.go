@@ -222,7 +222,7 @@ func (r *ImageGenerationsResponse) resolveUsage(ctx context.Context, request obj
 		return errors.New("failed to cast request to ImageGenerationsRequest")
 	}
 
-	r.Usage.Images = lo.Map(r.Images, func(imageObject *ImageGenerationsImage, _ int) ImageGenerationsUsageImage {
+	r.Usage.Images = lo.Map(r.Images, func(imageObject *ImageGenerationsImage, _ int) *ImageGenerationsUsageImage {
 		var width uint64
 		var height uint64
 
@@ -231,7 +231,7 @@ func (r *ImageGenerationsResponse) resolveUsage(ctx context.Context, request obj
 			height = imageGenerationRequest.Size.Height
 		}
 
-		return ImageGenerationsUsageImage{
+		return &ImageGenerationsUsageImage{
 			Width:   width,
 			Height:  height,
 			Style:   lo.FromPtr(imageGenerationRequest.Style),
@@ -249,7 +249,7 @@ func (r *ImageGenerationsResponse) resolveUsage(ctx context.Context, request obj
 				return err
 			}
 
-			r.Usage.Images = lo.Map(r.Usage.Images, func(image ImageGenerationsUsageImage, index int) ImageGenerationsUsageImage {
+			r.Usage.Images = lo.Map(r.Usage.Images, func(image *ImageGenerationsUsageImage, index int) *ImageGenerationsUsageImage {
 				switch r.options.meteringPolicy.GetSizeFrom() {
 				case v1alpha1.ClusterMeteringPolicy_SIZE_FROM_OUTPUT:
 					image.Width = uint64(r.Images[index].ImageConfig.Width)

@@ -133,16 +133,18 @@ func (f *UsageFilter) usageReport(ctx context.Context, request object.LLMRequest
 			slog.Warn("failed to cast usage to LLMUsageImage")
 			break
 		}
-		if len(imagesUsage.GetOutputImages()) == 0 {
+
+		outputImages := imagesUsage.GetOutputImages()
+		if len(outputImages) == 0 {
 			break
 		}
 
 		usageImage := &service.UsageReportRequest_UsageImage{
-			Width:   imagesUsage.GetOutputImages()[0].GetWidth(),
-			Height:  imagesUsage.GetOutputImages()[0].GetHeight(),
-			Numbers: uint64(len(imagesUsage.GetOutputImages())), // REVIEW: what if n != len(imagesUsage.GetOutputImages()),
-			Style:   imagesUsage.GetOutputImages()[0].GetStyle(),
-			Quality: imagesUsage.GetOutputImages()[0].GetQuality(),
+			Width:   outputImages[0].GetWidth(),
+			Height:  outputImages[0].GetHeight(),
+			Numbers: uint64(len(outputImages)), // REVIEW: what if n != len(),
+			Style:   outputImages[0].GetStyle(),
+			Quality: outputImages[0].GetQuality(),
 		}
 
 		_, err := f.usageClient.UsageReport(ctx, &service.UsageReportRequest{

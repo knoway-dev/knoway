@@ -79,9 +79,14 @@ kubectl apply -f https://raw.githubusercontent.com/<org>/knoway/<tag or branch>/
 
 More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
 
+## Origin
+
+Originally created by DaoCloud on 2024-11-18; see the public repository history at
+[knoway-dev/knoway](https://github.com/knoway-dev/knoway) for provenance.
+
 ## License
 
-Copyright 2024.
+Copyright 2024-2026.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

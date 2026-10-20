@@ -224,10 +224,12 @@ func (b *BootKit) mayStop() {
 }
 
 func (b *BootKit) Stop(ctx context.Context) error {
+	// Start holds the mutex until its running hooks have finished.
+	// Cancel first so Start can begin shutting them down.
+	b.selfCancel()
+
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
-
-	b.selfCancel()
 
 	return b.stop()
 }
